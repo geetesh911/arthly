@@ -88,7 +88,14 @@ describe('groww-mf-holdings', () => {
     expect(draft.accounts.map((a) => a.label)).toContain('PPFAS Mutual Fund folio ••••5678');
     const ppfas = draft.snapshots.find((s) => s.instrument.includes('parag'))!;
 
-    expect(ppfas).toMatchObject({ units: 1500.75, invested: 120_000, value: 135_067.75 });
+    // Its two rows' XIRRs, 12.1% on ₹80,000 and 9.4% on ₹40,000, weighted by what went in.
+    expect(ppfas).toMatchObject({
+      units: 1500.75,
+      invested: 120_000,
+      value: 135_067.75,
+      xirr: 0.112,
+    });
+    expect(draft.snapshots.find((s) => s.instrument.includes('tata'))?.xirr).toBeUndefined();
     expect(draft.instruments.find((i) => i.name.includes('Corporate Bond'))?.assetClass).toBe(
       'debt',
     );
@@ -491,6 +498,45 @@ describe('import plan', () => {
     expect(s.netWorth).toBeCloseTo(1_094_818.5, 2);
     expect(s.netInvested).toBeCloseTo(1_025_000, 2);
     expect(s.xirrEstimate).toBe(true);
+  });
+
+  it("uses the file's own XIRR for a fund until something is recorded after it", async () => {
+    const events: Event[] = [
+      putEvent(formatHlc(1, 0, 'aaaaaaaa'), 'member', { id: 'mem_1', name: 'Asha' }),
+      importApplyEvent(formatHlc(2, 0, 'aaaaaaaa'), applyPlan(await plan(), 'bat_1')!),
+    ];
+    const state = replay(events);
+    const book = new PriceBook([], [], all(state, 'snapshot'));
+    const holding = (s: typeof state, name: string, date: string) =>
+      evaluate(s, book, date).find((h) => h.instrument.name.startsWith(name))!;
+
+    expect(holding(state, 'Parag', '2026-10-23')).toMatchObject({
+      xirr: 0.112,
+      xirrEstimate: false,
+      xirrAsOf: '2026-10-21',
+    });
+    // The file says N/A, and the holding is not a year old here either.
+    expect(holding(state, 'Tata', '2026-10-23')).toMatchObject({ xirr: null, xirrEstimate: true });
+
+    const parag = holding(state, 'Parag', '2026-10-23');
+    const bought = replay([
+      ...events,
+      putEvent(formatHlc(3, 0, 'aaaaaaaa'), 'transaction', {
+        id: 'txn_1',
+        accountId: parag.account.id,
+        instrumentId: parag.instrument.id,
+        date: '2026-10-22',
+        type: 'buy',
+        units: 10,
+        amount: 900,
+        currency: 'INR',
+        source: { kind: 'manual' },
+      }),
+    ]);
+    const after = holding(bought, 'Parag', '2026-10-23');
+
+    expect(after.xirrAsOf).toBeUndefined();
+    expect(after.xirr).toBeNull();
   });
 
   it('links fund names to AMFI schemes', async () => {

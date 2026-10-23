@@ -8,6 +8,8 @@ function roundTo(value: number, places: number): number {
 export const roundAmount = (value: number): number => roundTo(value, 2);
 export const roundUnits = (value: number): number => roundTo(value, 6);
 export const roundPrice = (value: number): number => roundTo(value, 4);
+/** A rate as a fraction, to a hundredth of a basis point. */
+export const roundRate = (value: number): number => roundTo(value, 6);
 
 /** True when a and b differ by no more than tolerance. */
 export function near(a: number, b: number, tolerance: number): boolean {

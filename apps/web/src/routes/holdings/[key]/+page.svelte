@@ -146,11 +146,14 @@
       <Stat
         label="XIRR"
         value={pct(h.xirr)}
+        testid="holding-xirr"
         hint={h.xirr === null
           ? 'Shown once it’s a year old'
-          : h.xirrEstimate
-            ? `≈ since ${date(h.firstDate)}`
-            : undefined}
+          : h.xirrAsOf
+            ? `From your holdings file of ${date(h.xirrAsOf)}`
+            : h.xirrEstimate
+              ? `≈ since ${date(h.firstDate)}`
+              : undefined}
       />
       {#if h.units !== null}
         <Stat label="Units" value={units(h.units)} />

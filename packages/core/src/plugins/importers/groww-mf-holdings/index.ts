@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Groww's mutual-fund holdings Excel: one row per scheme and folio, plus a summary block.
-import { findCell, findDate, findHeader, num, rowsBelow, text } from '../../../import/sheet.ts';
+import {
+  findCell,
+  findDate,
+  findHeader,
+  lower,
+  num,
+  rowsBelow,
+  text,
+} from '../../../import/sheet.ts';
 import type { ImportDraft, Importer, InputFile } from '../../../import/types.ts';
 import { defaultAssetClass } from '../../../model/classify.ts';
 import { mask, normaliseName } from '../../../model/ids.ts';
-import { roundAmount, roundUnits } from '../../../util/numbers.ts';
+import { roundAmount, roundRate, roundUnits } from '../../../util/numbers.ts';
 
 const HEADINGS = {
   scheme: ['scheme name'],
@@ -54,6 +62,8 @@ export const growwMfHoldings: Importer = {
 
     const { rows, header } = found;
     const { col } = header;
+    // Each holding's XIRR, when the file has it; "N/A" while a holding is under a year old.
+    const xirrCol = rows[header.row]!.findIndex((c) => lower(c) === 'xirr');
     const draft: ImportDraft = {
       accounts: [],
       instruments: [],
@@ -87,10 +97,19 @@ export const growwMfHoldings: Importer = {
       };
     }
 
-    // Rows for the same scheme in the same folio are one holding.
+    // Rows for the same scheme in the same folio are one holding. Their XIRRs are combined in
+    // proportion to what was put into each, which is close to the XIRR of the whole.
     const holdings = new Map<
       string,
-      { units: number; invested: number; value: number; account: string; instrument: string }
+      {
+        units: number;
+        invested: number;
+        value: number;
+        /** The sum of each row's XIRR times its invested value; undefined once a row has none. */
+        xirrByInvested: number | undefined;
+        account: string;
+        instrument: string;
+      }
     >();
 
     for (const row of rowsBelow(rows, header.row)) {
@@ -135,16 +154,33 @@ export const growwMfHoldings: Importer = {
       }
 
       const key = `${account}|${instrument}`;
-      const h = holdings.get(key) ?? { units: 0, invested: 0, value: 0, account, instrument };
+      const h = holdings.get(key) ?? {
+        units: 0,
+        invested: 0,
+        value: 0,
+        xirrByInvested: 0,
+        account,
+        instrument,
+      };
+      const invested = num(row[col.invested]) ?? 0;
+      const xirr = xirrCol < 0 ? undefined : num(row[xirrCol]);
 
       h.units += units;
-      h.invested += num(row[col.invested]) ?? 0;
+      h.invested += invested;
       h.value += num(row[col.value]) ?? 0;
+      h.xirrByInvested =
+        h.xirrByInvested === undefined || xirr === undefined
+          ? undefined
+          : h.xirrByInvested + (xirr / 100) * invested;
       holdings.set(key, h);
     }
 
     for (const h of holdings.values()) {
       const units = roundUnits(h.units);
+      const xirr =
+        h.xirrByInvested !== undefined && h.invested > 0
+          ? roundRate(h.xirrByInvested / h.invested)
+          : undefined;
 
       draft.snapshots.push({
         account: h.account,
@@ -153,6 +189,7 @@ export const growwMfHoldings: Importer = {
         units,
         invested: roundAmount(h.invested),
         value: roundAmount(h.value),
+        ...(xirr !== undefined ? { xirr } : {}),
       });
     }
 

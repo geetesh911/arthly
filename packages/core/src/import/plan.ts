@@ -267,6 +267,7 @@ export function planImport(
       ...(s.invested !== undefined ? { invested: s.invested } : {}),
       ...(s.value !== undefined ? { value: s.value } : {}),
       ...(s.price !== undefined ? { price: s.price } : {}),
+      ...(s.xirr !== undefined ? { xirr: s.xirr } : {}),
       source,
     };
     const ledger = known.get(`${account.id}|${instrument.id}`);

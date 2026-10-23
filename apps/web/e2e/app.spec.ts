@@ -84,6 +84,11 @@ test('create a vault, import the Groww files and see the totals', async ({ page 
   await page.getByRole('link', { name: 'Holdings' }).click();
   await expect(page.getByText('Parag Parikh ELSS Tax Saver Fund Direct Growth')).toBeVisible();
   await expect(page.getByText('2.50%GOLDBONDS2032SR-IV')).toBeVisible();
+  await expect(page.getByText(/Fund XIRR is the one in your holdings file/)).toBeVisible();
+  // Groww gives 12.1% and 9.4% for its two rows; together they come to 11.2%.
+  await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
+  await expect(page.getByTestId('holding-xirr')).toHaveText('11.20%');
+  await expect(page.getByText(/From your holdings file of 21 Oct 2026/)).toBeVisible();
 });
 
 test('refresh prices through the relay', async ({ page }) => {

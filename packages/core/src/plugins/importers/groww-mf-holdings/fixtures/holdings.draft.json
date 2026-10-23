@@ -124,7 +124,8 @@
       "asOf": "2026-10-21",
       "units": 1500.75,
       "invested": 120000,
-      "value": 135067.75
+      "value": 135067.75,
+      "xirr": 0.112
     },
     {
       "account": "folio:axis mutual fund:••••3401",
@@ -132,7 +133,8 @@
       "asOf": "2026-10-21",
       "units": 2000,
       "invested": 200000,
-      "value": 230000
+      "value": 230000,
+      "xirr": 0.142
     },
     {
       "account": "folio:axis mutual fund:••••3499",
@@ -140,7 +142,8 @@
       "asOf": "2026-10-21",
       "units": 100,
       "invested": 10000,
-      "value": 11500
+      "value": 11500,
+      "xirr": 0.21
     },
     {
       "account": "folio:tata mutual fund:••••8899",
@@ -156,7 +159,8 @@
       "asOf": "2026-10-21",
       "units": 600.5,
       "invested": 200000,
-      "value": 230500
+      "value": 230500,
+      "xirr": 0.11
     },
     {
       "account": "folio:icici prudential mutual fund:••••6677",
@@ -164,7 +168,8 @@
       "asOf": "2026-10-21",
       "units": 1500,
       "invested": 45000,
-      "value": 47250
+      "value": 47250,
+      "xirr": 0.076
     }
   ],
   "warnings": [],

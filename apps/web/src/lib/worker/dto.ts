@@ -82,6 +82,8 @@ export interface HoldingDto {
   gainPct: number | null;
   xirr: number | null;
   xirrEstimate: boolean;
+  /** XIRR is the one the holdings file of this date gives. */
+  xirrAsOf?: ISODate;
   estimate: boolean;
   weight: number;
   firstDate?: ISODate;

@@ -127,6 +127,8 @@ export interface Snapshot {
   invested?: number;
   value?: number;
   price?: number;
+  /** The yearly return the holdings file itself gives, as a fraction (Groww's fund XIRR). */
+  xirr?: number;
   source: Source;
 }
 

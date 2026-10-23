@@ -76,6 +76,8 @@ export interface SnapshotDraft {
   invested?: number;
   value?: number;
   price?: number;
+  /** The file's own XIRR for the holding, as a fraction. */
+  xirr?: number;
 }
 
 export interface ImportDraft {

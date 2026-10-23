@@ -496,6 +496,7 @@ export class DataService {
       gainPct: h.gainPct,
       xirr: h.xirr,
       xirrEstimate: h.xirrEstimate,
+      ...(h.xirrAsOf ? { xirrAsOf: h.xirrAsOf } : {}),
       estimate: h.estimate,
       weight: h.weight,
       ...(h.position.entries[0] ? { firstDate: h.position.entries[0].date } : {}),

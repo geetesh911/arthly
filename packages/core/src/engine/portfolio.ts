@@ -52,6 +52,8 @@ export interface Holding {
   xirr: number | null;
   /** XIRR involves an opening balance from a holdings snapshot. */
   xirrEstimate: boolean;
+  /** XIRR is the one the holdings file of this date gives, not worked out here. */
+  xirrAsOf?: ISODate;
   weight: number;
 }
 
@@ -153,6 +155,19 @@ function matches(h: Holding, filter: Filter | undefined): boolean {
   return true;
 }
 
+/**
+ * The XIRR the latest holdings file on or before date gives (Groww's, for funds), while nothing
+ * is recorded after that file. The file knows when you bought, which its lines don't say.
+ */
+function fileXirr(snapshots: Snapshot[] | undefined, p: Position, date: ISODate) {
+  const latest = snapshots?.findLast((s) => s.asOf <= date);
+  const last = p.entries.at(-1)?.date;
+
+  return latest?.xirr !== undefined && last !== undefined && last <= latest.asOf
+    ? { rate: latest.xirr, asOf: latest.asOf }
+    : undefined;
+}
+
 /** Every holding on a date, including closed ones. */
 export function evaluate(
   state: State,
@@ -196,6 +211,7 @@ export function evaluate(
     // returns do, XIRR waits until the holding is a year old; gainPct covers it until then.
     const since = flows.reduce((min, f) => (f.date < min ? f.date : min), date);
     const yearOld = daysBetween(since, date) >= 365;
+    const fromFile = options.skipXirr ? undefined : fileXirr(cache.snapshots.get(p.key), p, date);
     const gain = value - invested;
 
     out.push({
@@ -218,8 +234,9 @@ export function evaluate(
         v.estimate || (instrument.currency !== 'INR' && !book.fx(instrument.currency, date)),
       flows,
       xirrFlows,
-      xirr: options.skipXirr || !yearOld ? null : xirr(withValue),
-      xirrEstimate: p.estimate,
+      xirr: fromFile ? fromFile.rate : options.skipXirr || !yearOld ? null : xirr(withValue),
+      xirrEstimate: p.estimate && !fromFile,
+      ...(fromFile ? { xirrAsOf: fromFile.asOf } : {}),
       weight: 0,
     });
   }
@@ -280,7 +297,8 @@ export function summary(
     netInvested,
     totalGain: investments - netInvested,
     xirr: rate,
-    xirrEstimate: all.some((h) => h.xirrEstimate),
+    // The total is worked out from the flows, so it is an estimate whenever a file opened one.
+    xirrEstimate: all.some((h) => h.position.estimate),
     absoluteReturn: netInvested > 0 ? (investments - netInvested) / netInvested : null,
     ...(firstFlow ? { firstFlow } : {}),
     holdings: held.sort((a, b) => b.value - a.value),
