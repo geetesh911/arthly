@@ -314,6 +314,93 @@ function complete(entity: DataEntity, row: Row, n: number): EntityMap[DataEntity
         amount: roundAmount(amount),
       };
     }
+
+    case 'card': {
+      const [memberId, bank, name, limit, closed] = [
+        str('memberId'),
+        str('bank'),
+        str('name'),
+        num('limit'),
+        str('closed'),
+      ];
+
+      if (!memberId || !bank || !name) {
+        return 'a card needs memberId, bank and name';
+      }
+
+      if (limit !== undefined && !(limit > 0)) {
+        return 'a card’s limit must be above zero';
+      }
+
+      if (closed && !isISODate(closed)) {
+        return `"${closed}" is not a YYYY-MM-DD date`;
+      }
+
+      return {
+        id: id ?? hashId('card', [memberId, normaliseName(bank), normaliseName(name)]),
+        memberId,
+        bank,
+        name,
+        ...(limit !== undefined ? { limit: roundAmount(limit) } : {}),
+        ...(closed ? { closed } : {}),
+      };
+    }
+
+    case 'cardBill': {
+      const [cardId, statementDate, dueDate, amount, minimumDue] = [
+        str('cardId'),
+        str('statementDate'),
+        str('dueDate'),
+        num('amount'),
+        num('minimumDue'),
+      ];
+
+      if (!cardId || !statementDate || !dueDate) {
+        return 'a card bill needs cardId, statementDate and dueDate';
+      }
+
+      for (const d of [statementDate, dueDate]) {
+        if (!isISODate(d)) {
+          return `"${d}" is not a YYYY-MM-DD date`;
+        }
+      }
+
+      if (amount === undefined || !(amount >= 0) || !((minimumDue ?? 0) >= 0)) {
+        return 'a card bill needs an amount of zero or more';
+      }
+
+      return {
+        id: id ?? hashId('cbl', [cardId, statementDate]),
+        cardId,
+        statementDate,
+        dueDate,
+        amount: roundAmount(amount),
+        minimumDue: roundAmount(minimumDue ?? 0),
+      };
+    }
+
+    case 'cardPayment': {
+      const [cardId, date, amount] = [str('cardId'), str('date'), num('amount')];
+
+      if (!cardId || !date) {
+        return 'a card payment needs cardId and date';
+      }
+
+      if (!isISODate(date)) {
+        return `"${date}" is not a YYYY-MM-DD date`;
+      }
+
+      if (amount === undefined || !(amount > 0)) {
+        return 'a card payment needs an amount above zero';
+      }
+
+      return {
+        id: id ?? hashId('cpy', [cardId, date, amount, n]),
+        cardId,
+        date,
+        amount: roundAmount(amount),
+      };
+    }
   }
 
   return 'unknown record';

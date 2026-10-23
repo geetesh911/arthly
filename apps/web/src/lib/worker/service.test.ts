@@ -906,3 +906,197 @@ describe('loans', () => {
     expect(s.analytics().assetSplit.slices.some((x) => x.label === 'Owed to you')).toBe(true);
   });
 });
+
+describe('cards', () => {
+  async function family() {
+    const s = service();
+
+    await s.create('Family', 'Asha', 'pw');
+    const memberId = s.list('member')[0]!.id;
+
+    return { s, memberId };
+  }
+
+  const firstBill = {
+    statementDate: '2026-09-15',
+    dueDate: '2026-10-05',
+    amount: 12_000,
+    minimumDue: 600,
+  };
+
+  it('takes what is left to pay off net worth, through part and full payments', async () => {
+    const { s, memberId } = await family();
+    const id = await s.addCard({
+      memberId,
+      bank: ' Sample Bank ',
+      name: 'Travel card',
+      limit: 100_000,
+      bill: firstBill,
+    });
+
+    expect(await s.overview()).toMatchObject({ netWorth: -12_000, cardDues: 12_000, cards: 1 });
+    expect(s.card(id)?.card).toMatchObject({
+      bank: 'Sample Bank',
+      due: 12_000,
+      overdue: true,
+      limitUsed: 0.12,
+      bill: { state: 'unpaid', left: 12_000 },
+    });
+
+    await s.addCardPayment({ cardId: id, amount: 600, date: '2026-09-20' });
+    expect(s.card(id)?.card.bill).toMatchObject({ paid: 600, left: 11_400, state: 'minimum' });
+
+    await s.addBill({
+      cardId: id,
+      statementDate: '2026-10-15',
+      dueDate: '2026-11-04',
+      amount: 13_000,
+      minimumDue: 650,
+    });
+    expect(s.cards()).toMatchObject({
+      dues: 13_000,
+      nextDue: '2026-11-04',
+      cards: [{ id, overdue: false }],
+    });
+
+    await s.addCardPayment({ cardId: id, amount: 13_000, date: '2026-10-20' });
+    const detail = s.card(id)!;
+
+    expect(detail.card).toMatchObject({ due: 0, bill: { state: 'paid' } });
+    expect(detail.bills.map((b) => [b.statementDate, b.state])).toEqual([
+      ['2026-10-15', 'paid'],
+      ['2026-09-15', 'minimum'],
+    ]);
+    expect(detail.payments.map((p) => p.amount)).toEqual([13_000, 600]);
+    expect((await s.overview()).netWorth).toBe(0);
+  });
+
+  it('closes, reopens and deletes a card with its history', async () => {
+    const { s, memberId } = await family();
+    const id = await s.addCard({
+      memberId,
+      bank: 'Sample Bank',
+      name: 'Old card',
+      bill: firstBill,
+    });
+
+    await expect(s.closeCard(id, '2026-10-22')).rejects.toThrow(
+      'Pay what’s left before closing the card',
+    );
+    await s.addCardPayment({ cardId: id, amount: 12_000, date: '2026-10-01' });
+    await s.closeCard(id, '2026-10-22');
+    expect(s.cards().cards[0]).toMatchObject({ id, closed: '2026-10-22' });
+    await s.saveCard({ id, memberId, bank: 'Sample Bank', name: 'Retired card' });
+    expect(s.card(id)?.card).toMatchObject({ name: 'Retired card', closed: '2026-10-22' });
+    await s.reopenCard(id);
+    expect(s.card(id)?.card.closed).toBeUndefined();
+
+    await s.removeCard(id);
+    expect(s.card(id)).toBeNull();
+    expect(s.list('cardBill')).toEqual([]);
+    expect(s.list('cardPayment')).toEqual([]);
+    expect((await s.overview()).cards).toBe(0);
+  });
+
+  it('refuses bad cards, bills and payments, and deletes bills and payments', async () => {
+    const { s, memberId } = await family();
+
+    await expect(s.addCard({ memberId, bank: '', name: 'Travel card' })).rejects.toThrow(
+      'Type the bank',
+    );
+    await expect(
+      s.addCard({
+        memberId,
+        bank: 'Sample Bank',
+        name: 'Travel card',
+        bill: { ...firstBill, minimumDue: 20_000 },
+      }),
+    ).rejects.toThrow('The minimum due can’t be more than the bill');
+    const id = await s.addCard({ memberId, bank: 'Sample Bank', name: 'Travel card' });
+
+    await expect(s.addCardPayment({ cardId: id, amount: 500, date: '2026-10-01' })).rejects.toThrow(
+      'Add the bill first',
+    );
+    const billId = await s.addBill({ cardId: id, ...firstBill });
+
+    await expect(s.addBill({ cardId: id, ...firstBill })).rejects.toThrow(
+      'There’s already a bill dated 2026-09-15',
+    );
+    await s.addCardPayment({ cardId: id, amount: 500, date: '2026-10-01' });
+    await s.removeCardPayment(s.card(id)!.payments[0]!.id);
+    await s.removeBill(billId);
+    expect(s.card(id)).toMatchObject({ bills: [], payments: [], card: { due: 0 } });
+  });
+
+  it('keeps a member with cards until the cards go', async () => {
+    const { s } = await family();
+
+    await s.save('member', { id: 'mem_2', name: 'Ravi' });
+    const id = await s.addCard({
+      memberId: 'mem_2',
+      bank: 'Sample Bank',
+      name: 'Travel card',
+      bill: firstBill,
+    });
+
+    await expect(s.removeMember('mem_2')).rejects.toThrow('Remove Ravi’s cards first');
+    expect(s.cards({ memberId: 'mem_2' }).dues).toBe(12_000);
+    expect(s.cards({ memberId: s.list('member')[0]!.id }).dues).toBe(0);
+    await s.removeCard(id);
+    await s.removeMember('mem_2');
+  });
+
+  it('shows bills due soon in Coming up, with overdue ones first, and no checks', async () => {
+    const { s, memberId } = await family();
+
+    await s.addCard({ memberId, bank: 'Sample Bank', name: 'Travel card', bill: firstBill });
+    await s.addCard({
+      memberId,
+      bank: 'Demo Bank',
+      name: 'Shopping card',
+      bill: { statementDate: '2026-10-10', dueDate: '2026-10-30', amount: 4_000, minimumDue: 200 },
+    });
+
+    expect(s.upcoming(30)).toEqual([
+      {
+        date: '2026-10-05',
+        kind: 'card bill',
+        name: 'Sample Bank Travel card',
+        amount: 12_000,
+        estimated: false,
+        overdue: true,
+      },
+      {
+        date: '2026-10-30',
+        kind: 'card bill',
+        name: 'Demo Bank Shopping card',
+        amount: 4_000,
+        estimated: false,
+      },
+    ]);
+    expect((await s.checks()).map((c) => c.type)).toEqual(['backup.none']);
+  });
+
+  it('keeps cards through a backup and restore', async () => {
+    const { s, memberId } = await family();
+
+    await s.addCard({ memberId, bank: 'Sample Bank', name: 'Travel card', bill: firstBill });
+    const backup = await s.backup();
+    const phone = service();
+
+    await phone.restore(backup.bytes, { passphrase: 'pw' });
+    expect(phone.cards()).toMatchObject({ dues: 12_000, cards: [{ name: 'Travel card' }] });
+  });
+
+  it('includes sample cards in the sample data', async () => {
+    const s = service();
+
+    await s.demo();
+    const cards = s.cards();
+
+    expect(cards.cards.map((c) => c.bill?.state).sort()).toEqual(['minimum', 'paid']);
+    expect(cards.dues).toBe(9_310);
+    expect((await s.overview()).cardDues).toBe(9_310);
+    expect(s.analytics().cardDues).toBe(9_310);
+  });
+});

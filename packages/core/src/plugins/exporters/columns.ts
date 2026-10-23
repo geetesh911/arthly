@@ -101,6 +101,32 @@ export const DATA_TABS: Partial<Record<EntityName, { tab: string; columns: Colum
     tab: '_loan_entries',
     columns: [text('id'), text('loanId'), text('date'), text('type'), number('amount')],
   },
+  card: {
+    tab: '_cards',
+    columns: [
+      text('id'),
+      text('memberId'),
+      text('bank'),
+      text('name'),
+      number('limit'),
+      text('closed'),
+    ],
+  },
+  cardBill: {
+    tab: '_card_bills',
+    columns: [
+      text('id'),
+      text('cardId'),
+      text('statementDate'),
+      text('dueDate'),
+      number('amount'),
+      number('minimumDue'),
+    ],
+  },
+  cardPayment: {
+    tab: '_card_payments',
+    columns: [text('id'), text('cardId'), text('date'), number('amount')],
+  },
 };
 
 export type DataEntity = keyof typeof DATA_TABS & EntityName;

@@ -138,9 +138,12 @@ Dismissal   { id, checkKey }                                         // "not a p
 Setting     { id /* key */, value }
 Loan        { id, memberId, direction: 'lent'|'borrowed', party, due?, note? }   // added later
 LoanEntry   { id, loanId, date, type: 'advance'|'repayment'|'write-off', amount }
+Card        { id, memberId, bank, name, limit?, closed? }                     // added later
+CardBill    { id, cardId, statementDate, dueDate, amount, minimumDue }
+CardPayment { id, cardId, date, amount }
 ```
 
-`Loan` and `LoanEntry` came with data format version 2. See [Loans](2026-10-23-loans-design.md).
+`Loan` and `LoanEntry` came with data format version 2. See [Loans](2026-10-23-loans-design.md). `Card`, `CardBill` and `CardPayment` came with version 3. See [Credit cards](2026-10-23-credit-cards-design.md).
 
 **Instruments**
 - **Asset class defaults:**
@@ -473,6 +476,7 @@ The app is designed for phones first, with a member filter at the top of every s
 4. **Checks:** the list, with a fix or a dismiss button on each.
 5. **Income:** for each financial year, with tabs for interest and dividends.
    - **Loans** (added later): money owed to you and money you owe, counted in net worth. See [Loans](2026-10-23-loans-design.md).
+   - **Cards** (added later): credit card bills and payments; what's left to pay comes off net worth. See [Credit cards](2026-10-23-credit-cards-design.md).
 6. **Settings:**
    - members, accounts and groups
    - storage and sync, unlock methods, recovery code, auto-lock

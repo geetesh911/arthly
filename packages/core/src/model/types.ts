@@ -183,6 +183,39 @@ export interface LoanEntry {
   amount: number;
 }
 
+/** A credit card. No card number is kept, not even the last four digits. */
+export interface Card {
+  id: string;
+  memberId: string;
+  /** Who issued it. */
+  bank: string;
+  /** What you call it, such as "Travel card". */
+  name: string;
+  /** The credit limit, in INR. */
+  limit?: number;
+  /** The date you closed it. */
+  closed?: ISODate;
+}
+
+export interface CardBill {
+  id: string;
+  cardId: string;
+  statementDate: ISODate;
+  dueDate: ISODate;
+  /** The total due, in INR. Zero or more. */
+  amount: number;
+  minimumDue: number;
+}
+
+/** Not tied to a bill: it counts against the latest bill before it. */
+export interface CardPayment {
+  id: string;
+  cardId: string;
+  date: ISODate;
+  /** Above zero, in INR. */
+  amount: number;
+}
+
 export interface EntityMap {
   member: Member;
   account: Account;
@@ -195,6 +228,9 @@ export interface EntityMap {
   setting: Setting;
   loan: Loan;
   loanEntry: LoanEntry;
+  card: Card;
+  cardBill: CardBill;
+  cardPayment: CardPayment;
 }
 
 export type EntityName = keyof EntityMap;
@@ -211,4 +247,7 @@ export const ENTITY_NAMES: readonly EntityName[] = [
   'setting',
   'loan',
   'loanEntry',
+  'card',
+  'cardBill',
+  'cardPayment',
 ];

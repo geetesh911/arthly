@@ -47,6 +47,8 @@ export interface Analytics {
   valuation: { total: number; stale: number; estimated: number };
   /** Open loan balances. Only what you're owed is charted. */
   loans: Pick<LoanTotals, 'owedToYou' | 'youOwe'>;
+  /** What's left to pay on cards. Never charted. */
+  cardDues: number;
   lookthrough: Pick<
     ReturnType<typeof fundExposure>,
     'funds' | 'coverage' | 'overlap' | 'assetSplit' | 'adjustments' | 'byFundType'
@@ -117,6 +119,7 @@ export function portfolioAnalytics(
   date: string,
   reference: FundExposureReference = {},
   loans: Pick<LoanTotals, 'owedToYou' | 'youOwe'> = { owedToYou: 0, youOwe: 0 },
+  cardDues = 0,
 ): Analytics {
   const held = holdings.filter((h) => h.value > 0 && h.status !== 'closed');
   const total = held.reduce((n, h) => n + h.value, 0);
@@ -170,6 +173,7 @@ export function portfolioAnalytics(
     count: held.length,
     assetValues,
     loans: { owedToYou: loans.owedToYou, youOwe: loans.youOwe },
+    cardDues,
     assetSplit: split(held, (h) => h.instrument.assetClass, loans.owedToYou),
     instrumentSplit: split(held, (h) => KIND_LABELS[h.instrument.kind]),
     sectors: underlying.sectors,

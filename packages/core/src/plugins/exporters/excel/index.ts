@@ -3,6 +3,7 @@
 // Values only, no live formulas.
 import type { Workbook, Worksheet } from 'exceljs';
 
+import { BILL_STATE_LABELS, cardStatuses } from '../../../engine/cards.ts';
 import { income } from '../../../engine/income.ts';
 import { loanStatuses } from '../../../engine/loans.ts';
 import { engineCache, history, summary } from '../../../engine/portfolio.ts';
@@ -79,6 +80,7 @@ export async function buildWorkbook(
     figure('Investments', s.investments, INR);
     figure('Owed to you', s.loans.owedToYou, INR);
     figure('You owe', s.loans.youOwe, INR);
+    figure('Card dues', s.cardDues, INR);
     figure('Net invested', s.netInvested, INR);
     figure('Total gain', s.totalGain, INR);
     figure(s.xirrEstimate ? 'XIRR (≈ estimate)' : 'XIRR', s.xirr, PCT);
@@ -269,6 +271,40 @@ export async function buildWorkbook(
         date(l.loan.due),
         l.overdue ? 'Overdue' : l.open ? 'Open' : 'Settled',
         l.loan.note ?? null,
+      ]);
+    }
+
+    const cards = sheet(book, 'Cards', [
+      { header: 'Member', width: 14 },
+      { header: 'Bank', width: 20 },
+      { header: 'Card', width: 20 },
+      { header: 'Limit', format: INR },
+      { header: 'Statement date', format: 'dd-mmm-yyyy' },
+      { header: 'Due date', format: 'dd-mmm-yyyy' },
+      { header: 'Bill', format: INR },
+      { header: 'Minimum due', format: INR },
+      { header: 'Paid', format: INR },
+      { header: 'Left to pay', format: INR },
+      { header: 'Status', width: 13 },
+      { header: 'Closed', format: 'dd-mmm-yyyy' },
+    ]);
+
+    for (const c of cardStatuses(state, input.date, input.filter)) {
+      const bill = c.latest;
+
+      cards.addRow([
+        memberName(c.card.memberId),
+        c.card.bank,
+        c.card.name,
+        c.card.limit ?? null,
+        date(bill?.bill.statementDate),
+        date(bill?.bill.dueDate),
+        bill?.bill.amount ?? null,
+        bill?.bill.minimumDue ?? null,
+        bill?.paid ?? null,
+        c.due,
+        !bill ? 'No bill yet' : c.overdue ? 'Overdue' : BILL_STATE_LABELS[bill.state],
+        date(c.card.closed),
       ]);
     }
   }

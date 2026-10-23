@@ -2,6 +2,7 @@
 <script lang="ts">
   import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
   import Settings from '@lucide/svelte/icons/settings';
@@ -15,6 +16,12 @@
       label: 'Loans',
       hint: 'Money you lent or borrowed',
       icon: HandCoins,
+    },
+    {
+      href: '#/cards',
+      label: 'Cards',
+      hint: 'Credit card bills and payments',
+      icon: CreditCard,
     },
     {
       href: '#/analytics',

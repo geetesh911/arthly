@@ -3,6 +3,7 @@
 import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
 import ChartPie from '@lucide/svelte/icons/chart-pie';
 import CirclePlus from '@lucide/svelte/icons/circle-plus';
+import CreditCard from '@lucide/svelte/icons/credit-card';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import HandCoins from '@lucide/svelte/icons/hand-coins';
 import House from '@lucide/svelte/icons/house';
@@ -43,6 +44,14 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
+    href: '#/cards',
+    label: 'Cards',
+    icon: CreditCard,
+    match: starts('/cards'),
+    phone: false,
+    desktop: true,
+  },
+  {
     href: '#/analytics',
     label: 'Analytics',
     icon: ChartNoAxesCombined,
@@ -78,7 +87,7 @@ export const sections: Section[] = [
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts('/more', '/income', '/settings', '/analytics', '/loans'),
+    match: starts('/more', '/income', '/settings', '/analytics', '/loans', '/cards'),
     phone: true,
     desktop: false,
   },

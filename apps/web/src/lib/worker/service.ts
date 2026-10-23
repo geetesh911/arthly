@@ -12,7 +12,18 @@ import {
   amountProblem,
   applyPlan,
   benchmarks,
+  billFiguresProblem,
+  billProblem,
+  type BillStatus,
   type CapFile,
+  type Card,
+  type CardBill,
+  cardDues,
+  type CardPayment,
+  cardProblem,
+  cardsDue,
+  type CardStatus,
+  cardStatuses,
   checks as runChecks,
   createVault,
   daysBetween,
@@ -44,6 +55,7 @@ import {
   income,
   type IndexDataFile,
   inputFile,
+  type ISODate,
   jsonExporter,
   type KdfParams,
   type Keyring,
@@ -69,6 +81,7 @@ import {
   outstanding,
   OWED_TO_YOU,
   parseHlc,
+  paymentProblem,
   pickImporter,
   planImport,
   portfolioAnalytics,
@@ -106,6 +119,7 @@ import {
   withAddedReports,
 } from '@pv/core';
 
+import { cardName } from '../cards.ts';
 import { LOAN_WORDS } from '../loans.ts';
 
 import type {
@@ -113,6 +127,10 @@ import type {
   AddedFundReportDto,
   AnalyticsDto,
   BatchDto,
+  BillDto,
+  CardDetailDto,
+  CardDto,
+  CardsDto,
   FileOut,
   Filter,
   HoldingDetailDto,
@@ -120,6 +138,7 @@ import type {
   LoanDetailDto,
   LoanDto,
   LoansDto,
+  NewCardInput,
   NewLoanInput,
   OverviewDto,
   PlanDto,
@@ -521,8 +540,17 @@ export class DataService {
       amount: d.amount,
       estimated: false,
     }));
+    const cards: UpcomingDto[] = cardsDue(cardStatuses(v.state, date), date, days).map((d) => ({
+      date: d.date,
+      kind: 'card bill',
+      name: cardName(d.card),
+      amount: d.amount,
+      estimated: false,
+      ...(d.overdue ? { overdue: true } : {}),
+    }));
 
-    return [...holdings, ...loans].sort((a, b) => a.date.localeCompare(b.date));
+    // Overdue card bills are dated before today, so they come first.
+    return [...holdings, ...loans, ...cards].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   private async deviceFacts() {
@@ -587,6 +615,7 @@ export class DataService {
       investments: s.investments,
       owedToYou: s.loans.owedToYou,
       youOwe: s.loans.youOwe,
+      cardDues: s.cardDues,
       invested: s.invested,
       netInvested: s.netInvested,
       totalGain: s.totalGain,
@@ -609,6 +638,7 @@ export class DataService {
       checks: await this.checks(),
       holdings: s.holdings.length,
       loans: loanStatuses(v.state, date, filter).length,
+      cards: cardStatuses(v.state, date, filter).length,
       ...(v.prices.fetched ? { pricesAsOf: v.prices.fetched } : {}),
       readOnly: v.state.readOnly,
     };
@@ -640,6 +670,7 @@ export class DataService {
           caps: v.prices.caps?.rows ?? [],
         },
         s.loans,
+        s.cardDues,
       ),
       targets:
         this.setting<AllocationTargets>(`analyticsTargets:${filter.memberId || 'all'}`) ?? null,
@@ -892,6 +923,10 @@ export class DataService {
       throw new Error(`Remove ${member.name}’s loans first`);
     }
 
+    if (all(s, 'card').some((c) => c.memberId === id)) {
+      throw new Error(`Remove ${member.name}’s cards first`);
+    }
+
     await this.remove('member', id);
   }
 
@@ -1081,6 +1116,185 @@ export class DataService {
         .filter((e) => e.loanId === id)
         .map((e) => drop('loanEntry', e.id)),
       drop('loan', id),
+    ]);
+    this.refresh();
+  }
+
+  // ---- cards ----
+
+  private cardDto(s: CardStatus): CardDto {
+    const { card } = s;
+
+    return {
+      id: card.id,
+      memberId: card.memberId,
+      memberName: get(this.need().state, 'member', card.memberId)?.name ?? '',
+      bank: card.bank,
+      name: card.name,
+      ...(card.limit !== undefined ? { limit: card.limit } : {}),
+      ...(card.closed ? { closed: card.closed } : {}),
+      ...(s.latest ? { bill: billDto(s.latest) } : {}),
+      due: s.due,
+      credit: s.credit,
+      overdue: s.overdue,
+      limitUsed: s.limitUsed,
+    };
+  }
+
+  /** The cards a filter covers: open ones first, overdue then soonest due; then closed ones. */
+  cards(filter: Filter = {}): CardsDto {
+    const date = this.today();
+    const statuses = cardStatuses(this.need().state, date, filter);
+    const cards = statuses
+      .map((s) => this.cardDto(s))
+      .sort((a, b) =>
+        !a.closed !== !b.closed
+          ? Number(!b.closed) - Number(!a.closed)
+          : a.closed
+            ? b.closed!.localeCompare(a.closed)
+            : Number(b.overdue) - Number(a.overdue) ||
+              Number(b.due > 0) - Number(a.due > 0) ||
+              (a.bill?.dueDate ?? '').localeCompare(b.bill?.dueDate ?? '') ||
+              cardName(a).localeCompare(cardName(b)),
+      );
+    const nextDue = cards
+      .filter((c) => c.due > 0 && c.bill)
+      .map((c) => c.bill!.dueDate)
+      .sort()[0];
+
+    return { date, dues: cardDues(statuses), ...(nextDue ? { nextDue } : {}), cards };
+  }
+
+  card(id: string): CardDetailDto | null {
+    const s = cardStatuses(this.need().state, this.today()).find((x) => x.card.id === id);
+
+    return s ? { card: this.cardDto(s), bills: s.bills.map(billDto), payments: s.payments } : null;
+  }
+
+  /** Adds a card, with its first bill if given, and gives its ID. */
+  async addCard(input: NewCardInput): Promise<string> {
+    const v = this.writable();
+    const card = tidyCard({ ...input, id: randomId('card') });
+    const bill = input.bill
+      ? tidyBill({ ...input.bill, id: randomId('cbl'), cardId: card.id })
+      : undefined;
+    const problem = cardProblem(v.state, card) ?? (bill ? billFiguresProblem(bill) : undefined);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await v.log.append([
+      putEvent(v.log.clock.next(), 'card', card),
+      ...(bill ? [putEvent(v.log.clock.next(), 'cardBill', bill)] : []),
+    ]);
+    this.refresh();
+
+    return card.id;
+  }
+
+  /** Saves a card's details: bank, name, whose and the limit. Closing has its own methods. */
+  async saveCard(card: Omit<Card, 'closed'>): Promise<void> {
+    const v = this.writable();
+    const saved = get(v.state, 'card', card.id);
+
+    if (!saved) {
+      throw new Error('This card no longer exists');
+    }
+
+    await this.saveCardRecord(
+      tidyCard({ ...card, ...(saved.closed ? { closed: saved.closed } : {}) }),
+    );
+  }
+
+  /** Closes a card you no longer use. It keeps its history. */
+  async closeCard(id: string, date: ISODate): Promise<void> {
+    const card = get(this.writable().state, 'card', id);
+
+    if (!card) {
+      throw new Error('This card no longer exists');
+    }
+
+    await this.saveCardRecord({ ...card, closed: date });
+  }
+
+  async reopenCard(id: string): Promise<void> {
+    const card = get(this.writable().state, 'card', id);
+
+    if (!card) {
+      throw new Error('This card no longer exists');
+    }
+
+    const open: Card = { ...card };
+
+    delete open.closed;
+    await this.saveCardRecord(open);
+  }
+
+  private async saveCardRecord(card: Card): Promise<void> {
+    const problem = cardProblem(this.writable().state, card);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.save('card', card);
+  }
+
+  /** Adds a bill, and gives its ID. */
+  async addBill(input: Omit<CardBill, 'id'>): Promise<string> {
+    const bill = tidyBill({ ...input, id: randomId('cbl') });
+    const problem = billProblem(this.writable().state, bill);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.save('cardBill', bill);
+
+    return bill.id;
+  }
+
+  /** Records a payment. It counts against the latest bill before it. */
+  async addCardPayment(input: Omit<CardPayment, 'id'>): Promise<void> {
+    const payment = { ...input, id: randomId('cpy'), amount: roundAmount(input.amount) };
+    const problem = paymentProblem(this.writable().state, payment);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.save('cardPayment', payment);
+  }
+
+  async removeBill(id: string): Promise<void> {
+    await this.remove('cardBill', id);
+  }
+
+  async removeCardPayment(id: string): Promise<void> {
+    await this.remove('cardPayment', id);
+  }
+
+  /** Deletes a card with its bills and payments, as if it never existed. */
+  async removeCard(id: string): Promise<void> {
+    const v = this.writable();
+    const s = v.state;
+
+    if (!get(s, 'card', id)) {
+      return;
+    }
+
+    const drop = (entity: EntityName, key: string) =>
+      deleteEvent(v.log.clock.next(), entity, key, versionOf(s, entity, key));
+
+    await v.log.append([
+      ...all(s, 'cardBill')
+        .filter((b) => b.cardId === id)
+        .map((b) => drop('cardBill', b.id)),
+      ...all(s, 'cardPayment')
+        .filter((p) => p.cardId === id)
+        .map((p) => drop('cardPayment', p.id)),
+      drop('card', id),
     ]);
     this.refresh();
   }
@@ -1643,6 +1857,43 @@ function tidyLoan(l: Omit<Loan, 'id'> & { id: string }): Loan {
     party: l.party.trim(),
     ...(l.due ? { due: l.due } : {}),
     ...(note ? { note } : {}),
+  };
+}
+
+/** A card's fields as stored: trimmed text, the limit in whole paise, no empty optional fields. */
+function tidyCard(c: Card): Card {
+  return {
+    id: c.id,
+    memberId: c.memberId,
+    bank: c.bank.trim(),
+    name: c.name.trim(),
+    ...(c.limit !== undefined ? { limit: roundAmount(c.limit) } : {}),
+    ...(c.closed ? { closed: c.closed } : {}),
+  };
+}
+
+function tidyBill(b: CardBill): CardBill {
+  return {
+    id: b.id,
+    cardId: b.cardId,
+    statementDate: b.statementDate,
+    dueDate: b.dueDate,
+    amount: roundAmount(b.amount),
+    minimumDue: roundAmount(b.minimumDue),
+  };
+}
+
+function billDto(s: BillStatus): BillDto {
+  return {
+    id: s.bill.id,
+    statementDate: s.bill.statementDate,
+    dueDate: s.bill.dueDate,
+    amount: s.bill.amount,
+    minimumDue: s.bill.minimumDue,
+    paid: s.paid,
+    left: s.left,
+    state: s.state,
+    overdue: s.overdue,
   };
 }
 

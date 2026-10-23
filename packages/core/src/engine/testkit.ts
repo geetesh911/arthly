@@ -5,6 +5,7 @@ import { formatHlc } from '../log/hlc.ts';
 import { replay, type State } from '../log/replay.ts';
 import type {
   Account,
+  Card,
   EntityMap,
   EntityName,
   Instrument,
@@ -80,6 +81,31 @@ export class Ledger {
 
   entry(loanId: string, type: LoanEntryType, amount: number, date: ISODate): this {
     return this.put('loanEntry', { id: `lne_${this.n}`, loanId, date, type, amount });
+  }
+
+  card(c: Partial<Card> & { id: string }): this {
+    return this.put('card', { memberId: 'mem_1', bank: 'Sample Bank', name: 'Travel card', ...c });
+  }
+
+  bill(
+    cardId: string,
+    statementDate: ISODate,
+    dueDate: ISODate,
+    amount: number,
+    minimumDue = 0,
+  ): this {
+    return this.put('cardBill', {
+      id: `cbl_${this.n}`,
+      cardId,
+      statementDate,
+      dueDate,
+      amount,
+      minimumDue,
+    });
+  }
+
+  payment(cardId: string, amount: number, date: ISODate): this {
+    return this.put('cardPayment', { id: `cpy_${this.n}`, cardId, date, amount });
   }
 
   state(): State {

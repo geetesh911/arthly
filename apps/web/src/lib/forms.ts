@@ -61,11 +61,14 @@ const BALANCE_KINDS: readonly InstrumentKind[] = ['cash', 'ppf', 'epf', 'eps'];
 export const updatesByBalance = (kind: InstrumentKind, recorded: boolean) =>
   kind === 'cash' || (!recorded && BALANCE_KINDS.includes(kind));
 
+/** A `?name=value` from the address, before or after the hash. */
+export const addressParam = (name: string) =>
+  new URLSearchParams(page.url.search).get(name) ??
+  new URLSearchParams(location.hash.split('?')[1] ?? '').get(name);
+
 /** The holding a form was opened for, from `?ref=accountId|instrumentId` in the address. */
 export function holdingRef(): [accountId: string, instrumentId: string] | null {
-  const ref =
-    new URLSearchParams(page.url.search).get('ref') ??
-    new URLSearchParams(location.hash.split('?')[1] ?? '').get('ref');
+  const ref = addressParam('ref');
 
   return ref?.includes('|') ? (ref.split('|') as [string, string]) : null;
 }

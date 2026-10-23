@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
+  import CreditCard from '@lucide/svelte/icons/credit-card';
   import FileQuestion from '@lucide/svelte/icons/file-question';
   import FileUp from '@lucide/svelte/icons/file-up';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
@@ -37,6 +38,7 @@
     { href: '#/add/balance', label: 'PPF, EPF or cash', icon: PiggyBank },
     { href: '#/add/price', label: 'Price', icon: Tag },
     { href: '#/loans/new', label: 'Loan', icon: HandCoins },
+    { href: '#/cards/bill', label: 'Card bill', icon: CreditCard },
   ];
 
   async function next() {

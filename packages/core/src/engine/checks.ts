@@ -3,7 +3,7 @@
 // what's due soon, overdue loans, PPF limits and sync conflicts. Each can be dismissed by key.
 import { parseHlc } from '../log/hlc.ts';
 import { all, get, type State } from '../log/replay.ts';
-import type { Transaction } from '../model/types.ts';
+import type { EntityName, Transaction } from '../model/types.ts';
 import {
   daysBetween,
   fromMs,
@@ -88,6 +88,12 @@ export interface DeviceFacts {
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+/** How a sync conflict names records whose entity name isn't a plain word. */
+const CONFLICT_WORDS: Partial<Record<EntityName, string>> = {
+  loanEntry: 'loan entry',
+  cardBill: 'card bill',
+  cardPayment: 'card payment',
+};
 
 function batchDate(b: { asOf?: string; hlc: string }): ISODate {
   return b.asOf ?? fromMs(parseHlc(b.hlc).ms);
@@ -293,7 +299,7 @@ export function checks(
     .at(-1);
 
   if (
-    (holdings.length > 0 || loans.length > 0) &&
+    (holdings.length > 0 || loans.length > 0 || all(state, 'card').length > 0) &&
     (!lastSafe || daysBetween(lastSafe, today) > s.backupDays)
   ) {
     out.push({
@@ -500,7 +506,7 @@ export function checks(
       key: `sync.conflict:${c.entity}:${c.id}:${c.winner.hlc}`,
       type: 'sync.conflict',
       severity: 'warn',
-      message: `A ${c.entity === 'loanEntry' ? 'loan entry' : c.entity} was changed on two devices. The later change was kept.`,
+      message: `A ${CONFLICT_WORDS[c.entity] ?? c.entity} was changed on two devices. The later change was kept.`,
       fix: { kind: 'resolve-conflict', ref: `${c.entity}:${c.id}` },
     });
   }

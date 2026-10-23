@@ -215,6 +215,63 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
     type: 'repayment',
     amount: 25_000,
   });
+  // One card paid in full, and one with only the minimum paid.
+  put('card', {
+    id: 'card_demo_travel',
+    memberId: 'mem_demo1',
+    bank: 'Sample Bank',
+    name: 'Travel card',
+    limit: 200_000,
+  });
+  put('cardBill', {
+    id: 'cbl_demo_travel1',
+    cardId: 'card_demo_travel',
+    statementDate: addDays(today, -40),
+    dueDate: addDays(today, -20),
+    amount: 18_500,
+    minimumDue: 925,
+  });
+  put('cardPayment', {
+    id: 'cpy_demo_travel1',
+    cardId: 'card_demo_travel',
+    date: addDays(today, -25),
+    amount: 18_500,
+  });
+  put('cardBill', {
+    id: 'cbl_demo_travel2',
+    cardId: 'card_demo_travel',
+    statementDate: addDays(today, -10),
+    dueDate: addDays(today, 10),
+    amount: 21_300,
+    minimumDue: 1_065,
+  });
+  put('cardPayment', {
+    id: 'cpy_demo_travel2',
+    cardId: 'card_demo_travel',
+    date: addDays(today, -3),
+    amount: 21_300,
+  });
+  put('card', {
+    id: 'card_demo_shopping',
+    memberId: 'mem_demo2',
+    bank: 'Demo Bank',
+    name: 'Shopping card',
+    limit: 75_000,
+  });
+  put('cardBill', {
+    id: 'cbl_demo_shopping',
+    cardId: 'card_demo_shopping',
+    statementDate: addDays(today, -12),
+    dueDate: addDays(today, 8),
+    amount: 9_800,
+    minimumDue: 490,
+  });
+  put('cardPayment', {
+    id: 'cpy_demo_shopping',
+    cardId: 'card_demo_shopping',
+    date: addDays(today, -5),
+    amount: 490,
+  });
 
   return events;
 }

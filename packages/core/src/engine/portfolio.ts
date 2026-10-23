@@ -6,6 +6,7 @@ import { assetTypeFor } from '../plugins/assets/index.ts';
 import { addDays, daysBetween, endOfMonth, type ISODate, minDate } from '../util/dates.ts';
 
 import type { AssetContext, HoldingStatus } from './asset-type.ts';
+import { cardDues, cardStatuses } from './cards.ts';
 import { loansApply, loanStatuses, type LoanTotals, loanTotals, NO_LOANS } from './loans.ts';
 import {
   interestPaidOut,
@@ -59,11 +60,13 @@ export interface Holding {
 
 export interface Summary {
   date: ISODate;
-  /** Investments plus what you're owed, less what you owe. */
+  /** Investments plus what you're owed, less what you owe and what's left to pay on cards. */
   netWorth: number;
   /** What the holdings are worth. Invested, gain and XIRR are about these alone. */
   investments: number;
   loans: LoanTotals;
+  /** What's left to pay on each card's latest bill. */
+  cardDues: number;
   /** Cost of what is held now. */
   invested: number;
   /** Money in less money out, over all time. */
@@ -273,6 +276,7 @@ export function summary(
   const all = evaluate(state, book, date, options).filter((h) => matches(h, filter));
   const { value: investments, netInvested, firstFlow, xirr: rate } = totals(all, date);
   const loans = loansApply(filter) ? loanTotals(loanStatuses(state, date, filter)) : NO_LOANS;
+  const cards = cardDues(cardStatuses(state, date, filter));
   const held = all.filter((h) => h.status !== 'closed');
   const allocation: Summary['allocation'] = { assetClass: {}, member: {}, group: {} };
 
@@ -290,9 +294,10 @@ export function summary(
 
   return {
     date,
-    netWorth: investments + loans.owedToYou - loans.youOwe,
+    netWorth: investments + loans.owedToYou - loans.youOwe - cards,
     investments,
     loans,
+    cardDues: cards,
     invested: held.reduce((sum, h) => sum + h.invested, 0),
     netInvested,
     totalGain: investments - netInvested,

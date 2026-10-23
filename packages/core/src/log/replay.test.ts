@@ -163,10 +163,26 @@ describe('replay', () => {
     });
     const state = replay([old, loan]);
 
-    expect(loan.v).toBe(2);
+    expect(loan.v).toBe(3);
     expect(state.readOnly).toBe(false);
     expect(get(state, 'member', 'm1')?.name).toBe('A');
     expect(get(state, 'loan', 'loan_1')?.party).toBe('Sample friend');
+  });
+
+  it('lifts format 2 events and replays cards', () => {
+    const old = { ...putEvent(h(1), 'member', member('m1', 'A')), v: 2 };
+    const card = putEvent(h(2), 'card', {
+      id: 'card_1',
+      memberId: 'm1',
+      bank: 'Sample Bank',
+      name: 'Travel card',
+    });
+    const state = replay([old, card]);
+
+    expect(card.v).toBe(3);
+    expect(state.readOnly).toBe(false);
+    expect(get(state, 'member', 'm1')?.name).toBe('A');
+    expect(get(state, 'card', 'card_1')?.name).toBe('Travel card');
   });
 
   it('gives the same state for any order or duplication of events', () => {

@@ -7,6 +7,7 @@
   import CheckList from '#lib/components/CheckList.svelte';
   import Donut from '#lib/components/Donut.svelte';
   import Stat from '#lib/components/Stat.svelte';
+  import { Badge } from '#lib/components/ui/badge/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import * as Card from '#lib/components/ui/card/index.ts';
   import * as Empty from '#lib/components/ui/empty/index.ts';
@@ -43,6 +44,12 @@
   );
   const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
   const hasLoans = $derived(!!data && (data.owedToYou > 0 || data.youOwe > 0));
+  const hasCards = $derived(!!data && data.cardDues > 0);
+  const notCharted = $derived(
+    [hasLoans && 'Loans', hasCards && (hasLoans ? 'card dues' : 'Card dues')]
+      .filter(Boolean)
+      .join(' and '),
+  );
 </script>
 
 {#if !data}
@@ -50,7 +57,7 @@
     <Skeleton class="h-40 rounded-4xl" />
     <Skeleton class="h-72 rounded-4xl" />
   </div>
-{:else if data.holdings === 0 && data.loans === 0}
+{:else if data.holdings === 0 && data.loans === 0 && data.cards === 0}
   <Empty.Root class="min-h-[60dvh]">
     <Empty.Header>
       <Empty.Media variant="icon"><Wallet /></Empty.Media>
@@ -71,16 +78,23 @@
           <p class="text-4xl font-semibold tracking-tight tabular-nums" data-testid="net-worth">
             {inr(data.netWorth)}
           </p>
-          {#if hasLoans}
+          {#if hasLoans || hasCards}
             <p class="text-muted-foreground text-sm" data-testid="net-worth-parts">
               {[
                 `Investments ${inr(data.investments)}`,
                 data.owedToYou > 0 && `owed to you ${inr(data.owedToYou)}`,
                 data.youOwe > 0 && `you owe ${inr(data.youOwe)}`,
+                hasCards && `card dues ${inr(data.cardDues)}`,
               ]
                 .filter(Boolean)
                 .join(' · ')} ·
-              <a href="#/loans" class="text-foreground underline underline-offset-4">Loans</a>
+              {#if hasLoans}
+                <a href="#/loans" class="text-foreground underline underline-offset-4">Loans</a>
+              {/if}
+              {#if hasLoans && hasCards}·{/if}
+              {#if hasCards}
+                <a href="#/cards" class="text-foreground underline underline-offset-4">Cards</a>
+              {/if}
             </p>
           {/if}
         </div>
@@ -125,8 +139,10 @@
             Some early values use cost, because no price was known yet.
           </p>
         {/if}
-        {#if hasLoans}
-          <p class="text-muted-foreground text-xs">Investments only. Loans aren’t in this chart.</p>
+        {#if notCharted}
+          <p class="text-muted-foreground text-xs">
+            Investments only. {notCharted} aren’t in this chart.
+          </p>
         {/if}
       </Card.Content>
     </Card.Root>
@@ -178,8 +194,10 @@
                 </span>
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-sm font-medium">{u.name}</span>
-                  <span class="text-muted-foreground block text-xs"
-                    >{u.kind}{u.estimated ? ' (estimate)' : ''}</span
+                  <span class="text-muted-foreground flex items-center gap-2 text-xs"
+                    >{u.kind}{u.estimated ? ' (estimate)' : ''}{#if u.overdue}<Badge
+                        variant="destructive">Overdue</Badge
+                      >{/if}</span
                   >
                 </span>
                 <span class="text-sm font-medium tabular-nums">{inr(u.amount)}</span>

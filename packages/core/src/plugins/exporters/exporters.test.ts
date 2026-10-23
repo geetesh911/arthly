@@ -69,7 +69,13 @@ function sample(): Ledger {
     .entry('loan_1', 'advance', 20_000, '2026-06-01')
     .entry('loan_1', 'repayment', 5_000, '2026-08-01')
     .loan({ id: 'loan_2', direction: 'borrowed', party: 'Sample relative' })
-    .entry('loan_2', 'advance', 50_000, '2026-03-01');
+    .entry('loan_2', 'advance', 50_000, '2026-03-01')
+    .card({ id: 'card_1', limit: 100_000 })
+    .bill('card_1', '2026-10-01', '2026-10-21', 12_000, 600)
+    .payment('card_1', 600, '2026-10-05')
+    .card({ id: 'card_2', bank: 'Other Bank', name: 'Shopping card', closed: '2026-09-30' })
+    .bill('card_2', '2026-09-01', '2026-09-21', 3_000, 150)
+    .payment('card_2', 3_000, '2026-09-10');
 }
 
 const book = new PriceBook([
@@ -132,6 +138,7 @@ describe('Excel export', () => {
       'Coming up',
       'Monthly history',
       'Loans',
+      'Cards',
       '_members',
       '_accounts',
       '_instruments',
@@ -140,17 +147,21 @@ describe('Excel export', () => {
       '_groups',
       '_loans',
       '_loan_entries',
+      '_cards',
+      '_card_bills',
+      '_card_payments',
     ]);
     const top = sheets[0]!.rows;
     const s = summary(state, book, '2026-10-21');
 
-    expect(top.slice(3, 7)).toEqual([
+    expect(top.slice(3, 8)).toEqual([
       ['Net worth', s.netWorth],
       ['Investments', s.investments],
       ['Owed to you', 15_000],
       ['You owe', 50_000],
+      ['Card dues', 11_400],
     ]);
-    expect(s.netWorth).toBeCloseTo(s.investments - 35_000, 6);
+    expect(s.netWorth).toBeCloseTo(s.investments - 35_000 - 11_400, 6);
     expect(sheets[6]!.rows.slice(1)).toEqual([
       [
         'Asha',
@@ -165,6 +176,36 @@ describe('Excel export', () => {
         'For a laptop',
       ],
       ['Asha', 'You owe', 'Sample relative', 50_000, 0, 0, 50_000, null, 'Open', null],
+    ]);
+    expect(sheets[7]!.rows.slice(1)).toEqual([
+      [
+        'Asha',
+        'Sample Bank',
+        'Travel card',
+        100_000,
+        '2026-10-01',
+        '2026-10-21',
+        12_000,
+        600,
+        600,
+        11_400,
+        'Minimum paid',
+        null,
+      ],
+      [
+        'Asha',
+        'Other Bank',
+        'Shopping card',
+        null,
+        '2026-09-01',
+        '2026-09-21',
+        3_000,
+        150,
+        3_000,
+        0,
+        'Paid',
+        '2026-09-30',
+      ],
     ]);
     expect(sheets[1]!.rows).toHaveLength(3);
     expect(sheets[2]!.rows).toHaveLength(3);
@@ -207,9 +248,12 @@ describe('template', () => {
       '_groups',
       '_loans',
       '_loan_entries',
+      '_cards',
+      '_card_bills',
+      '_card_payments',
       'Read me',
     ]);
-    expect(sheets.slice(0, 8).every((s) => s.rows.length === 1)).toBe(true);
+    expect(sheets.slice(0, 11).every((s) => s.rows.length === 1)).toBe(true);
   });
 
   it('creates records from rows without IDs, the same ones each time', async () => {

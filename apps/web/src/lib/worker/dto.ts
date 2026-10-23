@@ -5,6 +5,9 @@ import type {
   Analytics,
   AssetClass,
   Benchmarks,
+  BillState,
+  CardBill,
+  CardPayment,
   Check,
   EntityMap,
   EntityName,
@@ -95,6 +98,8 @@ export interface UpcomingDto {
   name: string;
   amount?: number;
   estimated: boolean;
+  /** A card bill past its due date with something left to pay. */
+  overdue?: boolean;
 }
 
 export interface Point {
@@ -113,11 +118,13 @@ export interface PriceStatusDto {
 
 export interface OverviewDto {
   date: ISODate;
-  /** Investments plus what you're owed, less what you owe. */
+  /** Investments plus what you're owed, less what you owe and card dues. */
   netWorth: number;
   investments: number;
   owedToYou: number;
   youOwe: number;
+  /** Left to pay on cards. */
+  cardDues: number;
   invested: number;
   netInvested: number;
   totalGain: number;
@@ -134,8 +141,10 @@ export interface OverviewDto {
   upcoming: UpcomingDto[];
   checks: Check[];
   holdings: number;
-  /** Loans, open or settled. With none and no holdings, Home shows its welcome. */
+  /** Loans, open or settled. With none, no cards and no holdings, Home shows its welcome. */
   loans: number;
+  /** Cards, open or closed. */
+  cards: number;
   pricesAsOf?: string;
   readOnly: boolean;
 }
@@ -253,4 +262,65 @@ export interface NewLoanInput {
   date: ISODate;
   due?: ISODate;
   note?: string;
+}
+
+export interface BillDto {
+  id: string;
+  statementDate: ISODate;
+  dueDate: ISODate;
+  amount: number;
+  minimumDue: number;
+  /** Payments after its statement date, up to the next bill's. */
+  paid: number;
+  /** Below zero when more was paid than the bill. */
+  left: number;
+  state: BillState;
+  overdue: boolean;
+}
+
+export interface CardDto {
+  id: string;
+  memberId: string;
+  memberName: string;
+  bank: string;
+  name: string;
+  limit?: number;
+  closed?: ISODate;
+  /** The latest bill, once there is one. */
+  bill?: BillDto;
+  /** Left to pay on the latest bill, never below zero. */
+  due: number;
+  /** Paid beyond the latest bill. */
+  credit: number;
+  overdue: boolean;
+  limitUsed: number | null;
+}
+
+export interface CardsDto {
+  date: ISODate;
+  /** Left to pay over every card. */
+  dues: number;
+  /** The soonest due date with something left to pay. */
+  nextDue?: ISODate;
+  /** Open cards, overdue first, then by due date; then closed ones, latest first. */
+  cards: CardDto[];
+}
+
+export interface CardDetailDto {
+  card: CardDto;
+  /** Newest first. */
+  bills: BillDto[];
+  /** Newest first. */
+  payments: CardPayment[];
+}
+
+export type BillInput = Omit<CardBill, 'id' | 'cardId'>;
+
+export interface NewCardInput {
+  memberId: string;
+  bank: string;
+  name: string;
+  limit?: number;
+  /** The first bill, if you have it. */
+  bill?: BillInput;
 }
