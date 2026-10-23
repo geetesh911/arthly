@@ -9,6 +9,7 @@ import {
   all,
   type AllocationTargets,
   type AmfiScheme,
+  amountProblem,
   applyPlan,
   benchmarks,
   type CapFile,
@@ -22,6 +23,7 @@ import {
   engineCache,
   type EntityMap,
   type EntityName,
+  entryRemovalProblem,
   evaluate,
   excelExporter,
   failedIndexData,
@@ -45,6 +47,15 @@ import {
   jsonExporter,
   type KdfParams,
   type Keyring,
+  type Loan,
+  LOAN_EPS,
+  type LoanEntry,
+  loanEntryProblem,
+  loanProblem,
+  loansDue,
+  type LoanStatus,
+  loanStatuses,
+  loanTotals,
   type LocalStore,
   makeBackup,
   MemoryLocalStore,
@@ -55,6 +66,8 @@ import {
   NSE_LIST_INDEX,
   type NseReferenceFile,
   openChunk,
+  outstanding,
+  OWED_TO_YOU,
   parseHlc,
   pickImporter,
   planImport,
@@ -63,6 +76,7 @@ import {
   PriceBook,
   priceKeys,
   putEvent,
+  randomId,
   type RateTables,
   readBackup,
   readFundReport,
@@ -72,6 +86,7 @@ import {
   replay,
   restoreBackup,
   revokeWrap,
+  roundAmount,
   sealChunk,
   setPassphrase,
   sha256Hex,
@@ -91,6 +106,8 @@ import {
   withAddedReports,
 } from '@pv/core';
 
+import { LOAN_WORDS } from '../loans.ts';
+
 import type {
   AccountDto,
   AddedFundReportDto,
@@ -100,6 +117,10 @@ import type {
   Filter,
   HoldingDetailDto,
   HoldingDto,
+  LoanDetailDto,
+  LoanDto,
+  LoansDto,
+  NewLoanInput,
   OverviewDto,
   PlanDto,
   PrepareResult,
@@ -484,13 +505,23 @@ export class DataService {
   private upcomingDto(days: number): UpcomingDto[] {
     const v = this.need();
 
-    return upcoming(v.state, v.book, this.today(), days, this.opts()).map((u) => ({
+    const date = this.today();
+    const holdings: UpcomingDto[] = upcoming(v.state, v.book, date, days, this.opts()).map((u) => ({
       date: u.date,
       kind: u.kind,
       name: get(v.state, 'instrument', u.instrumentId)?.name ?? '',
       ...(u.amount !== undefined ? { amount: u.amount } : {}),
       estimated: u.estimated,
     }));
+    const loans: UpcomingDto[] = loansDue(loanStatuses(v.state, date), date, days).map((d) => ({
+      date: d.date,
+      kind: 'loan due',
+      name: LOAN_WORDS[d.loan.direction].owes(d.loan.party),
+      amount: d.amount,
+      estimated: false,
+    }));
+
+    return [...holdings, ...loans].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   private async deviceFacts() {
@@ -534,9 +565,27 @@ export class DataService {
         })
       : [];
 
+    // What you're owed is a slice where it fits; what you owe never is.
+    const owed = s.loans.owedToYouByMember;
+    const assetClass: Record<string, number> = { ...s.allocation.assetClass };
+    const member = { ...s.allocation.member };
+    const group = { ...s.allocation.group };
+
+    if (s.loans.owedToYou > 0) {
+      assetClass[OWED_TO_YOU] = s.loans.owedToYou;
+      group[''] = (group[''] ?? 0) + s.loans.owedToYou;
+
+      for (const [id, n] of Object.entries(owed)) {
+        member[id] = (member[id] ?? 0) + n;
+      }
+    }
+
     return {
       date,
       netWorth: s.netWorth,
+      investments: s.investments,
+      owedToYou: s.loans.owedToYou,
+      youOwe: s.loans.youOwe,
       invested: s.invested,
       netInvested: s.netInvested,
       totalGain: s.totalGain,
@@ -545,11 +594,9 @@ export class DataService {
       absoluteReturn: s.absoluteReturn,
       ...(s.firstFlow ? { firstFlow: s.firstFlow } : {}),
       allocation: {
-        assetClass: names(s.allocation.assetClass as Record<string, number>, (k) => k),
-        member: names(s.allocation.member, (k) => get(v.state, 'member', k)?.name ?? k),
-        group: names(s.allocation.group, (k) =>
-          k ? (get(v.state, 'group', k)?.name ?? k) : 'Not in a group',
-        ),
+        assetClass: names(assetClass, (k) => k),
+        member: names(member, (k) => get(v.state, 'member', k)?.name ?? k),
+        group: names(group, (k) => (k ? (get(v.state, 'group', k)?.name ?? k) : 'Not in a group')),
       },
       history: points.map((p) => ({
         date: p.date,
@@ -560,6 +607,7 @@ export class DataService {
       upcoming: this.upcomingDto(30),
       checks: await this.checks(),
       holdings: s.holdings.length,
+      loans: loanStatuses(v.state, date, filter).length,
       ...(v.prices.fetched ? { pricesAsOf: v.prices.fetched } : {}),
       readOnly: v.state.readOnly,
     };
@@ -576,17 +624,22 @@ export class DataService {
   analytics(filter: Filter = {}): AnalyticsDto {
     const v = this.need();
     const date = this.today();
-    const holdings = summary(v.state, v.book, date, filter, this.opts()).holdings;
+    const s = summary(v.state, v.book, date, filter, this.opts());
     const portfolios = withAddedReports(v.prices.fundHoldings?.portfolios ?? [], v.addedFunds);
 
     return {
-      ...portfolioAnalytics(holdings, date, {
-        schemes: v.prices.schemes,
-        stocks: v.prices.nse?.rows ?? [],
-        portfolios,
-        retained: v.prices.fundHoldings?.retained,
-        caps: v.prices.caps?.rows ?? [],
-      }),
+      ...portfolioAnalytics(
+        s.holdings,
+        date,
+        {
+          schemes: v.prices.schemes,
+          stocks: v.prices.nse?.rows ?? [],
+          portfolios,
+          retained: v.prices.fundHoldings?.retained,
+          caps: v.prices.caps?.rows ?? [],
+        },
+        s.loans,
+      ),
       targets:
         this.setting<AllocationTargets>(`analyticsTargets:${filter.memberId || 'all'}`) ?? null,
       indices: benchmarks(v.prices.indices, this.listedMembers()),
@@ -834,6 +887,10 @@ export class DataService {
       throw new Error(`Remove ${member.name}’s accounts first`);
     }
 
+    if (all(s, 'loan').some((l) => l.memberId === id)) {
+      throw new Error(`Remove ${member.name}’s loans first`);
+    }
+
     await this.remove('member', id);
   }
 
@@ -869,6 +926,161 @@ export class DataService {
     ];
 
     await v.log.append(events);
+    this.refresh();
+  }
+
+  // ---- loans ----
+
+  private loanDto(s: LoanStatus): LoanDto {
+    const { loan } = s;
+
+    return {
+      id: loan.id,
+      memberId: loan.memberId,
+      memberName: get(this.need().state, 'member', loan.memberId)?.name ?? '',
+      direction: loan.direction,
+      party: loan.party,
+      ...(loan.due ? { due: loan.due } : {}),
+      ...(loan.note ? { note: loan.note } : {}),
+      advanced: s.advanced,
+      repaid: s.repaid,
+      writtenOff: s.writtenOff,
+      balance: s.balance,
+      open: s.open,
+      overdue: s.overdue,
+      ...(s.start ? { start: s.start } : {}),
+      ...(s.settled ? { settled: s.settled } : {}),
+    };
+  }
+
+  /** The loans a filter covers: open ones first, biggest first, then settled ones, latest first. */
+  loans(filter: Filter = {}): LoansDto {
+    const date = this.today();
+    const statuses = loanStatuses(this.need().state, date, filter);
+    const { owedToYou, youOwe } = loanTotals(statuses);
+    const loans = statuses
+      .map((s) => this.loanDto(s))
+      .sort((a, b) =>
+        a.open !== b.open
+          ? Number(b.open) - Number(a.open)
+          : a.open
+            ? b.balance - a.balance
+            : (b.settled ?? '').localeCompare(a.settled ?? ''),
+      );
+
+    return { date, owedToYou, youOwe, loans };
+  }
+
+  loan(id: string): LoanDetailDto | null {
+    const s = loanStatuses(this.need().state, this.today()).find((x) => x.loan.id === id);
+
+    return s ? { loan: this.loanDto(s), entries: s.entries } : null;
+  }
+
+  /** Adds a loan with the amount first lent or borrowed, and gives its ID. */
+  async addLoan(input: NewLoanInput): Promise<string> {
+    const v = this.writable();
+    const loan = tidyLoan({ ...input, id: randomId('loan') });
+    const problem = loanProblem(v.state, loan, input.date) ?? amountProblem(input.amount);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    const advance: LoanEntry = {
+      id: randomId('lne'),
+      loanId: loan.id,
+      date: input.date,
+      type: 'advance',
+      amount: roundAmount(input.amount),
+    };
+
+    await v.log.append([
+      putEvent(v.log.clock.next(), 'loan', loan),
+      putEvent(v.log.clock.next(), 'loanEntry', advance),
+    ]);
+    this.refresh();
+
+    return loan.id;
+  }
+
+  /** Saves a loan's details: who, whose, the due date and the note. */
+  async saveLoan(loan: Loan): Promise<void> {
+    const v = this.writable();
+    const tidy = tidyLoan(loan);
+    const problem = get(v.state, 'loan', loan.id)
+      ? loanProblem(v.state, tidy)
+      : 'This loan no longer exists';
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.save('loan', tidy);
+  }
+
+  /** Records more money lent or borrowed, or a repayment, which may be part of what's owed. */
+  async addLoanEntry(input: Omit<LoanEntry, 'id' | 'type'> & { type: 'advance' | 'repayment' }) {
+    await this.saveLoanEntry({ ...input, id: randomId('lne'), amount: roundAmount(input.amount) });
+  }
+
+  /** Settles a loan: what's still owed is paid back, or written off. */
+  async closeLoan(loanId: string, type: 'repayment' | 'write-off', date: string): Promise<void> {
+    const owed = outstanding(
+      all(this.need().state, 'loanEntry').filter((e) => e.loanId === loanId),
+    );
+
+    if (owed <= LOAN_EPS) {
+      throw new Error('Nothing is owed on this loan');
+    }
+
+    await this.saveLoanEntry({
+      id: randomId('lne'),
+      loanId,
+      date,
+      type,
+      amount: roundAmount(owed),
+    });
+  }
+
+  private async saveLoanEntry(entry: LoanEntry): Promise<void> {
+    const problem = loanEntryProblem(this.writable().state, entry);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.save('loanEntry', entry);
+  }
+
+  async removeLoanEntry(id: string): Promise<void> {
+    const problem = entryRemovalProblem(this.writable().state, id);
+
+    if (problem) {
+      throw new Error(problem);
+    }
+
+    await this.remove('loanEntry', id);
+  }
+
+  /** Deletes a loan with its whole history, as if it never existed. */
+  async removeLoan(id: string): Promise<void> {
+    const v = this.writable();
+    const s = v.state;
+
+    if (!get(s, 'loan', id)) {
+      return;
+    }
+
+    const drop = (entity: EntityName, key: string) =>
+      deleteEvent(v.log.clock.next(), entity, key, versionOf(s, entity, key));
+
+    await v.log.append([
+      ...all(s, 'loanEntry')
+        .filter((e) => e.loanId === id)
+        .map((e) => drop('loanEntry', e.id)),
+      drop('loan', id),
+    ]);
     this.refresh();
   }
 
@@ -1419,6 +1631,20 @@ export class DataService {
 }
 
 /** The likeliest heading row of each sheet: the row with the most text cells, at least three. No values. */
+/** A loan's fields as stored: trimmed text, and no empty optional fields. */
+function tidyLoan(l: Omit<Loan, 'id'> & { id: string }): Loan {
+  const note = l.note?.trim();
+
+  return {
+    id: l.id,
+    memberId: l.memberId,
+    direction: l.direction,
+    party: l.party.trim(),
+    ...(l.due ? { due: l.due } : {}),
+    ...(note ? { note } : {}),
+  };
+}
+
 async function headingsOnly(file: ReturnType<typeof inputFile>): Promise<string[]> {
   const sheets = await file.sheets().catch(() => []);
   const out: string[] = [];

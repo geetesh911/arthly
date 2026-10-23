@@ -153,6 +153,22 @@ describe('replay', () => {
     expect(get(state, 'member', 'm1')?.name).toBe('A');
   });
 
+  it('lifts format 1 events and replays loans', () => {
+    const old = { ...putEvent(h(1), 'member', member('m1', 'A')), v: 1 };
+    const loan = putEvent(h(2), 'loan', {
+      id: 'loan_1',
+      memberId: 'm1',
+      direction: 'lent',
+      party: 'Sample friend',
+    });
+    const state = replay([old, loan]);
+
+    expect(loan.v).toBe(2);
+    expect(state.readOnly).toBe(false);
+    expect(get(state, 'member', 'm1')?.name).toBe('A');
+    expect(get(state, 'loan', 'loan_1')?.party).toBe('Sample friend');
+  });
+
   it('gives the same state for any order or duplication of events', () => {
     const devices = ['aaaaaaaa', 'bbbbbbbb', 'cccccccc'];
     const ids = ['m1', 'm2', 'm3'];

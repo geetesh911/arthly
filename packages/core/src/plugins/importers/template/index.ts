@@ -14,7 +14,13 @@ import {
   normaliseName,
   snapshotId,
 } from '../../../model/ids.ts';
-import type { EntityMap, InstrumentKind, Source, TransactionType } from '../../../model/types.ts';
+import type {
+  EntityMap,
+  InstrumentKind,
+  LoanEntryType,
+  Source,
+  TransactionType,
+} from '../../../model/types.ts';
 import { utf8 } from '../../../util/bytes.ts';
 import { isISODate } from '../../../util/dates.ts';
 import { roundAmount } from '../../../util/numbers.ts';
@@ -35,6 +41,7 @@ const KINDS: InstrumentKind[] = [
   'us-stock',
   'other',
 ];
+const LOAN_ENTRY_TYPES: LoanEntryType[] = ['advance', 'repayment', 'write-off'];
 const TYPES: TransactionType[] = [
   'opening',
   'buy',
@@ -256,6 +263,56 @@ function complete(entity: DataEntity, row: Row, n: number): EntityMap[DataEntity
         : [];
 
       return { id: id ?? hashId('grp', [normaliseName(name)]), name, holdings };
+    }
+
+    case 'loan': {
+      const [memberId, direction, party, due] = [
+        str('memberId'),
+        str('direction'),
+        str('party'),
+        str('due'),
+      ];
+
+      if (!memberId || !party || (direction !== 'lent' && direction !== 'borrowed')) {
+        return 'a loan needs memberId, party and a direction of lent or borrowed';
+      }
+
+      if (due && !isISODate(due)) {
+        return `"${due}" is not a YYYY-MM-DD date`;
+      }
+
+      return {
+        id: id ?? hashId('loan', [memberId, direction, normaliseName(party)]),
+        memberId,
+        direction,
+        party,
+        ...(due ? { due } : {}),
+        ...(str('note') ? { note: str('note')! } : {}),
+      };
+    }
+
+    case 'loanEntry': {
+      const [loanId, date, type, amount] = [str('loanId'), str('date'), str('type'), num('amount')];
+
+      if (!loanId || !date || !LOAN_ENTRY_TYPES.includes(type as LoanEntryType)) {
+        return 'a loan entry needs loanId, date and a type of advance, repayment or write-off';
+      }
+
+      if (!isISODate(date)) {
+        return `"${date}" is not a YYYY-MM-DD date`;
+      }
+
+      if (amount === undefined || !(amount > 0)) {
+        return 'a loan entry needs an amount above zero';
+      }
+
+      return {
+        id: id ?? hashId('lne', [loanId, date, type, amount, n]),
+        loanId,
+        date,
+        type: type as LoanEntryType,
+        amount: roundAmount(amount),
+      };
     }
   }
 

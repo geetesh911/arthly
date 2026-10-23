@@ -136,7 +136,11 @@ Group       { id, name, holdings: { accountId?, instrumentId }[] }   // e.g. a s
 ManualPrice { id, instrumentId, date, price }
 Dismissal   { id, checkKey }                                         // "not a problem" on a check
 Setting     { id /* key */, value }
+Loan        { id, memberId, direction: 'lent'|'borrowed', party, due?, note? }   // added later
+LoanEntry   { id, loanId, date, type: 'advance'|'repayment'|'write-off', amount }
 ```
+
+`Loan` and `LoanEntry` came with data format version 2. See [Loans](2026-10-23-loans-design.md).
 
 **Instruments**
 - **Asset class defaults:**
@@ -468,6 +472,7 @@ The app is designed for phones first, with a member filter at the top of every s
 3. **Add:** import files, add a transaction, add an FD, bond, PPF or EPF entry, set a cash balance, or download a blank template.
 4. **Checks:** the list, with a fix or a dismiss button on each.
 5. **Income:** for each financial year, with tabs for interest and dividends.
+   - **Loans** (added later): money owed to you and money you owe, counted in net worth. See [Loans](2026-10-23-loans-design.md).
 6. **Settings:**
    - members, accounts and groups
    - storage and sync, unlock methods, recovery code, auto-lock

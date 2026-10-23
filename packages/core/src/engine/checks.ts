@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Things worth a look: stale prices or files, mismatches with holdings files, duplicates,
-// what's due soon, PPF limits and sync conflicts. Each can be dismissed by key.
+// what's due soon, overdue loans, PPF limits and sync conflicts. Each can be dismissed by key.
 import { parseHlc } from '../log/hlc.ts';
 import { all, get, type State } from '../log/replay.ts';
 import type { Transaction } from '../model/types.ts';
@@ -15,6 +15,7 @@ import {
 } from '../util/dates.ts';
 import { near, valueTolerance } from '../util/numbers.ts';
 
+import { loanStatuses } from './loans.ts';
 import { engineCache, type EngineOptions, evaluate } from './portfolio.ts';
 import { isBalanceKind, positions, unitsOn } from './positions.ts';
 import type { PriceBook } from './prices.ts';
@@ -34,6 +35,7 @@ export type CheckType =
   | 'soon.payout'
   | 'ppf.minimum'
   | 'ppf.limit'
+  | 'loan.overdue'
   | 'sync.conflict';
 
 export interface Check {
@@ -52,7 +54,8 @@ export interface Check {
       | 'import-file'
       | 'add-price'
       | 'backup'
-      | 'resolve-conflict';
+      | 'resolve-conflict'
+      | 'open-loan';
     ref?: string;
   };
 }
@@ -105,6 +108,7 @@ export function checks(
     get(state, 'instrument', instrumentId)?.name ?? 'A holding';
   const holdings = evaluate(state, book, today, { ...options, cache, skipXirr: true });
   const open = holdings.filter((h) => h.status !== 'closed');
+  const loans = loanStatuses(state, today);
 
   // price.stale
   let needsFx = false;
@@ -288,7 +292,10 @@ export function checks(
     .sort()
     .at(-1);
 
-  if (holdings.length > 0 && (!lastSafe || daysBetween(lastSafe, today) > s.backupDays)) {
+  if (
+    (holdings.length > 0 || loans.length > 0) &&
+    (!lastSafe || daysBetween(lastSafe, today) > s.backupDays)
+  ) {
     out.push({
       key: 'backup.none',
       type: 'backup.none',
@@ -469,13 +476,31 @@ export function checks(
     }
   }
 
+  // loan.overdue
+  for (const { loan, balance, overdue } of loans) {
+    if (!overdue) {
+      continue;
+    }
+
+    out.push({
+      key: `loan.overdue:${loan.id}:${loan.due}`,
+      type: 'loan.overdue',
+      severity: 'warn',
+      message:
+        loan.direction === 'lent'
+          ? `${loan.party} was due to pay back ${inr(balance)} by ${loan.due}`
+          : `You were due to pay ${loan.party} back ${inr(balance)} by ${loan.due}`,
+      fix: { kind: 'open-loan', ref: loan.id },
+    });
+  }
+
   // sync.conflict
   for (const c of state.conflicts.values()) {
     out.push({
       key: `sync.conflict:${c.entity}:${c.id}:${c.winner.hlc}`,
       type: 'sync.conflict',
       severity: 'warn',
-      message: `A ${c.entity} was changed on two devices. The later change was kept.`,
+      message: `A ${c.entity === 'loanEntry' ? 'loan entry' : c.entity} was changed on two devices. The later change was kept.`,
       fix: { kind: 'resolve-conflict', ref: `${c.entity}:${c.id}` },
     });
   }

@@ -5,6 +5,7 @@
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import FileQuestion from '@lucide/svelte/icons/file-question';
   import FileUp from '@lucide/svelte/icons/file-up';
+  import HandCoins from '@lucide/svelte/icons/hand-coins';
   import Landmark from '@lucide/svelte/icons/landmark';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import PiggyBank from '@lucide/svelte/icons/piggy-bank';
@@ -35,6 +36,7 @@
     { href: '#/add/fd', label: 'FD, bond or SGB', icon: Landmark },
     { href: '#/add/balance', label: 'PPF, EPF or cash', icon: PiggyBank },
     { href: '#/add/price', label: 'Price', icon: Tag },
+    { href: '#/loans/new', label: 'Loan', icon: HandCoins },
   ];
 
   async function next() {

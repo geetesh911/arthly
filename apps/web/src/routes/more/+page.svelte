@@ -2,6 +2,7 @@
 <script lang="ts">
   import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import HandCoins from '@lucide/svelte/icons/hand-coins';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
   import Settings from '@lucide/svelte/icons/settings';
 
@@ -9,6 +10,12 @@
   import * as Card from '#lib/components/ui/card/index.ts';
 
   const links = [
+    {
+      href: '#/loans',
+      label: 'Loans',
+      hint: 'Money you lent or borrowed',
+      icon: HandCoins,
+    },
     {
       href: '#/analytics',
       label: 'Portfolio analytics',

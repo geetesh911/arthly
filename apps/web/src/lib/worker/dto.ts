@@ -11,6 +11,8 @@ import type {
   Entry,
   HoldingStatus,
   ISODate,
+  LoanDirection,
+  LoanEntry,
   Lot,
 } from '@pv/core';
 
@@ -109,7 +111,11 @@ export interface PriceStatusDto {
 
 export interface OverviewDto {
   date: ISODate;
+  /** Investments plus what you're owed, less what you owe. */
   netWorth: number;
+  investments: number;
+  owedToYou: number;
+  youOwe: number;
   invested: number;
   netInvested: number;
   totalGain: number;
@@ -126,6 +132,8 @@ export interface OverviewDto {
   upcoming: UpcomingDto[];
   checks: Check[];
   holdings: number;
+  /** Loans, open or settled. With none and no holdings, Home shows its welcome. */
+  loans: number;
   pricesAsOf?: string;
   readOnly: boolean;
 }
@@ -201,4 +209,46 @@ export interface FileOut {
   name: string;
   mime: string;
   bytes: Uint8Array;
+}
+
+export interface LoanDto {
+  id: string;
+  memberId: string;
+  memberName: string;
+  direction: LoanDirection;
+  party: string;
+  due?: ISODate;
+  note?: string;
+  advanced: number;
+  repaid: number;
+  writtenOff: number;
+  /** Below zero when more was paid back than lent. */
+  balance: number;
+  open: boolean;
+  overdue: boolean;
+  start?: ISODate;
+  settled?: ISODate;
+}
+
+export interface LoansDto {
+  date: ISODate;
+  owedToYou: number;
+  youOwe: number;
+  /** Open ones first, by balance; then settled ones, latest first. */
+  loans: LoanDto[];
+}
+
+export interface LoanDetailDto {
+  loan: LoanDto;
+  entries: LoanEntry[];
+}
+
+export interface NewLoanInput {
+  memberId: string;
+  direction: LoanDirection;
+  party: string;
+  amount: number;
+  date: ISODate;
+  due?: ISODate;
+  note?: string;
 }

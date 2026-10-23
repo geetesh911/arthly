@@ -155,6 +155,32 @@ export interface Setting {
   value: unknown;
 }
 
+/** They owe you (lent), or you owe them (borrowed). */
+export type LoanDirection = 'lent' | 'borrowed';
+
+export interface Loan {
+  id: string;
+  memberId: string;
+  direction: LoanDirection;
+  /** Who: the person or party. */
+  party: string;
+  /** When it should be paid back by. */
+  due?: ISODate;
+  note?: string;
+}
+
+/** `advance` is money handed over, lent or borrowed. */
+export type LoanEntryType = 'advance' | 'repayment' | 'write-off';
+
+export interface LoanEntry {
+  id: string;
+  loanId: string;
+  date: ISODate;
+  type: LoanEntryType;
+  /** Always positive, in INR. The type gives the direction. */
+  amount: number;
+}
+
 export interface EntityMap {
   member: Member;
   account: Account;
@@ -165,6 +191,8 @@ export interface EntityMap {
   manualPrice: ManualPrice;
   dismissal: Dismissal;
   setting: Setting;
+  loan: Loan;
+  loanEntry: LoanEntry;
 }
 
 export type EntityName = keyof EntityMap;
@@ -179,4 +207,6 @@ export const ENTITY_NAMES: readonly EntityName[] = [
   'manualPrice',
   'dismissal',
   'setting',
+  'loan',
+  'loanEntry',
 ];

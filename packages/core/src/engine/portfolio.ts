@@ -6,6 +6,7 @@ import { assetTypeFor } from '../plugins/assets/index.ts';
 import { addDays, daysBetween, endOfMonth, type ISODate, minDate } from '../util/dates.ts';
 
 import type { AssetContext, HoldingStatus } from './asset-type.ts';
+import { loansApply, loanStatuses, type LoanTotals, loanTotals, NO_LOANS } from './loans.ts';
 import {
   interestPaidOut,
   isBalanceKind,
@@ -56,7 +57,11 @@ export interface Holding {
 
 export interface Summary {
   date: ISODate;
+  /** Investments plus what you're owed, less what you owe. */
   netWorth: number;
+  /** What the holdings are worth. Invested, gain and XIRR are about these alone. */
+  investments: number;
+  loans: LoanTotals;
   /** Cost of what is held now. */
   invested: number;
   /** Money in less money out, over all time. */
@@ -225,18 +230,19 @@ export function evaluate(
 function totals(holdings: Holding[], date: ISODate) {
   const flows = holdings.flatMap((h) => h.flows);
   const xirrFlows = holdings.flatMap((h) => h.xirrFlows);
-  const netWorth = holdings.reduce((sum, h) => sum + h.value, 0);
-  const netInvested = -flows.reduce((sum, f) => sum + f.amount, 0);
+  const value = holdings.reduce((sum, h) => sum + h.value, 0);
+  // 0 - x, not -x, so no flows give 0 rather than -0.
+  const netInvested = 0 - flows.reduce((sum, f) => sum + f.amount, 0);
   const firstFlow = flows.reduce<ISODate | undefined>(
     (min, f) => (!min || f.date < min ? f.date : min),
     undefined,
   );
 
   return {
-    netWorth,
+    value,
     netInvested,
     firstFlow,
-    xirr: xirr(netWorth > 0 ? [...xirrFlows, { date, amount: netWorth }] : xirrFlows),
+    xirr: xirr(value > 0 ? [...xirrFlows, { date, amount: value }] : xirrFlows),
   };
 }
 
@@ -248,12 +254,13 @@ export function summary(
   options: EngineOptions = {},
 ): Summary {
   const all = evaluate(state, book, date, options).filter((h) => matches(h, filter));
-  const { netWorth, netInvested, firstFlow, xirr: rate } = totals(all, date);
+  const { value: investments, netInvested, firstFlow, xirr: rate } = totals(all, date);
+  const loans = loansApply(filter) ? loanTotals(loanStatuses(state, date, filter)) : NO_LOANS;
   const held = all.filter((h) => h.status !== 'closed');
   const allocation: Summary['allocation'] = { assetClass: {}, member: {}, group: {} };
 
   for (const h of held) {
-    h.weight = netWorth > 0 ? h.value / netWorth : 0;
+    h.weight = investments > 0 ? h.value / investments : 0;
     const cls = h.instrument.assetClass;
 
     allocation.assetClass[cls] = (allocation.assetClass[cls] ?? 0) + h.value;
@@ -266,13 +273,15 @@ export function summary(
 
   return {
     date,
-    netWorth,
+    netWorth: investments + loans.owedToYou - loans.youOwe,
+    investments,
+    loans,
     invested: held.reduce((sum, h) => sum + h.invested, 0),
     netInvested,
-    totalGain: netWorth - netInvested,
+    totalGain: investments - netInvested,
     xirr: rate,
     xirrEstimate: all.some((h) => h.xirrEstimate),
-    absoluteReturn: netInvested > 0 ? (netWorth - netInvested) / netInvested : null,
+    absoluteReturn: netInvested > 0 ? (investments - netInvested) / netInvested : null,
     ...(firstFlow ? { firstFlow } : {}),
     holdings: held.sort((a, b) => b.value - a.value),
     allocation,
@@ -329,11 +338,11 @@ export function history(
       assetClass[h.instrument.assetClass] = (assetClass[h.instrument.assetClass] ?? 0) + h.value;
     }
 
-    const { netWorth, netInvested } = totals(holdings, date);
+    const { value, netInvested } = totals(holdings, date);
     const costOnly = holdings.some(
       (h) => h.status === 'open' && h.estimate && !h.priceDate && !isBalanceKind(h.instrument.kind),
     );
 
-    return { date, value: netWorth, netInvested, assetClass, costOnly };
+    return { date, value, netInvested, assetClass, costOnly };
   });
 }

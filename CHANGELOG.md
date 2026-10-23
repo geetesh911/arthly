@@ -24,3 +24,5 @@ First version, under construction:
 - Arthly's colours: Citrus Lime, Light Lime, Lemon Yellow, Forest and Deep Green, in light and dark, as shadcn tokens in `apps/web/src/app.css`; text meets WCAG AA, and a new icon
 - Dark theme: Citrus Midnight (#C4F05A on #121713), with stronger focus halos in dark and a visible keyboard focus on the Add screen's file picker
 - XIRR for holdings imported from a file counts from the file's date at its value then, since the file doesn't say when you bought; invested and gain still use the cost
+- Loans: money owed to you and money you owe, with part repayments, settling in full, write-offs and optional due dates, on a new Loans screen. Net worth adds what you're owed and takes off what you owe; net invested, gain and XIRR stay about investments. Overdue loans show in Checks, loans due soon in Coming up, and loans go into the Excel and JSON exports. The data format is now version 2, so an older copy of the app opens a newer portfolio read-only
+- Fixed: number formats on the Excel export's Summary tab were one row off, so Total gain showed as a percentage

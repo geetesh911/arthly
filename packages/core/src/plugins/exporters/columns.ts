@@ -86,6 +86,21 @@ export const DATA_TABS: Partial<Record<EntityName, { tab: string; columns: Colum
     ],
   },
   group: { tab: '_groups', columns: [text('id'), text('name'), json('holdings')] },
+  loan: {
+    tab: '_loans',
+    columns: [
+      text('id'),
+      text('memberId'),
+      text('direction'),
+      text('party'),
+      text('due'),
+      text('note'),
+    ],
+  },
+  loanEntry: {
+    tab: '_loan_entries',
+    columns: [text('id'), text('loanId'), text('date'), text('type'), number('amount')],
+  },
 };
 
 export type DataEntity = keyof typeof DATA_TABS & EntityName;

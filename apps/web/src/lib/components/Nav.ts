@@ -4,6 +4,7 @@ import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
 import ChartPie from '@lucide/svelte/icons/chart-pie';
 import CirclePlus from '@lucide/svelte/icons/circle-plus';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
+import HandCoins from '@lucide/svelte/icons/hand-coins';
 import House from '@lucide/svelte/icons/house';
 import IndianRupee from '@lucide/svelte/icons/indian-rupee';
 import Settings from '@lucide/svelte/icons/settings';
@@ -31,6 +32,14 @@ export const sections: Section[] = [
     icon: ChartPie,
     match: starts('/holdings'),
     phone: true,
+    desktop: true,
+  },
+  {
+    href: '#/loans',
+    label: 'Loans',
+    icon: HandCoins,
+    match: starts('/loans'),
+    phone: false,
     desktop: true,
   },
   {
@@ -69,7 +78,7 @@ export const sections: Section[] = [
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts('/more', '/income', '/settings', '/analytics'),
+    match: starts('/more', '/income', '/settings', '/analytics', '/loans'),
     phone: true,
     desktop: false,
   },

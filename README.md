@@ -2,13 +2,14 @@
 
 Arthly is a free, open-source portfolio tracker for Indian investors. It runs in your browser, and your data is encrypted on your device. No server ever sees your holdings.
 
-It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF and EPS, bank cash, and US stocks (priced by hand for now). One portfolio can hold a whole family, with each account belonging to a member.
+It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF and EPS, bank cash, US stocks (priced by hand for now), and money you've lent or borrowed. One portfolio can hold a whole family, with each account belonging to a member.
 
 > Status: version 1 is under construction. The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-10-22-portfolio-app-design.md), and the build plan in [docs/superpowers/plans](docs/superpowers/plans/2026-10-22-v1-phases.md).
 
 ## What it does
 
 - **Dashboard:** net worth, net invested, total gain, exact XIRR, allocation by asset class, member or group, value over time, and what's coming up.
+- **Loans:** money owed to you (what you lent) and money you owe (what you borrowed), with part repayments, settling in full, write-offs and optional due dates. Net worth adds what you're owed and takes off what you owe. Net invested, gain and XIRR stay about your investments. What you're owed shows in the asset split and in access to your money; what you owe is never a chart slice. Overdue loans show in Checks, and loans due soon in Coming up.
 - **Portfolio analytics:** asset and investment-vehicle splits, NSE sector allocation, AMFI's official large, mid and small cap categories, consolidated stock concentration, and active/passive funds. Direct stocks and disclosed fund stocks are combined by ISIN. Fund holding details show weights, estimated rupee exposure, report dates and official sources, with overlap across funds. Coverage and eligible subtotals are shown beside each view.
 - **Indices and benchmarks:** every index in NSE's and BSE's daily files (about 300), searchable, with each level's date, daily change and return basis, plus 1-month and 1-year changes once saved closes reach back that far.
 - **Planning:** liquidity categories, a maturity ladder, currency denomination, largest positions, price freshness, and an allocation planner with optional contributions and targets saved separately for the family and each member.

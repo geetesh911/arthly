@@ -42,6 +42,7 @@
       : [],
   );
   const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
+  const hasLoans = $derived(!!data && (data.owedToYou > 0 || data.youOwe > 0));
 </script>
 
 {#if !data}
@@ -49,7 +50,7 @@
     <Skeleton class="h-40 rounded-4xl" />
     <Skeleton class="h-72 rounded-4xl" />
   </div>
-{:else if data.holdings === 0}
+{:else if data.holdings === 0 && data.loans === 0}
   <Empty.Root class="min-h-[60dvh]">
     <Empty.Header>
       <Empty.Media variant="icon"><Wallet /></Empty.Media>
@@ -70,6 +71,18 @@
           <p class="text-4xl font-semibold tracking-tight tabular-nums" data-testid="net-worth">
             {inr(data.netWorth)}
           </p>
+          {#if hasLoans}
+            <p class="text-muted-foreground text-sm" data-testid="net-worth-parts">
+              {[
+                `Investments ${inr(data.investments)}`,
+                data.owedToYou > 0 && `owed to you ${inr(data.owedToYou)}`,
+                data.youOwe > 0 && `you owe ${inr(data.youOwe)}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')} ·
+              <a href="#/loans" class="text-foreground underline underline-offset-4">Loans</a>
+            </p>
+          {/if}
         </div>
         <Separator />
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -111,6 +124,9 @@
           <p class="text-muted-foreground text-xs">
             Some early values use cost, because no price was known yet.
           </p>
+        {/if}
+        {#if hasLoans}
+          <p class="text-muted-foreground text-xs">Investments only. Loans aren’t in this chart.</p>
         {/if}
       </Card.Content>
     </Card.Root>

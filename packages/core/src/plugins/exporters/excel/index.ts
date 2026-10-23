@@ -4,6 +4,7 @@
 import type { Workbook, Worksheet } from 'exceljs';
 
 import { income } from '../../../engine/income.ts';
+import { loanStatuses } from '../../../engine/loans.ts';
 import { engineCache, history, summary } from '../../../engine/portfolio.ts';
 import { isBalanceKind } from '../../../engine/positions.ts';
 import { upcoming } from '../../../engine/upcoming.ts';
@@ -64,28 +65,28 @@ export async function buildWorkbook(
       { header: 'Value', width: 18 },
     ]);
 
-    top.addRows([
-      ['As of', date(input.date)],
-      ['Filter', input.filter ? JSON.stringify(input.filter) : 'Everything'],
-      ['Net worth', s.netWorth],
-      ['Net invested', s.netInvested],
-      ['Total gain', s.totalGain],
-      [s.xirrEstimate ? 'XIRR (≈ estimate)' : 'XIRR', s.xirr],
-      [],
-      ['Asset class', 'Value'],
-      ...Object.entries(s.allocation.assetClass).map(([k, v]) => [k, v]),
-    ]);
-    top.getCell('B1').numFmt = 'dd-mmm-yyyy';
+    const figure = (label: string, value: string | number | Date | null, format?: string) => {
+      const row = top.addRow([label, value]);
 
-    for (const r of [3, 4, 5]) {
-      top.getCell(`B${r}`).numFmt = INR;
-    }
+      if (format) {
+        row.getCell(2).numFmt = format;
+      }
+    };
 
-    top.getCell('B6').numFmt = PCT;
-    top.getRow(8).font = { bold: true };
+    figure('As of', date(input.date), 'dd-mmm-yyyy');
+    figure('Filter', input.filter ? JSON.stringify(input.filter) : 'Everything');
+    figure('Net worth', s.netWorth, INR);
+    figure('Investments', s.investments, INR);
+    figure('Owed to you', s.loans.owedToYou, INR);
+    figure('You owe', s.loans.youOwe, INR);
+    figure('Net invested', s.netInvested, INR);
+    figure('Total gain', s.totalGain, INR);
+    figure(s.xirrEstimate ? 'XIRR (≈ estimate)' : 'XIRR', s.xirr, PCT);
+    top.addRow([]);
+    top.addRow(['Asset class', 'Value']).font = { bold: true };
 
-    for (let r = 9; r <= top.rowCount; r++) {
-      top.getCell(`B${r}`).numFmt = INR;
+    for (const [k, v] of Object.entries(s.allocation.assetClass)) {
+      figure(k, v, INR);
     }
 
     const groups = all(state, 'group');
@@ -219,7 +220,7 @@ export async function buildWorkbook(
     const classes = Object.keys(s.allocation.assetClass);
     const hist = sheet(book, 'Monthly history', [
       { header: 'Month end', format: 'dd-mmm-yyyy' },
-      { header: 'Net worth', format: INR },
+      { header: 'Investments', format: INR },
       { header: 'Net invested', format: INR },
       { header: 'Gain', format: INR },
       ...classes.map((c) => ({ header: c, format: INR })),
@@ -241,6 +242,34 @@ export async function buildWorkbook(
           ...classes.map((c) => p.assetClass[c as keyof typeof p.assetClass] ?? 0),
         ]);
       }
+    }
+
+    const loans = sheet(book, 'Loans', [
+      { header: 'Member', width: 14 },
+      { header: 'Direction', width: 13 },
+      { header: 'Who', width: 24 },
+      { header: 'Amount', format: INR },
+      { header: 'Repaid', format: INR },
+      { header: 'Written off', format: INR },
+      { header: 'Balance', format: INR },
+      { header: 'Due', format: 'dd-mmm-yyyy' },
+      { header: 'Status', width: 10 },
+      { header: 'Note', width: 30 },
+    ]);
+
+    for (const l of loanStatuses(state, input.date, input.filter)) {
+      loans.addRow([
+        memberName(l.loan.memberId),
+        l.loan.direction === 'lent' ? 'Owed to you' : 'You owe',
+        l.loan.party,
+        l.advanced,
+        l.repaid,
+        l.writtenOff,
+        Math.max(0, l.balance),
+        date(l.loan.due),
+        l.overdue ? 'Overdue' : l.open ? 'Open' : 'Settled',
+        l.loan.note ?? null,
+      ]);
     }
   }
 

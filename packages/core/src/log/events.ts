@@ -2,7 +2,7 @@
 import type { EntityMap, EntityName } from '../model/types.ts';
 
 /** The data format this build writes and understands. */
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 
 export type Put = { [K in EntityName]: { entity: K; id: string; value: EntityMap[K] } }[EntityName];
 
@@ -44,7 +44,10 @@ export type EventType = Event['type'];
 type Upgrader = (event: Event) => Event;
 
 /** Lifts events of format v to v + 1. Stored events are never rewritten. */
-const UPGRADERS: Record<number, Upgrader> = {};
+const UPGRADERS: Record<number, Upgrader> = {
+  // Format 2 added loans. Older events need no change.
+  1: (event) => ({ ...event, v: 2 }),
+};
 
 /** Brings an event to the current format, or returns null if it is newer than this build. */
 export function upgrade(event: Event): Event | null {

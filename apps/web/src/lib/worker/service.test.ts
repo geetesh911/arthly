@@ -732,3 +732,177 @@ describe('data service', () => {
     expect(s.analytics().reference.addedReports).toEqual({ schemes: 0 });
   });
 });
+
+describe('loans', () => {
+  async function family() {
+    const s = service();
+
+    await s.create('Family', 'Asha', 'pw');
+    const memberId = s.list('member')[0]!.id;
+
+    return { s, memberId };
+  }
+
+  it('adds what you are owed to net worth, takes off repayments and settles', async () => {
+    const { s, memberId } = await family();
+    const id = await s.addLoan({
+      memberId,
+      direction: 'lent',
+      party: 'Sample friend',
+      amount: 50_000,
+      date: '2026-09-01',
+      due: '2026-12-31',
+      note: 'For a laptop',
+    });
+    let overview = await s.overview();
+
+    expect(overview).toMatchObject({
+      netWorth: 50_000,
+      investments: 0,
+      owedToYou: 50_000,
+      youOwe: 0,
+      netInvested: 0,
+      loans: 1,
+    });
+    expect(overview.allocation.assetClass).toEqual([['Owed to you', 50_000]]);
+    expect(overview.allocation.member).toEqual([['Asha', 50_000]]);
+
+    await s.addLoanEntry({ loanId: id, type: 'repayment', amount: 20_000, date: '2026-10-01' });
+    expect(s.loan(id)?.loan).toMatchObject({ balance: 30_000, repaid: 20_000, open: true });
+    expect((await s.overview()).netWorth).toBe(30_000);
+    await expect(
+      s.addLoanEntry({ loanId: id, type: 'repayment', amount: 40_000, date: '2026-10-02' }),
+    ).rejects.toThrow('That’s more than the ₹30,000 still owed');
+
+    await s.closeLoan(id, 'repayment', '2026-10-20');
+    const settled = s.loan(id)!;
+
+    expect(settled.loan).toMatchObject({ balance: 0, open: false, settled: '2026-10-20' });
+    expect(settled.entries.map((e) => [e.type, e.amount])).toEqual([
+      ['advance', 50_000],
+      ['repayment', 20_000],
+      ['repayment', 30_000],
+    ]);
+    overview = await s.overview();
+    expect(overview).toMatchObject({ netWorth: 0, owedToYou: 0, loans: 1 });
+    expect(s.loans()).toMatchObject({ owedToYou: 0, youOwe: 0, loans: [{ id, open: false }] });
+  });
+
+  it('takes what you owe off net worth, and writes off or deletes a loan', async () => {
+    const { s, memberId } = await family();
+    const id = await s.addLoan({
+      memberId,
+      direction: 'borrowed',
+      party: 'Sample relative',
+      amount: 10_000,
+      date: '2026-08-01',
+    });
+
+    expect(await s.overview()).toMatchObject({ netWorth: -10_000, youOwe: 10_000 });
+    expect((await s.overview()).allocation.assetClass).toEqual([]);
+    await s.addLoanEntry({ loanId: id, type: 'advance', amount: 5_000, date: '2026-09-01' });
+    expect(s.loans().youOwe).toBe(15_000);
+
+    await s.closeLoan(id, 'write-off', '2026-10-01');
+    expect(s.loan(id)?.loan).toMatchObject({ writtenOff: 15_000, open: false });
+    expect((await s.overview()).netWorth).toBe(0);
+
+    await s.removeLoan(id);
+    expect(s.loan(id)).toBeNull();
+    expect(s.list('loanEntry')).toEqual([]);
+  });
+
+  it('refuses bad loans and entries', async () => {
+    const { s, memberId } = await family();
+    const loan = {
+      memberId,
+      direction: 'lent',
+      party: 'Sample friend',
+      date: '2026-09-01',
+    } as const;
+
+    await expect(s.addLoan({ ...loan, party: ' ', amount: 100 })).rejects.toThrow(
+      'Type who the loan is with',
+    );
+    await expect(s.addLoan({ ...loan, amount: 0 })).rejects.toThrow('Enter an amount above zero');
+    await expect(s.addLoan({ ...loan, amount: 100, due: '2026-01-01' })).rejects.toThrow(
+      'The due date is before the loan started on 2026-09-01',
+    );
+    expect(s.list('loan')).toEqual([]);
+
+    const id = await s.addLoan({ ...loan, amount: 1_000 });
+    const [advance] = s.loan(id)!.entries;
+
+    await s.addLoanEntry({ loanId: id, type: 'repayment', amount: 400, date: '2026-09-10' });
+    await expect(s.removeLoanEntry(advance!.id)).rejects.toThrow('Delete a payment first');
+    await expect(s.removeMember(memberId)).rejects.toThrow('A portfolio needs at least one member');
+    await s.saveLoan({ ...s.list('loan')[0]!, party: 'Sample neighbour', due: '2026-11-15' });
+    expect(s.loan(id)?.loan).toMatchObject({ party: 'Sample neighbour', due: '2026-11-15' });
+  });
+
+  it('keeps a member with loans until the loans go', async () => {
+    const { s } = await family();
+
+    await s.save('member', { id: 'mem_2', name: 'Ravi' });
+    const id = await s.addLoan({
+      memberId: 'mem_2',
+      direction: 'lent',
+      party: 'Sample friend',
+      amount: 1_000,
+      date: '2026-09-01',
+    });
+
+    await expect(s.removeMember('mem_2')).rejects.toThrow('Remove Ravi’s loans first');
+    expect(s.loans({ memberId: 'mem_2' }).owedToYou).toBe(1_000);
+    expect((await s.overview({ memberId: 'mem_2' })).netWorth).toBe(1_000);
+    await s.removeLoan(id);
+    await s.removeMember('mem_2');
+  });
+
+  it('shows overdue and upcoming loans', async () => {
+    const { s, memberId } = await family();
+    const base = { memberId, direction: 'lent', amount: 1_000, date: '2026-09-01' } as const;
+
+    await s.addLoan({ ...base, party: 'Sample friend', due: '2026-10-01' });
+    await s.addLoan({ ...base, party: 'Sample neighbour', due: '2026-11-01' });
+
+    expect((await s.checks()).filter((c) => c.type === 'loan.overdue')).toHaveLength(1);
+    expect(s.upcoming(30)).toEqual([
+      {
+        date: '2026-11-01',
+        kind: 'loan due',
+        name: 'Sample neighbour owes you',
+        amount: 1_000,
+        estimated: false,
+      },
+    ]);
+  });
+
+  it('keeps loans through a backup and restore', async () => {
+    const { s, memberId } = await family();
+
+    await s.addLoan({
+      memberId,
+      direction: 'lent',
+      party: 'Sample friend',
+      amount: 2_500,
+      date: '2026-09-01',
+    });
+    const backup = await s.backup();
+    const phone = service();
+
+    await phone.restore(backup.bytes, { passphrase: 'pw' });
+    expect(phone.loans()).toMatchObject({ owedToYou: 2_500, loans: [{ party: 'Sample friend' }] });
+  });
+
+  it('includes sample loans in the sample data', async () => {
+    const s = service();
+
+    await s.demo();
+    const loans = s.loans();
+
+    expect(loans.loans.map((l) => l.direction).sort()).toEqual(['borrowed', 'lent']);
+    expect(loans.owedToYou).toBeGreaterThan(0);
+    expect(s.analytics().assetSplit.slices.some((x) => x.label === 'Owed to you')).toBe(true);
+  });
+});

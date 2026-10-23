@@ -3,7 +3,16 @@
 import { type Event, type ImportApplyData, importApplyEvent, putEvent } from '../log/events.ts';
 import { formatHlc } from '../log/hlc.ts';
 import { replay, type State } from '../log/replay.ts';
-import type { Account, EntityMap, EntityName, Instrument, Transaction } from '../model/types.ts';
+import type {
+  Account,
+  EntityMap,
+  EntityName,
+  Instrument,
+  ISODate,
+  Loan,
+  LoanEntryType,
+  Transaction,
+} from '../model/types.ts';
 
 export class Ledger {
   private events: Event[] = [];
@@ -63,6 +72,14 @@ export class Ledger {
       source: { kind: 'manual' },
       ...t,
     });
+  }
+
+  loan(l: Partial<Loan> & { id: string }): this {
+    return this.put('loan', { memberId: 'mem_1', direction: 'lent', party: 'Sample friend', ...l });
+  }
+
+  entry(loanId: string, type: LoanEntryType, amount: number, date: ISODate): this {
+    return this.put('loanEntry', { id: `lne_${this.n}`, loanId, date, type, amount });
   }
 
   state(): State {

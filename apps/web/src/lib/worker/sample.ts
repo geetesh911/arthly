@@ -173,5 +173,48 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
     holdings: [{ instrumentId: 'ins_demo_flexi' }, { instrumentId: 'ins_demo_gold' }],
   });
 
+  put('loan', {
+    id: 'loan_demo_lent',
+    memberId: 'mem_demo1',
+    direction: 'lent',
+    party: 'Sample friend',
+    due: addMonths(today, 2),
+  });
+  put('loanEntry', {
+    id: 'lne_demo_lent',
+    loanId: 'loan_demo_lent',
+    date: addMonths(today, -6),
+    type: 'advance',
+    amount: 40_000,
+  });
+  put('loanEntry', {
+    id: 'lne_demo_back',
+    loanId: 'loan_demo_lent',
+    date: addMonths(today, -2),
+    type: 'repayment',
+    amount: 15_000,
+  });
+  put('loan', {
+    id: 'loan_demo_borrowed',
+    memberId: 'mem_demo2',
+    direction: 'borrowed',
+    party: 'Sample relative',
+    note: 'No interest',
+  });
+  put('loanEntry', {
+    id: 'lne_demo_borrowed',
+    loanId: 'loan_demo_borrowed',
+    date: addMonths(today, -10),
+    type: 'advance',
+    amount: 100_000,
+  });
+  put('loanEntry', {
+    id: 'lne_demo_paid',
+    loanId: 'loan_demo_borrowed',
+    date: addMonths(today, -3),
+    type: 'repayment',
+    amount: 25_000,
+  });
+
   return events;
 }

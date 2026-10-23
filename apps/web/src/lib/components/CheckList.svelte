@@ -21,6 +21,17 @@
     backup: '#/settings',
   };
 
+  /** Where a check's Fix button goes. */
+  function fixHref(fix: NonNullable<Check['fix']>): string | undefined {
+    if (fix.kind === 'open-loan') {
+      return fix.ref ? `#/loans/${encodeURIComponent(fix.ref)}` : '#/loans';
+    }
+
+    const link = fixLink[fix.kind];
+
+    return link && `${link}${fix.ref ? `?ref=${encodeURIComponent(fix.ref)}` : ''}`;
+  }
+
   async function dismiss(key: string) {
     await attempt(() => api().dismiss(key));
     await changed();
@@ -54,13 +65,8 @@
               <Button size="sm" variant="outline" onclick={() => restore(c.fix!.ref!)}
                 >Restore the other version</Button
               >
-            {:else if c.fix && fixLink[c.fix.kind]}
-              <Button
-                size="sm"
-                variant="outline"
-                href={`${fixLink[c.fix.kind]}${c.fix.ref ? `?ref=${encodeURIComponent(c.fix.ref)}` : ''}`}
-                >Fix</Button
-              >
+            {:else if c.fix && fixHref(c.fix)}
+              <Button size="sm" variant="outline" href={fixHref(c.fix)}>Fix</Button>
             {/if}
             <Button size="sm" variant="ghost" onclick={() => dismiss(c.key)}>Not a problem</Button>
           </div>

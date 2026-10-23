@@ -13,6 +13,7 @@ import {
   shareOf as share,
 } from './analytics-common.ts';
 import { fundExposure, type FundExposureReference } from './fund-exposure.ts';
+import type { LoanTotals } from './loans.ts';
 import type { Holding } from './portfolio.ts';
 export type { Breakdown, Concentration, ExposureRow, Slice } from './analytics-common.ts';
 
@@ -26,6 +27,8 @@ export const ASSET_CLASSES: AssetClass[] = [
   'other',
 ];
 export type AllocationTargets = Partial<Record<AssetClass, number>>;
+/** The slice for money lent, where a chart counts it. What you owe is never a slice. */
+export const OWED_TO_YOU = 'Owed to you';
 export interface Analytics {
   date: string;
   total: number;
@@ -42,6 +45,8 @@ export interface Analytics {
   holdings: Concentration;
   assetValues: AllocationTargets;
   valuation: { total: number; stale: number; estimated: number };
+  /** Open loan balances. Only what you're owed is charted. */
+  loans: Pick<LoanTotals, 'owedToYou' | 'youOwe'>;
   lookthrough: Pick<
     ReturnType<typeof fundExposure>,
     'funds' | 'coverage' | 'overlap' | 'assetSplit' | 'adjustments' | 'byFundType'
@@ -111,6 +116,7 @@ export function portfolioAnalytics(
   holdings: Holding[],
   date: string,
   reference: FundExposureReference = {},
+  loans: Pick<LoanTotals, 'owedToYou' | 'youOwe'> = { owedToYou: 0, youOwe: 0 },
 ): Analytics {
   const held = holdings.filter((h) => h.value > 0 && h.status !== 'closed');
   const total = held.reduce((n, h) => n + h.value, 0);
@@ -141,8 +147,11 @@ export function portfolioAnalytics(
     (h.instrument.ids.isin ? stocksByIsin.get(h.instrument.ids.isin.toUpperCase()) : undefined) ??
     (h.instrument.ids.nse ? stocksBySymbol.get(h.instrument.ids.nse.toUpperCase()) : undefined);
   const funds = held.filter((h) => ['mf', 'etf'].includes(h.instrument.kind));
-  const split = (list: Holding[], label: (h: Holding) => string) =>
-    breakdown(list.map((h) => ({ label: label(h), value: h.value })));
+  const split = (list: Holding[], label: (h: Holding) => string, owed = 0) =>
+    breakdown([
+      ...list.map((h) => ({ label: label(h), value: h.value })),
+      { label: OWED_TO_YOU, value: owed },
+    ]);
   const assetValues: AllocationTargets = {};
 
   for (const h of held) {
@@ -160,7 +169,8 @@ export function portfolioAnalytics(
     total,
     count: held.length,
     assetValues,
-    assetSplit: split(held, (h) => h.instrument.assetClass),
+    loans: { owedToYou: loans.owedToYou, youOwe: loans.youOwe },
+    assetSplit: split(held, (h) => h.instrument.assetClass, loans.owedToYou),
     instrumentSplit: split(held, (h) => KIND_LABELS[h.instrument.kind]),
     sectors: underlying.sectors,
     marketCap: underlying.marketCap,
@@ -191,16 +201,19 @@ export function portfolioAnalytics(
       return 'Unclassified';
     }),
     currency: split(held, (h) => h.instrument.currency),
-    liquidity: split(held, (h) =>
-      h.instrument.kind === 'cash'
-        ? 'Bank / cash'
-        : ['ppf', 'epf', 'eps'].includes(h.instrument.kind)
-          ? 'Retirement / provident funds'
-          : ['fd', 'bond', 'sgb'].includes(h.instrument.kind)
-            ? 'Term deposits / bonds'
-            : ['stock', 'us-stock', 'mf', 'etf'].includes(h.instrument.kind)
-              ? 'Market-linked holdings'
-              : 'Other',
+    liquidity: split(
+      held,
+      (h) =>
+        h.instrument.kind === 'cash'
+          ? 'Bank / cash'
+          : ['ppf', 'epf', 'eps'].includes(h.instrument.kind)
+            ? 'Retirement / provident funds'
+            : ['fd', 'bond', 'sgb'].includes(h.instrument.kind)
+              ? 'Term deposits / bonds'
+              : ['stock', 'us-stock', 'mf', 'etf'].includes(h.instrument.kind)
+                ? 'Market-linked holdings'
+                : 'Other',
+      loans.owedToYou,
     ),
     maturities: split(termHoldings, (h) => {
       const maturity = (h.instrument.terms as DepositTerms | BondTerms | undefined)?.maturity;

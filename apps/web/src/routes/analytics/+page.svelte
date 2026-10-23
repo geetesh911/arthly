@@ -56,6 +56,16 @@
 
     return Object.entries(groups);
   });
+  // What you're owed is a slice in the asset split; what you owe never is.
+  const loansNote = $derived.by(() => {
+    const parts = [
+      data?.loans.owedToYou && `Includes ${inr(data.loans.owedToYou)} owed to you.`,
+      data?.loans.youOwe &&
+        `The ${inr(data.loans.youOwe)} you owe isn’t charted; it’s taken off net worth.`,
+    ].filter(Boolean);
+
+    return parts.length ? ` ${parts.join(' ')}` : '';
+  });
   async function refresh() {
     refreshing = true;
     refreshMessage = '';
@@ -124,10 +134,12 @@
   <div class="grid gap-4 lg:grid-cols-2">
     <BreakdownCard
       title="Asset split"
-      description="All holdings · share of total portfolio value"
+      description={data.loans.owedToYou > 0
+        ? 'All holdings and money owed to you'
+        : 'All holdings · share of total portfolio value'}
       data={data.assetSplit}
       labels={CLASS_NAMES}
-      note="Hybrid funds remain a separate asset class. Fund holdings are not decomposed into equity, debt or cash."
+      note={`Hybrid funds remain a separate asset class. Fund holdings are not decomposed into equity, debt or cash.${loansNote}`}
     />
     <BreakdownCard
       title="Underlying asset split"
@@ -169,7 +181,7 @@
       title="Access to your money"
       description="All holdings · plan near-term spending separately"
       data={data.liquidity}
-      note="Only bank / cash is counted as immediately available here. Market holdings can fall in value or have redemption restrictions. Retirement assets, deposits and bonds have their own withdrawal conditions."
+      note={`Only bank / cash is counted as immediately available here. Market holdings can fall in value or have redemption restrictions. Retirement assets, deposits and bonds have their own withdrawal conditions.${data.loans.owedToYou > 0 ? ' Money owed to you comes back only when it’s repaid.' : ''}`}
     />
     <BreakdownCard
       title="Maturity ladder"

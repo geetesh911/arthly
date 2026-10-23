@@ -64,7 +64,12 @@ function sample(): Ledger {
       value: 9_039,
       source: { kind: 'manual' },
     })
-    .put('group', { id: 'grp_1', name: 'Core', holdings: [{ instrumentId: 'ins_1' }] });
+    .put('group', { id: 'grp_1', name: 'Core', holdings: [{ instrumentId: 'ins_1' }] })
+    .loan({ id: 'loan_1', due: '2026-12-01', note: 'For a laptop' })
+    .entry('loan_1', 'advance', 20_000, '2026-06-01')
+    .entry('loan_1', 'repayment', 5_000, '2026-08-01')
+    .loan({ id: 'loan_2', direction: 'borrowed', party: 'Sample relative' })
+    .entry('loan_2', 'advance', 50_000, '2026-03-01');
 }
 
 const book = new PriceBook([
@@ -126,16 +131,41 @@ describe('Excel export', () => {
       'Income',
       'Coming up',
       'Monthly history',
+      'Loans',
       '_members',
       '_accounts',
       '_instruments',
       '_transactions',
       '_snapshots',
       '_groups',
+      '_loans',
+      '_loan_entries',
     ]);
     const top = sheets[0]!.rows;
+    const s = summary(state, book, '2026-10-21');
 
-    expect(top[3]).toEqual(['Net worth', summary(state, book, '2026-10-21').netWorth]);
+    expect(top.slice(3, 7)).toEqual([
+      ['Net worth', s.netWorth],
+      ['Investments', s.investments],
+      ['Owed to you', 15_000],
+      ['You owe', 50_000],
+    ]);
+    expect(s.netWorth).toBeCloseTo(s.investments - 35_000, 6);
+    expect(sheets[6]!.rows.slice(1)).toEqual([
+      [
+        'Asha',
+        'Owed to you',
+        'Sample friend',
+        20_000,
+        5_000,
+        0,
+        15_000,
+        '2026-12-01',
+        'Open',
+        'For a laptop',
+      ],
+      ['Asha', 'You owe', 'Sample relative', 50_000, 0, 0, 50_000, null, 'Open', null],
+    ]);
     expect(sheets[1]!.rows).toHaveLength(3);
     expect(sheets[2]!.rows).toHaveLength(3);
   });
@@ -175,9 +205,11 @@ describe('template', () => {
       '_transactions',
       '_snapshots',
       '_groups',
+      '_loans',
+      '_loan_entries',
       'Read me',
     ]);
-    expect(sheets.slice(0, 6).every((s) => s.rows.length === 1)).toBe(true);
+    expect(sheets.slice(0, 8).every((s) => s.rows.length === 1)).toBe(true);
   });
 
   it('creates records from rows without IDs, the same ones each time', async () => {
