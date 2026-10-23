@@ -7,14 +7,23 @@ const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export function isISODate(text: string): boolean {
   const m = ISO.exec(text);
-  if (!m) return false;
+
+  if (!m) {
+    return false;
+  }
+
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+
   return mo >= 1 && mo <= 12 && d >= 1 && d <= daysInMonth(y, mo);
 }
 
 function parts(date: ISODate): [number, number, number] {
   const m = ISO.exec(date);
-  if (!m) throw new Error(`Not an ISO date: ${date}`);
+
+  if (!m) {
+    throw new Error(`Not an ISO date: ${date}`);
+  }
+
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
 
@@ -24,11 +33,13 @@ export function makeDate(year: number, month: number, day: number): ISODate {
 
 export function toMs(date: ISODate): number {
   const [y, m, d] = parts(date);
+
   return Date.UTC(y, m - 1, d);
 }
 
 export function fromMs(ms: number): ISODate {
   const d = new Date(ms);
+
   return makeDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
 }
 
@@ -51,6 +62,7 @@ export function addMonths(date: ISODate, months: number): ISODate {
   const total = y * 12 + (m - 1) + months;
   const year = Math.floor(total / 12);
   const month = (total % 12) + 1;
+
   return makeDate(year, month, Math.min(d, daysInMonth(year, month)));
 }
 
@@ -61,10 +73,15 @@ export function addYears(date: ISODate, years: number): ISODate {
 /** Weekdays from `from` back, newest first; exchanges publish nothing at weekends. */
 export function weekdaysBack(from: ISODate, count: number): ISODate[] {
   const out: ISODate[] = [];
+
   for (let d = from; out.length < count; d = addDays(d, -1)) {
     const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
-    if (weekday !== 0 && weekday !== 6) out.push(d);
+
+    if (weekday !== 0 && weekday !== 6) {
+      out.push(d);
+    }
   }
+
   return out;
 }
 
@@ -78,6 +95,7 @@ export const day = (date: ISODate): number => parts(date)[2];
 
 export function endOfMonth(date: ISODate): ISODate {
   const [y, m] = parts(date);
+
   return makeDate(y, m, daysInMonth(y, m));
 }
 
@@ -87,6 +105,7 @@ export const maxDate = (a: ISODate, b: ISODate): ISODate => (a > b ? a : b);
 /** Financial year (April to March), named by its starting year: 2026-05-01 → 2026. */
 export function fyOf(date: ISODate): number {
   const [y, m] = parts(date);
+
   return m >= 4 ? y : y - 1;
 }
 

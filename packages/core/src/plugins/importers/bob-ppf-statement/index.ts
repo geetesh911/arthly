@@ -9,12 +9,12 @@ import {
   addDays,
   day,
   fyOf,
+  type ISODate,
   makeDate,
   maxDate,
   minDate,
   month,
   year,
-  type ISODate,
 } from '../../../util/dates.ts';
 import { near, roundAmount } from '../../../util/numbers.ts';
 
@@ -44,6 +44,7 @@ const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 function runningBalance(c: Cell | undefined): number | undefined {
   const t = text(c);
   const n = num(t.replace(/(cr|dr)\.?$/i, ''));
+
   return n !== undefined && /dr\.?$/i.test(t) ? -n : n;
 }
 
@@ -60,6 +61,7 @@ const isInterest = (p: Posting) =>
 /** Other credits are multiples of ₹50, and there is at most one withdrawal a year. */
 function looksLikePpf(postings: Posting[]): boolean {
   const withdrawalYears = postings.filter((p) => p.debit > 0).map((p) => fyOf(p.date));
+
   return (
     postings.every((p) => p.credit === 0 || roundFifty(p.credit) || atYearEnd(p.date)) &&
     new Set(withdrawalYears).size === withdrawalYears.length
@@ -69,28 +71,44 @@ function looksLikePpf(postings: Posting[]): boolean {
 async function statement(file: InputFile) {
   for (const sheet of await file.sheets()) {
     const header = findHeader(sheet.rows, HEADINGS);
-    if (!header) continue;
+
+    if (!header) {
+      continue;
+    }
+
     const { col } = header;
     const postings: Posting[] = [];
+
     for (const row of rowsBelow(sheet.rows, header.row)) {
       const posted = findDate(row[col.posted]);
       const debit = num(row[col.debit]) ?? 0;
       const credit = num(row[col.credit]) ?? 0;
       const balance = runningBalance(row[col.balance]);
-      if (!posted || balance === undefined || (debit === 0 && credit === 0)) continue;
+
+      if (!posted || balance === undefined || (debit === 0 && credit === 0)) {
+        continue;
+      }
+
       const date = findDate(row[col.date]) ?? posted;
+
       postings.push({ posted, date, narration: text(row[col.narration]), debit, credit, balance });
     }
+
     // The bank lists the newest posting first; the running balance needs posting order.
-    if (postings.length > 1 && postings[0]!.posted > postings.at(-1)!.posted) postings.reverse();
+    if (postings.length > 1 && postings[0]!.posted > postings.at(-1)!.posted) {
+      postings.reverse();
+    }
+
     return { rows: sheet.rows, postings };
   }
+
   return undefined;
 }
 
 /** The cell after "Account No:". */
 function accountNumber(rows: Cell[][]): string | undefined {
   const at = findCell(rows, (t) => /^account no\.?\s*:?$/.test(t));
+
   return at
     ? rows[at.row]!.slice(at.col + 1)
         .map(text)
@@ -101,6 +119,7 @@ function accountNumber(rows: Cell[][]): string | undefined {
 /** The "to" date of "Statement Period from … to …". */
 function periodEnd(rows: Cell[][]): ISODate | undefined {
   const at = findCell(rows, (t) => t.startsWith('statement period'));
+
   return at ? findDate(text(rows[at.row]![at.col]).split(/\bto\b/i)[1]) : undefined;
 }
 
@@ -112,21 +131,37 @@ export const bobPpfStatement: Importer = {
 
   async detect(file) {
     const found = await statement(file);
-    if (!found) return 0;
+
+    if (!found) {
+      return 0;
+    }
+
     // The same layout is used for savings accounts, so the entries must look like PPF.
-    if (!looksLikePpf(found.postings)) return 0.3;
+    if (!looksLikePpf(found.postings)) {
+      return 0.3;
+    }
+
     const named =
       /ppf|public provident/i.test(file.name) ||
       findCell(found.rows, (t) => /\bppf\b|public provident/.test(t)) !== undefined;
+
     return named ? 0.95 : 0.75;
   },
 
   async parse(file) {
     const found = await statement(file);
-    if (!found) throw new Error('No statement table found');
+
+    if (!found) {
+      throw new Error('No statement table found');
+    }
+
     const { rows, postings } = found;
     const first = postings[0];
-    if (!first) throw new Error('The statement lists no transactions');
+
+    if (!first) {
+      throw new Error('The statement lists no transactions');
+    }
+
     const draft: ImportDraft = {
       accounts: [],
       instruments: [],
@@ -137,8 +172,10 @@ export const bobPpfStatement: Importer = {
 
     const opening = roundAmount(first.balance - first.credit + first.debit);
     let expected = opening;
+
     for (const [n, p] of postings.entries()) {
       expected += p.credit - p.debit;
+
       if (!near(expected, p.balance, 0.01)) {
         draft.warnings.push(
           `The running balance in the file doesn't add up after ${postings[n - 1]!.posted}. Check the entries against your passbook.`,
@@ -151,6 +188,7 @@ export const bobPpfStatement: Importer = {
     const maskedRef = number ? mask(number) : undefined;
     const suffix = maskedRef ? ` ${maskedRef}` : '';
     const earliest = postings.map((p) => p.date).reduce(minDate);
+
     draft.accounts.push({
       ref: 'ppf',
       institution: INSTITUTION,
@@ -173,6 +211,7 @@ export const bobPpfStatement: Importer = {
     for (const p of postings) {
       const type: TransactionType =
         p.debit > 0 ? 'withdrawal' : isInterest(p) ? 'interest' : 'contribution';
+
       draft.transactions.push({
         account: 'ppf',
         instrument: 'ppf',
@@ -182,12 +221,14 @@ export const bobPpfStatement: Importer = {
         currency: 'INR',
       });
     }
+
     draft.transactions.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
     if (opening !== 0) {
       // Dated before the first entry, and early enough that its month earns interest on it.
       const asOf =
         day(earliest) === 1 ? addDays(earliest, -1) : makeDate(year(earliest), month(earliest), 1);
+
       draft.snapshots.push({
         account: 'ppf',
         instrument: 'ppf',
@@ -204,6 +245,7 @@ export const bobPpfStatement: Importer = {
     const latest = postings.map((p) => p.date).reduce(maxDate);
     const asOf = maxDate(periodEnd(rows) ?? latest, latest);
     const closing = postings.at(-1)!.balance;
+
     draft.asOf = asOf;
     draft.snapshots.push({
       account: 'ppf',
@@ -212,6 +254,7 @@ export const bobPpfStatement: Importer = {
       units: closing,
       value: closing,
     });
+
     return draft;
   },
 };

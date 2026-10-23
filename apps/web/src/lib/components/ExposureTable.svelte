@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import type { Concentration } from '@pv/core';
+
   import { inr, inrSigned, pct } from '#lib/format.ts';
-  import Stat from './Stat.svelte';
+
   import * as Table from './ui/table/index.ts';
+  import Stat from './Stat.svelte';
   let { data, stocks = false }: { data: Concentration; stocks?: boolean } = $props();
 </script>
 

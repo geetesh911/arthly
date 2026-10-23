@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Instrument, InstrumentKind, Snapshot } from '../model/types.ts';
 import type { ISODate } from '../util/dates.ts';
+
 import type { Position } from './positions.ts';
 import type { PriceBook } from './prices.ts';
 import type { RateTables } from './rates.ts';

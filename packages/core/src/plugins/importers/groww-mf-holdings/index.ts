@@ -20,8 +20,12 @@ const HEADINGS = {
 async function holdingsSheet(file: InputFile) {
   for (const sheet of await file.sheets()) {
     const header = findHeader(sheet.rows, HEADINGS);
-    if (header) return { rows: sheet.rows, header };
+
+    if (header) {
+      return { rows: sheet.rows, header };
+    }
   }
+
   return undefined;
 }
 
@@ -33,13 +37,21 @@ export const growwMfHoldings: Importer = {
 
   async detect(file) {
     const found = await holdingsSheet(file);
-    if (!found) return 0;
+
+    if (!found) {
+      return 0;
+    }
+
     return findCell(found.rows, (t) => t.startsWith('holdings as on')) ? 0.95 : 0.7;
   },
 
   async parse(file) {
     const found = await holdingsSheet(file);
-    if (!found) throw new Error('No holdings table found');
+
+    if (!found) {
+      throw new Error('No holdings table found');
+    }
+
     const { rows, header } = found;
     const { col } = header;
     const draft: ImportDraft = {
@@ -52,17 +64,23 @@ export const growwMfHoldings: Importer = {
 
     const asOfCell = findCell(rows, (t) => t.startsWith('holdings as on'));
     const asOf = asOfCell ? findDate(rows[asOfCell.row]![asOfCell.col]) : undefined;
-    if (!asOf) throw new Error('The file has no "HOLDINGS AS ON" date');
+
+    if (!asOf) {
+      throw new Error('The file has no "HOLDINGS AS ON" date');
+    }
+
     draft.asOf = asOf;
 
     const totalsHead = findHeader(rows, {
       invested: ['total investments'],
       value: ['current portfolio value'],
     });
+
     if (totalsHead) {
       const values = rows[totalsHead.row + 1] ?? [];
       const invested = num(values[totalsHead.col.invested]);
       const value = num(values[totalsHead.col.value]);
+
       draft.totals = {
         ...(invested !== undefined ? { invested } : {}),
         ...(value !== undefined ? { value } : {}),
@@ -74,14 +92,20 @@ export const growwMfHoldings: Importer = {
       string,
       { units: number; invested: number; value: number; account: string; instrument: string }
     >();
+
     for (const row of rowsBelow(rows, header.row)) {
       const scheme = text(row[col.scheme]);
       const amc = text(row[col.amc]);
       const folio = text(row[col.folio]);
       const units = num(row[col.units]);
-      if (!scheme || units === undefined) continue;
+
+      if (!scheme || units === undefined) {
+        continue;
+      }
+
       const maskedRef = folio ? mask(folio) : undefined;
       const account = `folio:${normaliseName(amc)}:${maskedRef ?? ''}`;
+
       if (!draft.accounts.some((a) => a.ref === account)) {
         draft.accounts.push({
           ref: account,
@@ -92,10 +116,13 @@ export const growwMfHoldings: Importer = {
           currency: 'INR',
         });
       }
+
       const instrument = `scheme:${normaliseName(scheme)}`;
+
       if (!draft.instruments.some((i) => i.ref === instrument)) {
         const category = text(row[col.category]);
         const subCategory = text(row[col.subCategory]);
+
         draft.instruments.push({
           ref: instrument,
           kind: 'mf',
@@ -106,8 +133,10 @@ export const growwMfHoldings: Importer = {
           hints: { amc, category, subCategory },
         });
       }
+
       const key = `${account}|${instrument}`;
       const h = holdings.get(key) ?? { units: 0, invested: 0, value: 0, account, instrument };
+
       h.units += units;
       h.invested += num(row[col.invested]) ?? 0;
       h.value += num(row[col.value]) ?? 0;
@@ -116,6 +145,7 @@ export const growwMfHoldings: Importer = {
 
     for (const h of holdings.values()) {
       const units = roundUnits(h.units);
+
       draft.snapshots.push({
         account: h.account,
         instrument: h.instrument,
@@ -125,7 +155,11 @@ export const growwMfHoldings: Importer = {
         value: roundAmount(h.value),
       });
     }
-    if (draft.snapshots.length === 0) draft.warnings.push('The file lists no holdings');
+
+    if (draft.snapshots.length === 0) {
+      draft.warnings.push('The file lists no holdings');
+    }
+
     return draft;
   },
 };

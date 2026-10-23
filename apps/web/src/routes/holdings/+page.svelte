@@ -2,6 +2,7 @@
 <script lang="ts">
   import ChartPie from '@lucide/svelte/icons/chart-pie';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+
   import { api } from '#lib/api.ts';
   import { app, attempt, say } from '#lib/app.svelte.ts';
   import PageHeader from '#lib/components/PageHeader.svelte';
@@ -34,8 +35,13 @@
   async function refresh() {
     refreshing = true;
     const result = await attempt(() => api().refreshPrices(true));
+
     refreshing = false;
-    if (result) say(result.ok ? 'Prices updated' : (result.message ?? ''));
+
+    if (result) {
+      say(result.ok ? 'Prices updated' : (result.message ?? ''));
+    }
+
     app.version += 1;
   }
 
@@ -46,6 +52,7 @@
       prices?.funds && `funds ${shortDate(prices.funds)}`,
       prices?.stocks && `stocks ${shortDate(prices.stocks)}`,
     ].filter(Boolean);
+
     return parts.length ? `Prices: ${parts.join(' · ')}` : 'No market prices yet';
   });
 
@@ -53,6 +60,7 @@
     const value = list.reduce((s, h) => s + h.value, 0);
     const invested = list.reduce((s, h) => s + h.invested, 0);
     const gain = list.reduce((s, h) => s + h.gain, 0);
+
     return { value, invested, gain, gainPct: invested > 0 ? gain / invested : null };
   }
 
@@ -61,6 +69,7 @@
 
   const sections = $derived.by(() => {
     const map: Record<string, HoldingDto[]> = {};
+
     for (const h of holdings ?? []) {
       const keys =
         by === 'assetClass'
@@ -72,8 +81,12 @@
             : by === 'account'
               ? [h.accountLabel]
               : [h.memberName];
-      for (const k of keys) map[k] = [...(map[k] ?? []), h];
+
+      for (const k of keys) {
+        map[k] = [...(map[k] ?? []), h];
+      }
     }
+
     return Object.entries(map)
       .map(([name, list]) => ({
         name,

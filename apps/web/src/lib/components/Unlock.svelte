@@ -1,12 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
   import Plus from '@lucide/svelte/icons/plus';
   import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import Smartphone from '@lucide/svelte/icons/smartphone';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Upload from '@lucide/svelte/icons/upload';
-  import { onMount } from 'svelte';
+
   import { api } from '#lib/api.ts';
   import { attempt, opened } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -18,6 +19,7 @@
   import { readFile } from '#lib/files.ts';
   import { passkeysSupported, usePasskey } from '#lib/passkey.ts';
   import type { VaultSummary } from '#lib/worker/dto.ts';
+
   import Create from './Create.svelte';
 
   let vaults = $state<VaultSummary[] | null>(null);
@@ -37,9 +39,16 @@
   onMount(async () => {
     vaults = await api().vaults();
     chosen = vaults.at(-1)?.vaultId ?? '';
-    if (vaults.length === 0) mode = 'create';
+
+    if (vaults.length === 0) {
+      mode = 'create';
+    }
+
     canPasskey = await passkeysSupported();
-    if (canPasskey && vault?.passkeys.length) void fingerprint();
+
+    if (canPasskey && vault?.passkeys.length) {
+      void fingerprint();
+    }
   });
 
   async function unlock(event: Event) {
@@ -48,7 +57,9 @@
     const done = await attempt(() =>
       api().unlock(chosen, mode === 'recovery' ? { recoveryCode: secret } : { passphrase: secret }),
     );
+
     busy = false;
+
     if (done) {
       secret = '';
       await opened();
@@ -56,26 +67,42 @@
   }
 
   async function fingerprint() {
-    if (!vault) return;
+    if (!vault) {
+      return;
+    }
+
     const result = await attempt(async () => {
       const key = await usePasskey(vault.passkeys);
+
       await api().unlock(chosen, key);
+
       return true;
     });
-    if (result) await opened();
+
+    if (result) {
+      await opened();
+    }
   }
 
   async function restore(event: Event) {
     event.preventDefault();
-    if (!backup) return;
+
+    if (!backup) {
+      return;
+    }
+
     busy = true;
     const bytes = await readFile(backup);
     const isCode = /^[A-Za-z2-7]{4}(-?[A-Za-z2-7]{4}){7}$/.test(secret.trim());
     const done = await attempt(() =>
       api().restore(bytes, isCode ? { recoveryCode: secret } : { passphrase: secret }, restoreName),
     );
+
     busy = false;
-    if (done) await opened();
+
+    if (done) {
+      await opened();
+    }
   }
 
   async function sample() {

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import type { Check } from '@pv/core';
+
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import CheckList from '#lib/components/CheckList.svelte';

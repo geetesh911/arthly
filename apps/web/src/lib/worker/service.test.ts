@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { type LocalStore, MemoryLocalStore } from '@pv/core';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MemoryLocalStore, type LocalStore } from '@pv/core';
+
 import { DataService, LockedError } from './service.ts';
 import type { DeviceStorage, VaultEntry } from './storage.ts';
 
 function memoryStorage(): DeviceStorage {
   const entries = new Map<string, VaultEntry>();
   const stores = new Map<string, LocalStore>();
+
   return {
     async vaults() {
       return [...entries.values()];
@@ -21,7 +23,10 @@ function memoryStorage(): DeviceStorage {
       stores.delete(id);
     },
     async open(id) {
-      if (!stores.has(id)) stores.set(id, new MemoryLocalStore());
+      if (!stores.has(id)) {
+        stores.set(id, new MemoryLocalStore());
+      }
+
       return stores.get(id)!;
     },
   };
@@ -35,6 +40,7 @@ const stocks = new Uint8Array(
 const offline = (async () => new Response('offline', { status: 503 })) as typeof fetch;
 
 const prices = join(import.meta.dirname, '../../../../../packages/core/src/plugins/prices/feed');
+
 /** The relay and Frankfurter, answering from saved files; `stocks` says whether NSE is up. */
 function relay(state = { stocks: true }) {
   const file = (name: string, source: string) => () =>
@@ -50,6 +56,7 @@ function relay(state = { stocks: true }) {
     'https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR': () =>
       Response.json({ date: '2026-10-21', rates: { INR: 88.12 } }),
   };
+
   return (async (input: RequestInfo | URL) =>
     table[String(input)]?.() ?? new Response('Not found', { status: 404 })) as typeof fetch;
 }
@@ -84,23 +91,32 @@ describe('data service', () => {
   it('creates a vault, imports Groww files and adds up the dashboard', async () => {
     const s = service();
     const { vaultId, recoveryCode } = await s.create('Family', 'Asha', 'correct horse');
+
     expect(recoveryCode).toMatch(/^([A-Z2-7]{4}-){7}[A-Z2-7]{4}$/);
     const [member] = s.list('member');
+
     for (const [name, bytes] of [
       ['mf.xlsx', mf],
       ['stocks.xlsx', stocks],
     ] as const) {
       const prepared = await s.prepareImport(name, bytes, member!.id);
-      if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+      if (prepared.kind !== 'plan') {
+        throw new Error('not recognised');
+      }
+
       expect(prepared.plan.totals?.ok).toBe(true);
       expect((await s.confirmImport(prepared.plan.planId)).written).toBeGreaterThan(0);
     }
+
     const overview = await s.overview();
+
     expect(overview.netWorth).toBeCloseTo(1_094_818.5 + 196_620, 1);
     expect(overview.holdings).toBe(12);
     expect(s.batches()).toHaveLength(2);
 
     const again = await s.prepareImport('mf.xlsx', mf, member!.id);
+
     expect(again.kind === 'plan' && again.plan.upToDate).toBe(true);
 
     s.lock();
@@ -113,9 +129,14 @@ describe('data service', () => {
   it('refreshes prices through the relay, keeping old ones for a part that fails', async () => {
     const nse = { stocks: true };
     const s = service(memoryStorage(), relay(nse));
+
     await s.create('Family', 'Asha', 'pw');
     const prepared = await s.prepareImport('stocks.xlsx', stocks, s.list('member')[0]!.id);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await s.confirmImport(prepared.plan.planId);
     const sgb = () => s.holdings().find((h) => h.name === '2.50%GOLDBONDS2032SR-IV')!;
 
@@ -125,6 +146,7 @@ describe('data service', () => {
 
     nse.stocks = false;
     const result = await s.refreshPrices(true);
+
     expect(result.ok).toBe(false);
     expect(result.message).toBe(
       "Couldn't update stock prices (NSE and BSE didn't send a closing-price file). Using the prices saved earlier.",
@@ -134,8 +156,10 @@ describe('data service', () => {
 
   it('says so when there is no relay and no feed', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const result = await s.refreshPrices(true);
+
     expect(result).toEqual({
       ok: false,
       message:
@@ -145,10 +169,16 @@ describe('data service', () => {
 
   it('undoes an import', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const prepared = await s.prepareImport('stocks.xlsx', stocks, s.list('member')[0]!.id);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     const { batchId } = await s.confirmImport(prepared.plan.planId);
+
     expect(s.holdings()).toHaveLength(6);
     await s.revertImport(batchId!);
     expect(s.holdings()).toHaveLength(0);
@@ -157,15 +187,21 @@ describe('data service', () => {
 
   it('renames members, and removes one only once it has no accounts', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const asha = s.list('member')[0]!.id;
+
     await s.save('member', { id: 'mem_ravi', name: 'Ravi' });
     await s.rename('member', 'mem_ravi', '  Ravi K ');
     expect(s.list('member').map((m) => m.name)).toContain('Ravi K');
     await expect(s.rename('member', asha, ' ')).rejects.toThrow('Type a name');
 
     const prepared = await s.prepareImport('stocks.xlsx', stocks, asha);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await s.confirmImport(prepared.plan.planId);
     await expect(s.removeMember(asha)).rejects.toThrow('Remove Asha’s accounts first');
     await s.removeMember('mem_ravi');
@@ -177,16 +213,23 @@ describe('data service', () => {
 
   it('removes an account with its records, and takes it out of groups', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const prepared = await s.prepareImport('stocks.xlsx', stocks, s.list('member')[0]!.id);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await s.confirmImport(prepared.plan.planId);
     const [account] = s.accounts();
+
     expect(account).toMatchObject({ member: 'Asha', transactions: 0, balances: 6 });
     await s.rename('account', account!.id, 'Stocks');
     expect(s.accounts()[0]!.label).toBe('Stocks');
 
     const [first, second] = s.holdings();
+
     await s.save('group', {
       id: 'grp_1',
       name: 'Core',
@@ -202,44 +245,64 @@ describe('data service', () => {
 
     // The same file brings it all back.
     const again = await s.prepareImport('stocks.xlsx', stocks, s.list('member')[0]!.id);
+
     expect(again.kind === 'plan' && again.plan.upToDate).toBe(false);
   });
 
   it('tells what an unknown file holds, without its values', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const csv = 'Name,Asha\nDate,Narration,Amount\n2026-01-01,Salary,100000';
     const result = await s.prepareImport('notes.csv', new TextEncoder().encode(csv), 'x');
+
     expect(result).toEqual({ kind: 'unknown', headings: ['Date', 'Narration', 'Amount'] });
   });
 
   it('exports to Excel and restores the same holdings on another vault', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const memberId = s.list('member')[0]!.id;
     const prepared = await s.prepareImport('mf.xlsx', mf, memberId);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await s.confirmImport(prepared.plan.planId);
     const file = await s.exportFile('excel');
+
     expect(file.name).toBe('arthly-2026-10-22.xlsx');
 
     const other = service();
+
     await other.create('Copy', 'Asha', 'pw');
     const back = await other.prepareImport(file.name, file.bytes, memberId);
-    if (back.kind !== 'plan') throw new Error('not recognised');
+
+    if (back.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await other.confirmImport(back.plan.planId);
     expect((await other.overview()).netWorth).toBeCloseTo((await s.overview()).netWorth, 2);
   });
 
   it('restores a backup file on a new device', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     const prepared = await s.prepareImport('stocks.xlsx', stocks, s.list('member')[0]!.id);
-    if (prepared.kind !== 'plan') throw new Error('not recognised');
+
+    if (prepared.kind !== 'plan') {
+      throw new Error('not recognised');
+    }
+
     await s.confirmImport(prepared.plan.planId);
     const backup = await s.backup();
 
     const phone = service();
+
     await expect(phone.restore(backup.bytes, { passphrase: 'nope' })).rejects.toThrow();
     await phone.restore(backup.bytes, { passphrase: 'pw' });
     expect(phone.holdings()).toHaveLength(6);
@@ -251,6 +314,7 @@ describe('data service', () => {
   it('opens sample data without touching storage', async () => {
     const storage = memoryStorage();
     const s = service(storage);
+
     await s.demo();
     expect(s.current()).toMatchObject({ demo: true });
     expect(s.holdings().length).toBeGreaterThan(3);
@@ -259,10 +323,12 @@ describe('data service', () => {
 
   it('scopes analytics and saved allocation targets to the selected member', async () => {
     const s = service();
+
     await s.demo();
     const everyone = s.analytics();
     const asha = s.analytics({ memberId: 'mem_demo1' });
     const ravi = s.analytics({ memberId: 'mem_demo2' });
+
     expect(asha.total + ravi.total).toBeCloseTo(everyone.total, 2);
     expect(asha.assetValues.debt).toBeUndefined();
     await s.saveAllocationTargets({ equity: 70, cash: 30 }, 'mem_demo1');
@@ -275,7 +341,7 @@ describe('data service', () => {
     const storage = memoryStorage();
     let available = true;
     const fetch = (async (input: RequestInfo | URL) => {
-      if (String(input).endsWith('/nse-reference'))
+      if (String(input).endsWith('/nse-reference')) {
         return available
           ? Response.json(
               {
@@ -293,14 +359,20 @@ describe('data service', () => {
               { headers: { 'x-relay-source': 'nse-reference' } },
             )
           : new Response('offline', { status: 503 });
-      if (String(input).endsWith('/amfi-caps'))
+      }
+
+      if (String(input).endsWith('/amfi-caps')) {
         return available ? capList() : new Response('AMFI didn’t answer', { status: 502 });
+      }
+
       return relay()(input);
     }) as typeof globalThis.fetch;
     const s = service(storage, fetch);
+
     await s.create('Family', 'Asha', 'pw');
     const vaultId = s.current()!.vaultId;
     const memberId = s.list('member')[0]!.id;
+
     await s.save('account', {
       id: 'a',
       memberId,
@@ -330,6 +402,7 @@ describe('data service', () => {
     await s.refreshPrices(true);
     // Reliance takes its closing price from the exchange file, so its value isn't 100 any more.
     const { sectors, marketCap } = s.analytics();
+
     expect(sectors.total).toBeGreaterThan(0);
     expect(sectors.classified).toBe(sectors.total);
     expect(marketCap.classified).toBe(marketCap.total);
@@ -349,15 +422,21 @@ describe('data service', () => {
     let now = new Date('2026-10-22T10:00:00+05:30');
     let asked = 0;
     const fetch = (async (input: RequestInfo | URL) => {
-      if (!String(input).endsWith('/amfi-caps')) return relay()(input);
+      if (!String(input).endsWith('/amfi-caps')) {
+        return relay()(input);
+      }
+
       asked++;
+
       return capList();
     }) as typeof globalThis.fetch;
     const s = service(memoryStorage(), fetch, () => now);
+
     await s.create('Family', 'Asha', 'pw');
     await s.refreshPrices(true);
     expect(asked).toBe(0);
     const memberId = s.list('member')[0]!.id;
+
     await s.save('account', {
       id: 'a',
       memberId,
@@ -386,8 +465,10 @@ describe('data service', () => {
 
   it('locks itself after the idle time', async () => {
     const s = service();
+
     await s.create('Family', 'Asha', 'pw');
     let locked = false;
+
     s.onLock = () => (locked = true);
     await s.setAutoLock(1);
     expect(await s.autoLockMinutes()).toBe(1);
@@ -419,15 +500,19 @@ describe('data service', () => {
     });
     let data = day('2026-10-22', 22687.65);
     const fetch = (async (input: RequestInfo | URL) => {
-      if (String(input).endsWith('/index-data'))
+      if (String(input).endsWith('/index-data')) {
         return up
           ? Response.json(data, { headers: { 'x-relay-source': 'index-data' } })
           : new Response('offline', { status: 503 });
+      }
+
       return relay()(input);
     }) as typeof globalThis.fetch;
     const s = service(storage, fetch, () => now);
+
     await s.create('Family', 'Asha', 'pw');
     const vaultId = s.current()!.vaultId;
+
     expect(s.analytics().indices.rows).toEqual([]);
     // Nothing is held, and the levels still come.
     await s.refreshPrices(true);
@@ -441,6 +526,7 @@ describe('data service', () => {
     s.lock();
     await s.unlock(vaultId, { passphrase: 'pw' });
     const indices = s.analytics().indices;
+
     expect(indices.rows[0]).toMatchObject({
       date: '2026-10-23',
       close: 22700,
@@ -453,7 +539,8 @@ describe('data service', () => {
     const asked: string[] = [];
     const fetch = (async (input: RequestInfo | URL) => {
       asked.push(String(input));
-      if (String(input).endsWith('/index-data'))
+
+      if (String(input).endsWith('/index-data')) {
         return Response.json(
           {
             version: 1,
@@ -466,6 +553,8 @@ describe('data service', () => {
           },
           { headers: { 'x-relay-source': 'index-data' } },
         );
+      }
+
       return new Response('Not found', { status: 404 });
     }) as typeof globalThis.fetch;
     const s = new DataService(memoryStorage(), {
@@ -475,6 +564,7 @@ describe('data service', () => {
       now: () => new Date('2026-10-22T20:00:00+05:30'),
       kdf: { alg: 'argon2id', m: 256, t: 1, p: 1 },
     });
+
     await s.create('Family', 'Asha', 'pw');
     await s.refreshPrices(true);
     expect(asked).toContain('https://feed.test/v1/latest/indices.json.gz');
@@ -491,8 +581,10 @@ describe('data service', () => {
     const workbook = readFileSync(join(prices, '../fund-holdings/fixtures/ppfas.xls'));
     const fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
+
       if (url.endsWith('/fund-disclosures')) {
         disclosureCalls++;
+
         return available
           ? Response.json(
               {
@@ -505,14 +597,19 @@ describe('data service', () => {
             )
           : new Response('offline', { status: 503 });
       }
-      if (url.includes('/fund-workbook?'))
+
+      if (url.includes('/fund-workbook?')) {
         return new Response(workbook, { headers: { 'x-relay-source': 'fund-workbook' } });
+      }
+
       return relay()(input);
     }) as typeof globalThis.fetch;
     const s = service(storage, fetch, () => now);
+
     await s.create('Family', 'Asha', 'pw');
     const vaultId = s.current()!.vaultId;
     const memberId = s.list('member')[0]!.id;
+
     await s.save('account', {
       id: 'a',
       memberId,
@@ -541,17 +638,20 @@ describe('data service', () => {
     });
     await s.refreshPrices(true);
     const a = s.analytics();
+
     expect(a.lookthrough.coverage.covered).toBeGreaterThan(0);
     expect(a.lookthrough.funds[0]?.asOf).toBe('2026-09-30');
     expect(a.stocks.rows.find((r) => r.key === 'isin:INE040A01034')?.indirectValue).toBeCloseTo(
       s.holdings()[0]!.value * 0.0757,
       4,
     );
+
     // Six-hour price refreshes must not postpone the daily disclosure refresh.
     for (let hour = 6; hour <= 24; hour += 6) {
       now = new Date(new Date('2026-10-22T10:00:00+05:30').getTime() + hour * 3600_000);
       await s.refreshPrices();
     }
+
     expect(disclosureCalls).toBe(2);
     expect(s.analytics().lookthrough.funds[0]?.retained).toBe(false);
     available = false;
@@ -567,9 +667,11 @@ describe('data service', () => {
   it('uses fund reports added by hand through refreshes and unlock, until they are removed', async () => {
     const storage = memoryStorage();
     const s = service(storage);
+
     await s.create('Family', 'Asha', 'pw');
     const vaultId = s.current()!.vaultId;
     const memberId = s.list('member')[0]!.id;
+
     await s.save('account', {
       id: 'a',
       memberId,
@@ -603,12 +705,14 @@ describe('data service', () => {
       readFileSync(join(prices, '../fund-holdings/fixtures/ppfas.xls')),
     );
     const added = await s.addFundReport('PPFAS_Monthly_Portfolio.xls', workbook);
+
     expect(added).toMatchObject({
       asOf: '2026-09-30',
       skipped: [],
       funds: ['Parag Parikh ELSS Tax Saver Fund Direct Growth'],
     });
     const used = () => s.analytics().lookthrough.funds[0];
+
     expect(used()).toMatchObject({ source: 'file', sourceUrl: '', asOf: '2026-09-30' });
     expect(s.analytics().reference.addedReports).toEqual({
       schemes: added.schemes,

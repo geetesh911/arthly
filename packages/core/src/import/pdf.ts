@@ -2,6 +2,7 @@
 // The text of a PDF as rows, read with pdf.js. The browser and Node need different builds of
 // pdf.js, so the caller passes in the one it loaded.
 import type * as PdfJs from 'pdfjs-dist';
+
 import type { PdfPage } from './types.ts';
 
 export interface PdfRow {
@@ -26,29 +27,46 @@ export async function pdfLayout(
 ): Promise<PdfLayout[]> {
   // pdf.js takes over the buffer it is given, and the caller still needs the file.
   const task = pdfjs.getDocument({ data: bytes.slice(), verbosity: 0, password });
+
   try {
     const pdf = await task.promise;
     const pages: PdfLayout[] = [];
+
     for (let n = 1; n <= pdf.numPages; n++) {
       const page = await pdf.getPage(n);
       const { width, height } = page.getViewport({ scale: 1 });
       const rows: PdfRow[] = [];
+
       for (const item of (await page.getTextContent()).items) {
-        if (!('str' in item) || !item.str.trim()) continue;
+        if (!('str' in item) || !item.str.trim()) {
+          continue;
+        }
+
         const [, , , , x = 0, y = 0] = item.transform as number[];
         let row = rows.find((r) => Math.abs(r.y - y) <= 2);
-        if (!row) rows.push((row = { y, pieces: [] }));
+
+        if (!row) {
+          rows.push((row = { y, pieces: [] }));
+        }
+
         row.pieces.push({ x, text: item.str });
       }
-      for (const row of rows) row.pieces.sort((a, b) => a.x - b.x);
+
+      for (const row of rows) {
+        row.pieces.sort((a, b) => a.x - b.x);
+      }
+
       pages.push({ width, height, rows: rows.sort((a, b) => b.y - a.y) });
     }
+
     return pages;
   } catch (error) {
-    if ((error as Error).name === 'PasswordException')
+    if ((error as Error).name === 'PasswordException') {
       throw new Error('This PDF has a password. Save a copy without one, then add that.', {
         cause: error,
       });
+    }
+
     throw error;
   } finally {
     await task.destroy();

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The data key (DK) encrypts everything. The keyring holds DK wrapped under each way of unlocking.
 // The keyring isn't secret, but it is signed with DK, so a copy changed outside the app is rejected.
-import { argon2id } from 'hash-wasm';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { base32Decode, base32Encode } from '../util/base32.ts';
-import { equalBytes, fromBase64, randomBytes, toBase64, utf8, type Bytes } from '../util/bytes.ts';
-import { canonicalJson } from '../util/json.ts';
+import { argon2id } from 'hash-wasm';
+
 import { randomId } from '../model/ids.ts';
+import { base32Decode, base32Encode } from '../util/base32.ts';
+import { type Bytes, equalBytes, fromBase64, randomBytes, toBase64, utf8 } from '../util/bytes.ts';
+import { canonicalJson } from '../util/json.ts';
 
 export interface KdfParams {
   alg: 'argon2id';
@@ -67,6 +68,7 @@ async function seal(key: CryptoKey, aad: string, plain: Bytes): Promise<Sealed> 
     key,
     plain,
   );
+
   return { iv: toBase64(iv), ct: toBase64(new Uint8Array(ct)) };
 }
 
@@ -77,6 +79,7 @@ async function unseal(key: CryptoKey, aad: string, sealed: Sealed): Promise<Byte
       key,
       fromBase64(sealed.ct),
     );
+
     return new Uint8Array(plain);
   } catch {
     return null;
@@ -85,6 +88,7 @@ async function unseal(key: CryptoKey, aad: string, sealed: Sealed): Promise<Byte
 
 async function hkdf(input: Bytes, info: string): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey('raw', input, 'HKDF', false, ['deriveKey']);
+
   return crypto.subtle.deriveKey(
     { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: utf8.encode(info) },
     base,
@@ -104,6 +108,7 @@ async function passphraseKek(passphrase: string, kdf: KdfParams): Promise<Crypto
     hashLength: 32,
     outputType: 'binary',
   });
+
   return aesKey(new Uint8Array(raw), false);
 }
 
@@ -113,6 +118,7 @@ const passkeyKek = (prfOutput: Bytes) => hkdf(prfOutput, 'pv-passkey');
 /** Non-revoked wraps. */
 export function activeWraps(ring: Keyring, type?: WrapType): Wrap[] {
   const revoked = new Set(ring.revoked);
+
   return ring.wraps.filter((w) => !revoked.has(w.id) && (!type || w.type === type));
 }
 
@@ -123,12 +129,17 @@ export function formatRecoveryCode(bytes: Uint8Array): string {
 
 export function parseRecoveryCode(code: string): Bytes {
   let bytes: Bytes;
+
   try {
     bytes = base32Decode(code);
   } catch {
     throw new UnlockError('A recovery code only has letters A–Z and digits 2–7');
   }
-  if (bytes.length !== 20) throw new UnlockError('A recovery code has 32 letters and digits');
+
+  if (bytes.length !== 20) {
+    throw new UnlockError('A recovery code has 32 letters and digits');
+  }
+
   return bytes;
 }
 
@@ -139,6 +150,7 @@ function digest(ring: Keyring): Bytes {
     wraps: [...rest.wraps].sort((a, b) => a.id.localeCompare(b.id)),
     revoked: [...rest.revoked].sort(),
   };
+
   return new Uint8Array(sha256(utf8.encode(canonicalJson(body))));
 }
 
@@ -148,14 +160,19 @@ async function sign(ring: Keyring, dk: CryptoKey): Promise<Keyring> {
 
 /** True when the keyring was signed with dk and hasn't changed since. */
 export async function verifyKeyring(ring: Keyring, dk: CryptoKey): Promise<boolean> {
-  if (!ring.sig) return false;
+  if (!ring.sig) {
+    return false;
+  }
+
   const signed = await unseal(dk, `${ring.vaultId}:keyring`, ring.sig);
+
   return signed !== null && equalBytes(signed, digest(ring));
 }
 
 /** True when dk is this vault's data key. */
 export async function verifyKey(ring: Keyring, dk: CryptoKey): Promise<boolean> {
   const plain = await unseal(dk, `${ring.vaultId}:check`, ring.check);
+
   return plain !== null && utf8.decode(plain) === CHECK_TEXT;
 }
 
@@ -176,6 +193,7 @@ async function addWrap(
     updated: now.toISOString(),
   };
   const old = replaceType ? activeWraps(ring, fields.type).map((w) => w.id) : [];
+
   return sign(
     { ...ring, wraps: [...ring.wraps, wrap], revoked: [...new Set([...ring.revoked, ...old])] },
     dk,
@@ -211,6 +229,7 @@ export async function createVault(
     now,
   });
   const recovery = await newRecoveryCode(withPassphrase, dk, now);
+
   return { keyring: recovery.keyring, dk, recoveryCode: recovery.code };
 }
 
@@ -223,6 +242,7 @@ export async function setPassphrase(
 ): Promise<Keyring> {
   const kdf: KdfParams = { ...(options.kdf ?? DEFAULT_KDF), salt: toBase64(randomBytes(16)) };
   const kek = await passphraseKek(passphrase, kdf);
+
   return addWrap(ring, dk, kek, { type: 'passphrase', kdf }, true, options.now ?? new Date());
 }
 
@@ -234,6 +254,7 @@ export async function newRecoveryCode(
 ): Promise<{ keyring: Keyring; code: string }> {
   const code = formatRecoveryCode(randomBytes(20));
   const keyring = await addWrap(ring, dk, await recoveryKek(code), { type: 'recovery' }, true, now);
+
   return { keyring, code };
 }
 
@@ -245,6 +266,7 @@ export async function addPasskey(
 ): Promise<Keyring> {
   const { credentialId, prfSalt, label } = passkey;
   const kek = await passkeyKek(passkey.prfOutput);
+
   return addWrap(ring, dk, kek, { type: 'passkey', credentialId, prfSalt, label }, false, now);
 }
 
@@ -257,22 +279,34 @@ export async function revokeWrap(ring: Keyring, dk: CryptoKey, wrapId: string): 
 async function firstUnwrap(ring: Keyring, wraps: Wrap[], kek: (w: Wrap) => Promise<CryptoKey>) {
   for (const wrap of wraps) {
     const raw = await unseal(await kek(wrap), `${ring.vaultId}:wrap:${wrap.id}`, wrap);
-    if (raw) return aesKey(raw, true);
+
+    if (raw) {
+      return aesKey(raw, true);
+    }
   }
+
   return null;
 }
 
 export async function unlockWithPassphrase(ring: Keyring, passphrase: string): Promise<CryptoKey> {
   const wraps = activeWraps(ring, 'passphrase').filter((w) => w.kdf);
   const dk = await firstUnwrap(ring, wraps, (w) => passphraseKek(passphrase, w.kdf!));
-  if (!dk) throw new UnlockError('Wrong passphrase');
+
+  if (!dk) {
+    throw new UnlockError('Wrong passphrase');
+  }
+
   return dk;
 }
 
 export async function unlockWithRecoveryCode(ring: Keyring, code: string): Promise<CryptoKey> {
   const kek = await recoveryKek(code);
   const dk = await firstUnwrap(ring, activeWraps(ring, 'recovery'), async () => kek);
-  if (!dk) throw new UnlockError('Wrong recovery code');
+
+  if (!dk) {
+    throw new UnlockError('Wrong recovery code');
+  }
+
   return dk;
 }
 
@@ -284,7 +318,11 @@ export async function unlockWithPasskey(
   const kek = await passkeyKek(prfOutput);
   const wraps = activeWraps(ring, 'passkey').filter((w) => w.credentialId === credentialId);
   const dk = await firstUnwrap(ring, wraps, async () => kek);
-  if (!dk) throw new UnlockError('This passkey can no longer unlock the vault');
+
+  if (!dk) {
+    throw new UnlockError('This passkey can no longer unlock the vault');
+  }
+
   return dk;
 }
 
@@ -295,6 +333,7 @@ export function sameKeyring(a: Keyring, b: Keyring): boolean {
       .map((w) => w.id)
       .sort()
       .join()}|${[...r.revoked].sort().join()}`;
+
   return summary(a) === summary(b);
 }
 
@@ -307,15 +346,27 @@ export async function mergeKeyrings(
   theirs: Keyring,
   dk: CryptoKey,
 ): Promise<{ keyring: Keyring; rejected: boolean }> {
-  if (ours.vaultId !== theirs.vaultId)
+  if (ours.vaultId !== theirs.vaultId) {
     throw new UnlockError('These keyrings belong to different vaults');
-  if (!(await verifyKeyring(theirs, dk))) return { keyring: ours, rejected: true };
+  }
+
+  if (!(await verifyKeyring(theirs, dk))) {
+    return { keyring: ours, rejected: true };
+  }
+
   const wraps = new Map(ours.wraps.map((w) => [w.id, w]));
-  for (const w of theirs.wraps) if (!wraps.has(w.id)) wraps.set(w.id, w);
+
+  for (const w of theirs.wraps) {
+    if (!wraps.has(w.id)) {
+      wraps.set(w.id, w);
+    }
+  }
+
   const merged: Keyring = {
     ...ours,
     wraps: [...wraps.values()].sort((x, y) => x.id.localeCompare(y.id)),
     revoked: [...new Set([...ours.revoked, ...theirs.revoked])].sort(),
   };
+
   return { keyring: sameKeyring(merged, ours) ? ours : await sign(merged, dk), rejected: false };
 }

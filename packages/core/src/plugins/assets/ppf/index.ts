@@ -16,6 +16,7 @@ const run = (p: Position, ctx: AssetContext, upTo: ISODate) =>
 /** 15 years from the end of the financial year the account was opened. */
 export function ppfMaturity(p: Position, i: Instrument): ISODate | undefined {
   const opened = i.terms && 'opened' in i.terms ? i.terms.opened : p.entries[0]?.date;
+
   return opened ? fyEnd(fyOf(opened) + 15) : undefined;
 }
 
@@ -24,8 +25,13 @@ export const ppf: AssetType = {
   kinds: ['ppf'],
   value(p, _i, ctx) {
     const r = run(p, ctx, ctx.date);
-    if (r.closed) return { value: 0, estimate: false, status: 'closed' };
+
+    if (r.closed) {
+      return { value: 0, estimate: false, status: 'closed' };
+    }
+
     const estimated = r.accrued > 0 || r.credits.some((c) => c.estimated);
+
     return {
       value: r.balance + r.accrued,
       estimate: estimated,
@@ -40,9 +46,11 @@ export const ppf: AssetType = {
       .filter((c) => c.date > from && c.date <= to)
       .map((c) => ({ date: c.date, amount: c.amount, kind: 'credit', estimated: c.estimated }));
     const maturity = ppfMaturity(p, i);
+
     if (maturity && maturity > from && maturity <= to && !r.closed) {
       flows.push({ date: maturity, amount: r.balance, kind: 'maturity', estimated: true });
     }
+
     return flows;
   },
   accrued(p, _i, from, to, ctx) {

@@ -2,6 +2,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
+
   import { api } from '#lib/api.ts';
   import { attempt, opened, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -35,8 +36,13 @@
     const result = await attempt(() =>
       api().create(name.trim() || 'My portfolio', memberName.trim() || 'Me', pass1),
     );
+
     busy = false;
-    if (!result) return;
+
+    if (!result) {
+      return;
+    }
+
     pass1 = pass2 = '';
     code = result.recoveryCode;
     step = 'code';
@@ -46,15 +52,21 @@
   async function addPasskey() {
     const done = await attempt(async () => {
       const key = await enrolPasskey(name);
+
       await api().addPasskey(
         key.credentialId,
         key.prfSalt,
         key.prfOutput,
         navigator.platform || 'This device',
       );
+
       return true;
     });
-    if (done) say('Fingerprint unlock is on for this device');
+
+    if (done) {
+      say('Fingerprint unlock is on for this device');
+    }
+
     await finish();
   }
 

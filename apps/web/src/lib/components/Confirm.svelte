@@ -7,7 +7,9 @@
 <AlertDialog.Root
   open={dialog.open}
   onOpenChange={(open) => {
-    if (!open) answer(false);
+    if (!open) {
+      answer(false);
+    }
   }}
 >
   <AlertDialog.Content>

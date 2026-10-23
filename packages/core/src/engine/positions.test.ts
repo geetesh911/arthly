@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import type { Snapshot } from '../model/types.ts';
+
 import { positions } from './positions.ts';
 import { Ledger } from './testkit.ts';
 
@@ -29,6 +31,7 @@ describe('positions', () => {
       .txn({ date: '2025-03-01', type: 'sell', units: 15, amount: 3_000 })
       .state();
     const [p] = positions(state, '2025-12-31');
+
     expect(p!.units).toBe(5);
     expect(p!.lots).toEqual([{ date: '2025-02-01', units: 5, cost: 1_000, costInr: 1_000 }]);
     expect(p!.cost).toBe(1_000);
@@ -45,6 +48,7 @@ describe('positions', () => {
       .txn({ date: '2025-01-01', type: 'buy', units: 10, amount: 1_000 })
       .txn({ date: '2025-02-01', type: 'buy', units: 10, amount: 2_000 })
       .state();
+
     expect(positions(state, '2025-01-15')[0]!.units).toBe(10);
     expect(positions(state, '2024-12-31')).toEqual([]);
   });
@@ -56,6 +60,7 @@ describe('positions', () => {
       .txn({ date: '2025-03-01', type: 'split', units: 20, amount: 0 })
       .state();
     const [p] = positions(state, '2025-12-31');
+
     expect(p!.units).toBe(40);
     expect(p!.lots.map((l) => [l.date, l.units, l.cost])).toEqual([
       ['2025-01-01', 20, 1_000],
@@ -70,6 +75,7 @@ describe('positions', () => {
       .txn({ date: '2025-07-01', type: 'dividend', amount: 50 })
       .state();
     const [p] = positions(state, '2025-12-31');
+
     expect(p!.units).toBe(11);
     expect(p!.cost).toBe(1_110);
     expect(p!.flows.map((f) => f.amount)).toEqual([-1_000, 50]);
@@ -82,6 +88,7 @@ describe('positions', () => {
       .put('snapshot', snap('2026-03-31', 105, 10_500, 12_600))
       .state();
     const [p] = positions(state, '2026-12-31');
+
     expect(p!.estimate).toBe(true);
     expect(p!.units).toBe(105);
     expect(p!.entries.map((e) => [e.date, e.type, e.units, e.amount])).toEqual([
@@ -96,6 +103,7 @@ describe('positions', () => {
       .put('snapshot', snap('2026-01-31', 100, 10_000, 12_000))
       .put('setting', { id: 'firstBought:acc_1|ins_1', value: '2023-05-01' })
       .state();
+
     expect(positions(state, '2026-12-31')[0]!.entries[0]!.date).toBe('2023-05-01');
   });
 
@@ -105,6 +113,7 @@ describe('positions', () => {
       .txn({ date: '2025-01-01', type: 'buy', units: 100, amount: 10_000 })
       .state();
     const [p] = positions(state, '2026-12-31');
+
     expect(p!.estimate).toBe(false);
     expect(p!.entries).toHaveLength(1);
   });
@@ -119,6 +128,7 @@ describe('positions', () => {
       .txn({ date: '2025-09-01', type: 'withdrawal', amount: 50_000 })
       .state();
     const [p] = positions(state, '2026-01-01');
+
     expect(p!.principal).toBe(500_000);
     expect(p!.credited).toBe(120_000);
     expect(p!.flows.map((f) => f.amount)).toEqual([-400_000, -150_000, 50_000]);

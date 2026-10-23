@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The app's sections: the phone tab bar and the desktop sidebar each show their own subset.
-import ChartPie from '@lucide/svelte/icons/chart-pie';
 import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
+import ChartPie from '@lucide/svelte/icons/chart-pie';
 import CirclePlus from '@lucide/svelte/icons/circle-plus';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import House from '@lucide/svelte/icons/house';

@@ -1,17 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+  import { on } from 'svelte/events';
   import { page } from '$app/state';
   import LockIcon from '@lucide/svelte/icons/lock';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-  import type { Snippet } from 'svelte';
+
   import { app, lock } from '#lib/app.svelte.ts';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Badge } from '#lib/components/ui/badge/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { cn } from '#lib/utils.ts';
+
   import { sections } from './Nav.ts';
 
   let { children }: { children: Snippet } = $props();
@@ -19,21 +22,35 @@
 
   $effect(() => {
     const sw = navigator.serviceWorker;
-    if (!sw) return;
+
+    if (!sw) {
+      return;
+    }
+
     // A new version otherwise waits until every tab of the app is closed; reloading isn't enough.
     // Once it takes over, pages still on the old version reload, since their files are gone.
-    const reload = () => location.reload();
-    sw.addEventListener('controllerchange', reload);
+    const off = on(sw, 'controllerchange', () => location.reload());
+
     void sw.getRegistration().then((reg) => {
-      if (!reg) return;
+      if (!reg) {
+        return;
+      }
+
       const check = () => (waiting = reg.waiting);
+
       // The browser looks for a new version when the page opens, often before unlocking.
-      const follow = () => reg.installing?.addEventListener('statechange', check);
+      const follow = () => {
+        if (reg.installing) {
+          on(reg.installing, 'statechange', check);
+        }
+      };
+
       check();
       follow();
-      reg.addEventListener('updatefound', follow);
+      on(reg, 'updatefound', follow);
     });
-    return () => sw.removeEventListener('controllerchange', reload);
+
+    return off;
   });
 
   const route = $derived(page.route.id ?? '/');

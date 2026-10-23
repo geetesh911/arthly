@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import { inrSigned, pct, shortDate } from './format.ts';
 
 describe('pct', () => {
@@ -33,6 +34,7 @@ describe('inrSigned', () => {
 describe('shortDate', () => {
   it('leaves out the year only when it is this year', () => {
     const now = new Date('2026-10-22T12:00:00Z');
+
     expect(shortDate('2026-10-21', now)).toBe('21 Oct');
     expect(shortDate('2025-12-31', now)).toBe('31 Dec 2025');
   });

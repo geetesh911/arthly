@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
-import { fundExposure } from './fund-exposure.ts';
-import { PriceBook } from './prices.ts';
-import { summary } from './portfolio.ts';
-import { Ledger } from './testkit.ts';
-import type { FundPortfolio } from '../plugins/prices/fund-holdings/types.ts';
+
 import type { InstrumentIds } from '../model/types.ts';
+import type { FundPortfolio } from '../plugins/prices/fund-holdings/types.ts';
+
+import { fundExposure } from './fund-exposure.ts';
+import { summary } from './portfolio.ts';
+import { PriceBook } from './prices.ts';
+import { Ledger } from './testkit.ts';
 
 const report: FundPortfolio = {
   id: 'ppfas:example',
@@ -40,6 +42,7 @@ const reference = {
     { isin: 'INE002', nse: 'TWO', cap: 'mid' as const },
   ],
 };
+
 function holdings(includeSecond = false) {
   const l = new Ledger().member().account({ id: 'a' });
   const rows: [string, 'stock' | 'mf' | 'cash', number, InstrumentIds, string][] = [
@@ -47,7 +50,11 @@ function holdings(includeSecond = false) {
     ['f', 'mf', 1000, { amfi: '123' }, 'Example Equity Fund Direct Growth'],
     ['c', 'cash', 100, {}, 'Cash'],
   ];
-  if (includeSecond) rows.push(['g', 'mf', 500, {}, 'Second Fund Direct Growth']);
+
+  if (includeSecond) {
+    rows.push(['g', 'mf', 500, {}, 'Second Fund Direct Growth']);
+  }
+
   for (const [id, kind, value, ids, name] of rows) {
     l.instrument({ id, kind, name, ids, assetClass: kind === 'cash' ? 'cash' : 'equity' });
     l.put('snapshot', {
@@ -61,12 +68,14 @@ function holdings(includeSecond = false) {
       source: { kind: 'manual' },
     });
   }
+
   return summary(l.state(), new PriceBook(), '2026-10-23').holdings;
 }
 
 describe('fund underlying exposure', () => {
   it('combines direct stocks with reported fund weights without turning fund cash into equity', () => {
     const r = fundExposure(holdings(), '2026-10-23', reference);
+
     expect(r.stocks.total).toBe(900);
     expect(r.stocks.rows[0]).toMatchObject({
       key: 'isin:INE001',
@@ -87,6 +96,7 @@ describe('fund underlying exposure', () => {
 
   it('keeps missing fund value unclassified and does not fabricate stock gains', () => {
     const r = fundExposure(holdings(true), '2026-10-23', reference);
+
     expect(r.coverage).toMatchObject({ total: 1500, covered: 1000, missing: 500 });
     expect(r.sectors.slices.find((s) => s.label === 'Unclassified')?.value).toBe(500);
     expect(r.marketCap.slices.find((s) => s.label === 'Unclassified')?.value).toBe(500);
@@ -113,6 +123,7 @@ describe('fund underlying exposure', () => {
       .filter((h) => h.instrument.kind === 'mf')
       .map((h) => ({ ...h, instrument: { ...h.instrument, ids: { amfi: '456' } } }));
     const expanded = fundExposure(h, '2026-10-23', { ...reference, portfolios: [report, nested] });
+
     expect(expanded.stocks.total).toBe(400);
     expect(expanded.assetSplit.slices.find((s) => s.label === 'cash')?.value).toBe(600);
     const cyclic = {
@@ -128,6 +139,7 @@ describe('fund underlying exposure', () => {
       ],
     };
     const r = fundExposure(h, '2026-10-23', { ...reference, portfolios: [cyclic] });
+
     expect(r.coverage.missing).toBe(1000);
     expect(r.stocks.total).toBe(0);
     expect(r.byFundType).toBe(1000);
@@ -148,6 +160,7 @@ describe('fund underlying exposure', () => {
       ...reference,
       portfolios: [report, second],
     });
+
     expect(r.overlap[0]).toMatchObject({ share: 0.4, stocks: 1 });
     expect(r.stocks.rows[0]?.value).toBe(900);
   });
@@ -163,6 +176,7 @@ describe('fund underlying exposure', () => {
     const h = holdings()
       .filter((h) => h.instrument.kind === 'mf')
       .map((h) => ({ ...h, instrument: { ...h.instrument, ids: {} } }));
+
     expect(
       fundExposure(h, '2026-10-23', { ...reference, portfolios: [report, duplicate] }).coverage
         .covered,
@@ -176,13 +190,16 @@ describe('fund underlying exposure', () => {
         ...h,
         instrument: { ...h.instrument, ids: {}, name: 'Example Equity Direct Growth' },
       }));
+
     expect(fundExposure(groww, '2026-10-23', reference).coverage.covered).toBe(1000);
     const twin = { ...report, id: 'ppfas:twin', schemeName: 'Example Equity' };
+
     expect(
       fundExposure(groww, '2026-10-23', { ...reference, portfolios: [report, twin] }).coverage
         .covered,
     ).toBe(1000);
     const other = { ...twin, schemeName: 'Example Equity Fund ' };
+
     expect(
       fundExposure(groww, '2026-10-23', { ...reference, portfolios: [report, other] }).coverage
         .covered,
@@ -199,6 +216,7 @@ describe('fund underlying exposure', () => {
     };
     const h = holdings().filter((h) => h.instrument.kind === 'mf');
     const r = fundExposure(h, '2026-10-23', { ...reference, portfolios: [debt] });
+
     expect(r.funds[0]).toMatchObject({ status: 'available', coverage: 1 });
     expect(r.coverage).toMatchObject({ covered: 1000, missing: 0 });
     expect(r.sectors.total).toBe(0);
@@ -214,6 +232,7 @@ describe('fund underlying exposure', () => {
         : h,
     );
     const r = fundExposure(h, '2026-10-23', reference);
+
     expect(r.sectors.slices.find((s) => s.label === 'Unclassified')).toBeUndefined();
     expect(r.marketCap.slices.find((s) => s.label === 'Large cap')?.value).toBe(700);
     expect(r.stocks.rows[0]).toMatchObject({
@@ -226,9 +245,11 @@ describe('fund underlying exposure', () => {
   it('takes cap sizes from AMFI’s list, not NSE index membership', () => {
     const amfiMid = { ...reference, caps: [{ isin: 'INE001', cap: 'mid' as const }] };
     const r = fundExposure(holdings(), '2026-10-23', amfiMid);
+
     expect(r.marketCap.slices.find((s) => s.label === 'Mid cap')?.value).toBe(700);
     expect(r.marketCap.slices.find((s) => s.label === 'Large cap')).toBeUndefined();
     const none = fundExposure(holdings(), '2026-10-23', { ...reference, caps: [] });
+
     expect(none.marketCap.classified).toBe(0);
   });
 
@@ -238,6 +259,7 @@ describe('fund underlying exposure', () => {
       .map((h) => ({ ...h, instrument: { ...h.instrument, ids: { nse: 'boschltd' } } }));
     const caps = [{ isin: 'INE323A01026', nse: 'BOSCHLTD', cap: 'mid' as const }];
     const r = fundExposure(h, '2026-10-23', { caps });
+
     expect(r.marketCap.slices).toEqual([{ label: 'Mid cap', value: 100, share: 1 }]);
   });
 
@@ -273,6 +295,7 @@ describe('fund underlying exposure', () => {
     };
     const r = fundExposure(holdings(), '2026-10-23', { ...reference, portfolios: [industries] });
     const sector = (label: string) => r.sectors.slices.find((s) => s.label === label)?.value;
+
     expect(sector('Financial Services')).toBe(500 + 200 + 100); // NSE's list wins for INE001.
     expect(sector('Information Technology')).toBeUndefined();
     expect(sector('Unclassified')).toBe(300);
@@ -294,11 +317,13 @@ describe('fund underlying exposure', () => {
     };
     const h = holdings().filter((h) => h.instrument.kind === 'stock');
     const r = fundExposure(h, '2026-10-23', { portfolios: [banks] });
+
     expect(r.sectors.slices).toEqual([{ label: 'Financial Services', value: 100, share: 1 }]);
   });
 
   it('places a fund without a report by its own type in the asset split only', () => {
     const l = new Ledger().member().account({ id: 'a' });
+
     l.instrument({ id: 'g', kind: 'etf', name: 'Gold ETF', ids: {}, assetClass: 'gold' });
     l.put('snapshot', {
       id: 'g',
@@ -312,6 +337,7 @@ describe('fund underlying exposure', () => {
     });
     const h = summary(l.state(), new PriceBook(), '2026-10-23').holdings;
     const r = fundExposure(h, '2026-10-23', reference);
+
     expect(r.assetSplit.slices).toEqual([{ label: 'gold', value: 800, share: 1 }]);
     expect(r.byFundType).toBe(800);
     expect(r.sectors.total).toBe(0);
@@ -321,6 +347,7 @@ describe('fund underlying exposure', () => {
   it('marks reports kept from an earlier refresh', () => {
     const fund = (retained?: string[]) =>
       fundExposure(holdings(), '2026-10-23', { ...reference, retained }).funds[0];
+
     expect(fund()?.retained).toBe(false);
     expect(fund(['ppfas:other'])?.retained).toBe(false);
     expect(fund([report.id])?.retained).toBe(true);
@@ -345,6 +372,7 @@ describe('fund underlying exposure', () => {
         isinGrowth: 'INF001',
       },
     ];
+
     expect(
       fundExposure(h, '2026-10-23', { portfolios: [portfolio], schemes }).coverage.covered,
     ).toBe(1000);
@@ -353,6 +381,7 @@ describe('fund underlying exposure', () => {
       id: 'other',
       schemeName: 'Zerodha Nifty LargeMidcap250 Index Fund',
     };
+
     expect(
       fundExposure(h, '2026-10-23', { portfolios: [portfolio, duplicate], schemes }).coverage
         .covered,

@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import type { Breakdown } from '@pv/core';
-  import Donut from './Donut.svelte';
-  import * as Card from './ui/card/index.ts';
+
   import { inr, pct } from '#lib/format.ts';
+
+  import * as Card from './ui/card/index.ts';
+  import Donut from './Donut.svelte';
 
   let {
     title,

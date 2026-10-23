@@ -2,6 +2,7 @@
 // Official source adapters: requests never contain an investor's portfolio or scheme list.
 import { endOfMonth, isISODate, makeDate } from '../../../util/dates.ts';
 import { fetchAllowed } from '../../../util/http.ts';
+
 import type { FundDisclosureFile, FundDisclosureIndex, FundSourceId } from './types.ts';
 
 /** A request that lists files: a page, or a JSON body posted the way the AMC's own page does. */
@@ -32,8 +33,10 @@ const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
 /** The month ends of the `count` months before `today`'s, newest first. */
 function monthsBefore(today: string, count: number): { year: number; month: number }[] {
   const [year, month] = today.split('-').map(Number) as [number, number];
+
   return Array.from({ length: count }, (_, n) => {
     const index = year * 12 + month - 2 - n;
+
     return { year: Math.floor(index / 12), month: (index % 12) + 1 };
   });
 }
@@ -166,12 +169,17 @@ export const FUND_SOURCES: Record<FundSourceId, FundSource> = {
       const year = Number(new URL(request.url).searchParams.get('year'));
       const dates = new Map<string, string>();
       const schemes = JSON.parse(text) as Record<string, unknown>[];
-      for (const scheme of Array.isArray(schemes) ? schemes : [])
+
+      for (const scheme of Array.isArray(schemes) ? schemes : []) {
         MONTHS.forEach((month, index) => {
           const url = scheme[`${month[0]!.toUpperCase()}${month.slice(1)}Url`];
-          if (typeof url === 'string' && url)
+
+          if (typeof url === 'string' && url) {
             dates.set(new URL(url).href, endOfMonth(makeDate(year, index + 1, 1)));
+          }
         });
+      }
+
       return dates;
     },
     origins: ['https://www.invescomutualfund.com'],
@@ -225,12 +233,20 @@ const HEADERS = { 'user-agent': 'Mozilla/5.0 (compatible; Arthly public portfoli
 export function fundWorkbookSource(value: string): FundSourceId | undefined {
   try {
     const u = new URL(value);
-    if (u.username || u.password || u.hash || !/\.(?:xlsx?|zip)$/i.test(u.pathname))
+
+    if (u.username || u.password || u.hash || !/\.(?:xlsx?|zip)$/i.test(u.pathname)) {
       return undefined;
+    }
+
     const name = decodeURIComponent(u.pathname.split('/').at(-1) ?? '');
-    if (/overlap|fortnight/i.test(name)) return undefined;
+
+    if (/overlap|fortnight/i.test(name)) {
+      return undefined;
+    }
+
     return (Object.keys(FUND_SOURCES) as FundSourceId[]).find((id) => {
       const s = FUND_SOURCES[id];
+
       return (
         s.origins.includes(u.origin) &&
         u.pathname.toLowerCase().startsWith(s.path) &&
@@ -263,11 +279,16 @@ function portfolioDate(url: string): string | undefined {
   ).exec(name);
   const mon = before?.[2] ?? after?.[1];
   const year = before?.[3] ?? after?.[3];
-  if (!mon || !year) return undefined;
+
+  if (!mon || !year) {
+    return undefined;
+  }
+
   const m = MONTHS.indexOf(mon.slice(0, 3).toLowerCase()) + 1;
   const y = Number(year) + (year.length === 2 ? 2000 : 0);
   const day = before?.[1] ?? after?.[2];
   const date = makeDate(y, m, Number(day ?? 1));
+
   return isISODate(date) ? (day ? date : endOfMonth(date)) : undefined;
 }
 
@@ -280,7 +301,8 @@ export function discoverFundFiles(
 ): FundDisclosureFile[] {
   // The same URL can occur as an anchor, JSON property, or doubly escaped RSC string.
   let clean = html;
-  for (let n = 0; n < 3; n++)
+
+  for (let n = 0; n < 3; n++) {
     clean = clean
       .replace(/\\"/g, '"')
       .replace(/\\\//g, '/')
@@ -288,27 +310,46 @@ export function discoverFundFiles(
       .replace(/\\u0027/gi, "'")
       .replace(/&amp;/gi, '&')
       .replace(/&#(?:34|x22);/gi, '"');
+  }
+
   const candidates = [...clean.matchAll(/["']([^"'<>\\]*\.(?:xlsx?|zip)(?:\?[^"'<>\\]*)?)["']/gi)];
   const files = new Map<string, FundDisclosureFile & { date: string }>();
+
   for (const match of candidates) {
     try {
       const u = new URL(match[1]!.trim(), FUND_SOURCES[source].listing);
-      if (fundWorkbookSource(u.href) !== source) continue;
+
+      if (fundWorkbookSource(u.href) !== source) {
+        continue;
+      }
+
       const name = decodeURIComponent(u.pathname.split('/').at(-1) ?? '');
       const date = dates.get(u.href) ?? portfolioDate(u.href);
-      if (!date || date > today) continue;
+
+      if (!date || date > today) {
+        continue;
+      }
+
       files.set(u.href, { source, url: u.href, name, date });
     } catch {
       /* A malformed public link does not make the rest unusable. */
     }
   }
+
   const newest = [...files.values()]
     .map((f) => f.date)
     .sort()
     .at(-1);
   const latest = [...files.values()].filter((f) => f.date === newest);
-  if (!latest.length) throw new Error('No dated monthly portfolio workbooks found');
-  if (latest.length > 200) throw new Error('Unexpected number of portfolio files');
+
+  if (!latest.length) {
+    throw new Error('No dated monthly portfolio workbooks found');
+  }
+
+  if (latest.length > 200) {
+    throw new Error('Unexpected number of portfolio files');
+  }
+
   return latest.map(({ source, url, name }) => ({ source, url, name }));
 }
 
@@ -346,9 +387,11 @@ export async function fetchFundDisclosureIndex(
             request.json,
           );
           const text = await res.text();
+
           return { text, dates: source.dates?.(text, request) ?? new Map<string, string>() };
         }),
       );
+
       return discoverFundFiles(
         texts.map((t) => t.text).join('\n'),
         id,
@@ -357,6 +400,7 @@ export async function fetchFundDisclosureIndex(
       );
     }),
   );
+
   return {
     version: 1,
     date,

@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
-  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
   import Settings from '@lucide/svelte/icons/settings';
+
   import PageHeader from '#lib/components/PageHeader.svelte';
   import * as Card from '#lib/components/ui/card/index.ts';
 

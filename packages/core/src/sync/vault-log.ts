@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The device's copy of the change log, and the sync pass that merges it with other devices.
 import { ChunkError, openChunk, sealChunk } from '../crypto/chunk.ts';
-import { mergeKeyrings, sameKeyring, type Keyring } from '../crypto/keyring.ts';
+import { type Keyring, mergeKeyrings, sameKeyring } from '../crypto/keyring.ts';
 import type { Event } from '../log/events.ts';
-import { createClock, type Clock } from '../log/hlc.ts';
+import { type Clock, createClock } from '../log/hlc.ts';
 import { newDeviceId } from '../model/ids.ts';
 import { utf8 } from '../util/bytes.ts';
+
 import type { LocalStore, StorageProvider } from './stores.ts';
 
 export interface SnapPayload {
@@ -40,6 +41,7 @@ export const chunkPath = (deviceId: string, seq: number) =>
 
 export function parseChunkPath(path: string): { deviceId: string; seq: number } | null {
   const m = CHUNK.exec(path);
+
   return m ? { deviceId: m[1]!, seq: Number(m[2]) } : null;
 }
 
@@ -78,25 +80,40 @@ export class VaultLog {
   /** Opens the log stored on this device, creating the device ID on first use. */
   static async open(local: LocalStore, dk: CryptoKey, keyring: Keyring): Promise<VaultLog> {
     let deviceId = await local.getMeta<string>('deviceId');
+
     if (!deviceId) {
       deviceId = newDeviceId();
       await local.setMeta('deviceId', deviceId);
     }
+
     await local.setMeta('keyring', keyring);
     const meta = { ...freshMeta(), ...(await local.getMeta<Meta>('sync')) };
     const log = new VaultLog(local, dk, keyring, deviceId, meta);
+
     for (const path of await local.listChunks()) {
       const bytes = await local.getChunk(path);
-      if (!bytes) continue;
+
+      if (!bytes) {
+        continue;
+      }
+
       try {
         const events = await log.decode(path, bytes);
+
         log.add(events);
-        if (path === chunkPath(deviceId, meta.openSeq)) log.openEvents = events;
+
+        if (path === chunkPath(deviceId, meta.openSeq)) {
+          log.openEvents = events;
+        }
       } catch (error) {
-        if (!(error instanceof ChunkError)) throw error;
+        if (!(error instanceof ChunkError)) {
+          throw error;
+        }
+
         log.problems.push(path);
       }
     }
+
     return log;
   }
 
@@ -113,11 +130,18 @@ export class VaultLog {
   append(events: Event[]): Promise<void> {
     return this.serial(async () => {
       const fresh = events.filter((e) => !this.known.has(e.hlc));
-      if (fresh.length === 0) return;
+
+      if (fresh.length === 0) {
+        return;
+      }
+
       this.add(fresh);
       this.openEvents.push(...fresh);
       await this.writeOpen();
-      if (this.openEvents.length >= OPEN_LIMIT) await this.seal();
+
+      if (this.openEvents.length >= OPEN_LIMIT) {
+        await this.seal();
+      }
     });
   }
 
@@ -140,46 +164,61 @@ export class VaultLog {
       keyringChanged: false,
       keyringRejected: false,
     };
+
     try {
       await this.syncKeyring(remote, report);
       const files = new Set((await remote.list('')).map((f) => f.path));
+
       await this.pullSnaps(remote, files, report);
       await this.pullChunks(remote, files, report);
       await this.serial(() => this.seal());
       await this.push(remote, files, report);
       const logCount = [...files].filter((p) => CHUNK.test(p)).length;
+
       if (logCount > (options.compactAfter ?? DEFAULT_COMPACT_AFTER)) {
         await this.compact(remote, files);
         report.compacted = true;
       }
+
       await this.cleanUp(remote, files);
     } finally {
       await this.saveMeta();
     }
+
     this.problems.push(...report.problems);
+
     return report;
   }
 
   private async syncKeyring(remote: StorageProvider, report: SyncReport): Promise<void> {
     const exists = (await remote.list(KEYRING)).some((f) => f.path === KEYRING);
+
     if (!exists) {
       await remote.write(KEYRING, utf8.encode(JSON.stringify(this.keyring)));
+
       return;
     }
+
     let theirs: Keyring;
+
     try {
       theirs = JSON.parse(utf8.decode(await remote.read(KEYRING))) as Keyring;
     } catch {
       throw new SyncError('The keyring in the remote folder is damaged');
     }
+
     if (theirs.vaultId !== this.vaultId) {
       throw new SyncError('The remote folder belongs to a different vault');
     }
+
     const { keyring, rejected } = await mergeKeyrings(this.keyring, theirs, this.dk);
+
     report.keyringRejected = rejected;
+
     if (rejected || !sameKeyring(keyring, theirs)) {
       await remote.write(KEYRING, utf8.encode(JSON.stringify(keyring)));
     }
+
     if (keyring !== this.keyring) {
       report.keyringChanged = true;
       await this.setKeyring(keyring);
@@ -189,36 +228,59 @@ export class VaultLog {
   /** Reads every snap not read before. A device that compacts keeps its newest snap. */
   private async pullSnaps(remote: StorageProvider, files: Set<string>, report: SyncReport) {
     const snaps = [...files].filter((p) => p.startsWith('snap/')).sort();
+
     for (const path of snaps) {
-      if (this.meta.snaps.includes(path)) continue;
+      if (this.meta.snaps.includes(path)) {
+        continue;
+      }
+
       const bytes = await remote.read(path);
+
       try {
         const snap = await openChunk<SnapPayload>(this.dk, this.vaultId, path, bytes);
+
         report.pulled += this.add(snap.events);
         await this.local.putChunk(path, bytes);
         this.noteMarks(snap.marks);
       } catch (error) {
-        if (!(error instanceof ChunkError)) throw error;
+        if (!(error instanceof ChunkError)) {
+          throw error;
+        }
+
         report.problems.push(path);
       }
+
       this.meta.snaps.push(path);
     }
+
     this.meta.snaps = this.meta.snaps.filter((p) => files.has(p));
   }
 
   private async pullChunks(remote: StorageProvider, files: Set<string>, report: SyncReport) {
     for (const path of [...files].sort()) {
       const chunk = parseChunkPath(path);
-      if (!chunk || chunk.deviceId === this.deviceId) continue;
-      if (chunk.seq <= (this.meta.marks[chunk.deviceId] ?? 0)) continue;
+
+      if (!chunk || chunk.deviceId === this.deviceId) {
+        continue;
+      }
+
+      if (chunk.seq <= (this.meta.marks[chunk.deviceId] ?? 0)) {
+        continue;
+      }
+
       const bytes = await remote.read(path);
+
       try {
         report.pulled += this.add(await this.decode(path, bytes));
         await this.local.putChunk(path, bytes);
       } catch (error) {
-        if (!(error instanceof ChunkError)) throw error;
+        if (!(error instanceof ChunkError)) {
+          throw error;
+        }
+
         report.problems.push(path);
       }
+
       this.meta.marks[chunk.deviceId] = chunk.seq;
     }
   }
@@ -227,11 +289,13 @@ export class VaultLog {
     for (let seq = this.meta.uploaded + 1; seq < this.meta.openSeq; seq++) {
       const path = chunkPath(this.deviceId, seq);
       const bytes = await this.local.getChunk(path);
+
       if (bytes) {
         await remote.write(path, bytes);
         files.add(path);
         report.pushed += 1;
       }
+
       this.meta.uploaded = seq;
     }
   }
@@ -241,11 +305,15 @@ export class VaultLog {
     const path = `snap/${this.clock.next()}.pvc`;
     const marks = { ...this.meta.marks, [this.deviceId]: this.meta.uploaded };
     const payload: SnapPayload = { marks, events: this.events() };
+
     await remote.write(path, await sealChunk(this.dk, this.vaultId, path, payload));
+
     for (const old of files) {
-      if (old.startsWith('snap/') && old.endsWith(`.${this.deviceId}.pvc`))
+      if (old.startsWith('snap/') && old.endsWith(`.${this.deviceId}.pvc`)) {
         await remote.remove(old);
+      }
     }
+
     files.add(path);
     this.meta.snaps.push(path);
     this.noteMarks(marks);
@@ -255,6 +323,7 @@ export class VaultLog {
   private async cleanUp(remote: StorageProvider, files: Set<string>): Promise<void> {
     for (const path of files) {
       const chunk = parseChunkPath(path);
+
       if (chunk?.deviceId === this.deviceId && chunk.seq <= this.meta.covered) {
         await remote.remove(path);
         files.delete(path);
@@ -264,38 +333,54 @@ export class VaultLog {
 
   private noteMarks(marks: Record<string, number>): void {
     for (const [deviceId, seq] of Object.entries(marks)) {
-      if (deviceId === this.deviceId) this.meta.covered = Math.max(this.meta.covered, seq);
-      else this.meta.marks[deviceId] = Math.max(this.meta.marks[deviceId] ?? 0, seq);
+      if (deviceId === this.deviceId) {
+        this.meta.covered = Math.max(this.meta.covered, seq);
+      } else {
+        this.meta.marks[deviceId] = Math.max(this.meta.marks[deviceId] ?? 0, seq);
+      }
     }
   }
 
   private async decode(path: string, bytes: Uint8Array): Promise<Event[]> {
     const payload = await openChunk<unknown>(this.dk, this.vaultId, path, bytes);
     const events = path.startsWith('snap/') ? (payload as SnapPayload).events : payload;
-    if (!Array.isArray(events)) throw new ChunkError(`${path} has no events`);
+
+    if (!Array.isArray(events)) {
+      throw new ChunkError(`${path} has no events`);
+    }
+
     return events as Event[];
   }
 
   /** Adds events, returning how many were new. */
   private add(events: Event[]): number {
     let added = 0;
+
     for (const e of events) {
-      if (this.known.has(e.hlc)) continue;
+      if (this.known.has(e.hlc)) {
+        continue;
+      }
+
       this.known.set(e.hlc, e);
       this.clock.observe(e.hlc);
       added += 1;
     }
+
     return added;
   }
 
   private async writeOpen(): Promise<void> {
     const path = chunkPath(this.deviceId, this.meta.openSeq);
+
     await this.local.putChunk(path, await sealChunk(this.dk, this.vaultId, path, this.openEvents));
   }
 
   /** Closes the open chunk, if it has events, and starts the next one. */
   private async seal(): Promise<void> {
-    if (this.openEvents.length === 0) return;
+    if (this.openEvents.length === 0) {
+      return;
+    }
+
     this.meta.openSeq += 1;
     this.openEvents = [];
     await this.saveMeta();
@@ -307,7 +392,9 @@ export class VaultLog {
 
   private serial<T>(task: () => Promise<T>): Promise<T> {
     const run = this.queue.then(task, task);
+
     this.queue = run.catch(() => undefined);
+
     return run;
   }
 
@@ -317,9 +404,11 @@ export class VaultLog {
    */
   backupIndex(): { marks: Record<string, number>; unsynced: string[] } {
     const unsynced: string[] = [];
+
     for (let seq = this.meta.uploaded + 1; seq <= this.meta.openSeq; seq++) {
       unsynced.push(chunkPath(this.deviceId, seq));
     }
+
     return { marks: { ...this.meta.marks, [this.deviceId]: this.meta.openSeq - 1 }, unsynced };
   }
 }

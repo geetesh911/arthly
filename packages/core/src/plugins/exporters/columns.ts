@@ -108,12 +108,21 @@ export function toRow(
 ): (string | number | null)[] {
   return DATA_TABS[entity]!.columns.map(({ key, type }) => {
     let v = getPath(value, key);
+
     if (key === 'source' && v && typeof v === 'object') {
       const s = v as { kind: string; batchId?: string };
+
       v = s.kind === 'import' ? `import:${s.batchId}` : 'manual';
     }
-    if (v === undefined || v === null) return null;
-    if (type === 'json') return JSON.stringify(v);
+
+    if (v === undefined || v === null) {
+      return null;
+    }
+
+    if (type === 'json') {
+      return JSON.stringify(v);
+    }
+
     return type === 'number' ? Number(v) : String(v);
   });
 }
@@ -126,14 +135,23 @@ export function fromRow(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const columns = new Map(DATA_TABS[entity]!.columns.map((c) => [c.key, c]));
+
   headings.forEach((heading, i) => {
     const column = columns.get(heading);
     const raw = cells[i];
-    if (!column || raw === null || raw === undefined || String(raw).trim() === '') return;
+
+    if (!column || raw === null || raw === undefined || String(raw).trim() === '') {
+      return;
+    }
+
     let v: unknown;
+
     if (column.type === 'number') {
       v = typeof raw === 'number' ? raw : Number(String(raw).replace(/[,₹\s]/g, ''));
-      if (!Number.isFinite(v)) return;
+
+      if (!Number.isFinite(v)) {
+        return;
+      }
     } else if (column.type === 'json') {
       try {
         v = JSON.parse(String(raw));
@@ -143,10 +161,16 @@ export function fromRow(
     } else {
       v = String(raw).trim();
     }
+
     const path = heading.split('.');
     let target = out;
-    for (const part of path.slice(0, -1)) target = (target[part] ??= {}) as Record<string, unknown>;
+
+    for (const part of path.slice(0, -1)) {
+      target = (target[part] ??= {}) as Record<string, unknown>;
+    }
+
     target[path.at(-1)!] = v;
   });
+
   return out;
 }

@@ -24,10 +24,15 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
 
 function openDb(name: string, stores: string[]): Promise<IDBDatabase> {
   const req = indexedDB.open(name, 1);
+
   req.onupgradeneeded = () => {
-    for (const store of stores)
-      if (!req.result.objectStoreNames.contains(store)) req.result.createObjectStore(store);
+    for (const store of stores) {
+      if (!req.result.objectStoreNames.contains(store)) {
+        req.result.createObjectStore(store);
+      }
+    }
   };
+
   return request(req);
 }
 
@@ -62,6 +67,7 @@ export function indexedDbStorage(): DeviceStorage {
   const index = openDb('pv-index', ['vaults']);
   const tx = async (mode: IDBTransactionMode) =>
     (await index).transaction('vaults', mode).objectStore('vaults');
+
   return {
     async vaults() {
       return (await request((await tx('readonly')).getAll())) as VaultEntry[];

@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import '../app.css';
-  import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+
   import { onMount, type Snippet } from 'svelte';
+  import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+
   import { app, start } from '#lib/app.svelte.ts';
   import Confirm from '#lib/components/Confirm.svelte';
   import Shell from '#lib/components/Shell.svelte';
@@ -14,7 +16,10 @@
   onMount(() => {
     applyTheme(document.documentElement, readTheme());
     void start();
-    if ('serviceWorker' in navigator) void navigator.storage?.persist?.();
+
+    if ('serviceWorker' in navigator) {
+      void navigator.storage?.persist?.();
+    }
   });
 </script>
 

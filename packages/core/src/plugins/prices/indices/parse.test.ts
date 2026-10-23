@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+
 import { parseBseIndices, parseNseIndices } from './parse.ts';
 
 const fixture = (name: string) =>
@@ -36,6 +37,7 @@ describe('parseNseIndices', () => {
 
   it('leaves dashes out instead of reading them as zero', () => {
     const mahindra = byName('Nifty India Corporate Group Index - Mahindra Group')!;
+
     expect(mahindra.close).toBe(34441.97);
     expect(mahindra).not.toHaveProperty('open');
     expect(byName('Nifty Waves')).not.toHaveProperty('pe');
@@ -44,6 +46,7 @@ describe('parseNseIndices', () => {
 
   it('labels the return basis only where the source says what it is', () => {
     const basis = Object.fromEntries(rows.map((r) => [r.name, r.basis]));
+
     expect(basis).toMatchObject({
       'Nifty 50': 'price',
       'India VIX': 'volatility',
@@ -73,6 +76,7 @@ describe('parseNseIndices', () => {
         'Nifty Late,31-02-2026,-,-,-,10,1,.1,-,-,-,-,-',
       ].join('\r\n'),
     );
+
     expect(rows.map((r) => [r.name, r.close])).toEqual([['Nifty Bank, Private', 1234.5]]);
     expect(warnings).toEqual([
       'NSE: Nifty Bad has a malformed number',
@@ -85,8 +89,10 @@ describe('parseNseIndices', () => {
     const head =
       'Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,Closing Index Value,Points Change,Change(%),Volume,Turnover (Rs. Cr.),P/E,P/B,Div Yield';
     const twice = (close: string) => `Nifty X,22-10-2026,-,-,-,${close},-,-,-,-,-,-,-`;
+
     expect(parseNseIndices([head, twice('10'), twice('10')].join('\n')).rows).toHaveLength(1);
     const conflict = parseNseIndices([head, twice('10'), twice('11'), twice('10')].join('\n'));
+
     expect(conflict.rows).toEqual([]);
     expect(conflict.warnings).toEqual(['NSE: Nifty X is listed twice with different levels']);
   });

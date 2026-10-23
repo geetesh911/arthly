@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+
 import { base32Decode, base32Encode } from './base32.ts';
 import { fromBase64, toBase64 } from './bytes.ts';
 import {
@@ -29,6 +30,7 @@ describe('base32', () => {
   });
   it('ignores dashes, spaces and case when decoding', () => {
     const code = base32Encode(new Uint8Array([1, 2, 3, 4, 5]));
+
     expect(base32Decode(code.toUpperCase().replace(/(.{4})/g, '$1- '))).toEqual(
       new Uint8Array([1, 2, 3, 4, 5]),
     );

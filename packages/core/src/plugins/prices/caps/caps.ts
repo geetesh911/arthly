@@ -39,6 +39,7 @@ const ISIN = /^IN[A-Z0-9]{10}$/;
 function day(d: string, month: string, year: string): string | undefined {
   const m = MONTHS.indexOf(month.slice(0, 3).toLowerCase()) + 1;
   const date = m ? makeDate(Number(year), m, Number(d)) : '';
+
   return isISODate(date) ? date : undefined;
 }
 
@@ -46,12 +47,20 @@ function day(d: string, month: string, year: string): string | undefined {
 function fileDate(value: string): string | undefined {
   try {
     const u = new URL(value);
-    if (u.protocol !== 'https:' || !HOSTS.includes(u.hostname)) return undefined;
-    if (u.username || u.password || u.search || u.hash) return undefined;
+
+    if (u.protocol !== 'https:' || !HOSTS.includes(u.hostname)) {
+      return undefined;
+    }
+
+    if (u.username || u.password || u.search || u.hash) {
+      return undefined;
+    }
+
     // "AverageMarketCapitalization30Jun2026.xlsx", or with "oflisted…ended" before the date.
     const m = /^AverageMarketCapitalization[a-z]*?(\d{1,2})([a-z]{3,9})(\d{4})\.xlsx$/i.exec(
       decodeURIComponent(u.pathname.split('/').at(-1) ?? ''),
     );
+
     return m ? day(m[1]!, m[2]!, m[3]!) : undefined;
   } catch {
     return undefined;
@@ -65,10 +74,15 @@ export function findAmfiCapsUrl(html: string, today: string): string {
   const links = [...html.matchAll(/https:\/\/[^"'<>\s\\]+?\.xlsx/gi)].map((m) => m[0]);
   const dated = links.flatMap((url) => {
     const date = fileDate(url);
+
     return date && date <= today ? [{ url, date }] : [];
   });
   const newest = dated.sort((a, b) => b.date.localeCompare(a.date))[0];
-  if (!newest) throw new Error('AMFI’s page has no cap list');
+
+  if (!newest) {
+    throw new Error('AMFI’s page has no cap list');
+  }
+
   return newest.url;
 }
 
@@ -90,6 +104,7 @@ export async function fetchAmfiCaps(
     headers: HEADERS,
     noun: 'cap list',
   });
+
   return { url, response };
 }
 
@@ -99,10 +114,19 @@ export async function parseAmfiCaps(
   url: string,
   date: string,
 ): Promise<CapFile> {
-  if (!isAmfiCapsUrl(url)) throw new Error('Unapproved cap list URL');
-  if (bytes.length > MAX_CAPS_BYTES) throw new Error('AMFI’s cap list is too large');
+  if (!isAmfiCapsUrl(url)) {
+    throw new Error('Unapproved cap list URL');
+  }
+
+  if (bytes.length > MAX_CAPS_BYTES) {
+    throw new Error('AMFI’s cap list is too large');
+  }
+
   // An xlsx file is a zip; an error page isn't.
-  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) throw new Error('AMFI’s cap list isn’t a workbook');
+  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+    throw new Error('AMFI’s cap list isn’t a workbook');
+  }
+
   const XLSX = await import('xlsx');
   const book = XLSX.read(bytes, {
     type: 'array',
@@ -112,7 +136,11 @@ export async function parseAmfiCaps(
     cellHTML: false,
   });
   const sheet = book.Sheets[book.SheetNames[0] ?? ''];
-  if (!sheet) throw new Error('AMFI’s cap list has no sheet');
+
+  if (!sheet) {
+    throw new Error('AMFI’s cap list has no sheet');
+  }
+
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
   const text = (v: unknown) => String(v ?? '').trim();
   const head = rows.findIndex(
@@ -123,7 +151,11 @@ export async function parseAmfiCaps(
   const isin = cols.indexOf('isin'),
     nse = cols.findIndex((c) => c.startsWith('nse symbol')),
     category = cols.findIndex((c) => /categori[sz]ation/.test(c));
-  if (head < 0 || nse < 0) throw new Error('AMFI cap list headings have changed');
+
+  if (head < 0 || nse < 0) {
+    throw new Error('AMFI cap list headings have changed');
+  }
+
   // "…during the six months ended 30 June 2026"
   const title = rows
     .slice(0, head)
@@ -132,15 +164,23 @@ export async function parseAmfiCaps(
     .map((t) => /ended\s+(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+),?\s+(\d{4})/i.exec(t))
     .find(Boolean);
   const asOf = (title ? day(title[1]!, title[2]!, title[3]!) : undefined) ?? fileDate(url);
-  if (!asOf || asOf > date) throw new Error('AMFI’s cap list has no period');
+
+  if (!asOf || asOf > date) {
+    throw new Error('AMFI’s cap list has no period');
+  }
 
   const found = new Map<string, CapRow>();
   const conflicts = new Set<string>();
   let malformed = 0;
+
   for (const r of rows.slice(head + 1)) {
     const id = text(r[isin]).toUpperCase();
     const label = text(r[category]);
-    if (!id && !label) continue;
+
+    if (!id && !label) {
+      continue;
+    }
+
     const cap: CapSize | undefined = /^large/i.test(label)
       ? 'large'
       : /^mid/i.test(label)
@@ -148,18 +188,29 @@ export async function parseAmfiCaps(
         : /^small/i.test(label)
           ? 'small'
           : undefined;
+
     if (!ISIN.test(id) || !cap) {
       malformed++;
       continue;
     }
+
     const symbol = text(r[nse]).toUpperCase();
     const seen = found.get(id);
-    if (seen && seen.cap !== cap) conflicts.add(id);
-    else if (!seen)
+
+    if (seen && seen.cap !== cap) {
+      conflicts.add(id);
+    } else if (!seen) {
       found.set(id, { isin: id, ...(symbol && symbol !== '-' ? { nse: symbol } : {}), cap });
+    }
   }
-  for (const id of conflicts) found.delete(id);
-  if (!found.size) throw new Error('AMFI’s cap list has no companies');
+
+  for (const id of conflicts) {
+    found.delete(id);
+  }
+
+  if (!found.size) {
+    throw new Error('AMFI’s cap list has no companies');
+  }
 
   const list = [...found.values()];
   const count = (cap: CapSize) => list.filter((r) => r.cap === cap).length;
@@ -170,6 +221,7 @@ export async function parseAmfiCaps(
     ...(malformed ? [`${malformed} rows have no valid ISIN or category`] : []),
     ...(conflicts.size ? [`${conflicts.size} ISINs are listed twice with different sizes`] : []),
   ];
+
   return { version: 1, date, asOf, url, rows: list, ...(warnings.length ? { warnings } : {}) };
 }
 
@@ -179,6 +231,7 @@ export function validateAmfiCaps(value: unknown): CapFile {
   const caps: unknown[] = ['large', 'mid', 'small'];
   const short = (v: unknown, max: number) =>
     typeof v === 'string' && v.length > 0 && v.length <= max;
+
   if (
     !f ||
     f.version !== 1 ||
@@ -202,7 +255,9 @@ export function validateAmfiCaps(value: unknown): CapFile {
       (!Array.isArray(f.warnings) ||
         f.warnings.length > 20 ||
         !f.warnings.every((w) => short(w, 300))))
-  )
+  ) {
     throw new Error('Unexpected cap list data');
+  }
+
   return f;
 }

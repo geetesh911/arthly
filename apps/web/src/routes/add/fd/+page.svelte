@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { addYears, type Compounding, type Payout, randomId } from '@pv/core';
+
   import { api } from '#lib/api.ts';
   import { app, attempt, changed, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -10,7 +12,6 @@
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { ensureAccount, money, newInstrument, todayIso } from '#lib/forms.ts';
-  import { addYears, randomId, type Compounding, type Payout } from '@pv/core';
 
   let kind = $state<'fd' | 'bond' | 'sgb'>('fd');
   let memberId = $state(app.filter.memberId ?? app.members[0]?.id ?? '');
@@ -51,6 +52,7 @@
             payout,
           },
         });
+
         await api().save('transaction', {
           id: randomId('txn'),
           accountId,
@@ -61,8 +63,10 @@
           currency: 'INR',
           source: { kind: 'manual' },
         });
+
         return `${accountId}|${instrumentId}`;
       }
+
       const accountId = await ensureAccount({
         memberId,
         institution,
@@ -81,6 +85,7 @@
           maturity,
         },
       });
+
       await api().save('transaction', {
         id: randomId('txn'),
         accountId,
@@ -93,8 +98,10 @@
         currency: 'INR',
         source: { kind: 'manual' },
       });
+
       return `${accountId}|${instrumentId}`;
     });
+
     if (done) {
       say('Saved');
       await changed();

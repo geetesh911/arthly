@@ -18,6 +18,7 @@ export async function readFundReport(
 ): Promise<{ portfolios: FundPortfolio[]; skipped: string[] }> {
   const skipped: string[] = [];
   let portfolios: FundPortfolio[];
+
   try {
     portfolios = await parseFundWorkbook(bytes, { source: 'file', url: '', name }, (e) =>
       skipped.push(e.message),
@@ -27,16 +28,22 @@ export async function readFundReport(
       cause: error,
     });
   }
-  if (portfolios.some((p) => p.asOf > today))
+
+  if (portfolios.some((p) => p.asOf > today)) {
     throw new Error(`${name} is dated after today, so it can’t be used`);
+  }
+
   return { portfolios, skipped };
 }
 
 /** Adds newly read reports to the saved ones, keeping the newest report of each scheme. */
 export function addFundReports(saved: FundPortfolio[], next: FundPortfolio[]): FundPortfolio[] {
   const all = [...newestReports([...saved, ...next]).values()];
-  if (all.length > MAX_ADDED)
+
+  if (all.length > MAX_ADDED) {
     throw new Error('Too many fund reports added. Remove the added reports, then add them again.');
+  }
+
   return all;
 }
 
@@ -51,9 +58,15 @@ export function withAddedReports(
 ): FundPortfolio[] {
   const scheme = (p: FundPortfolio) => normaliseFundName(p.schemeName);
   const newest = new Map<string, string>();
-  for (const p of fetched)
-    if (p.asOf > (newest.get(scheme(p)) ?? '')) newest.set(scheme(p), p.asOf);
+
+  for (const p of fetched) {
+    if (p.asOf > (newest.get(scheme(p)) ?? '')) {
+      newest.set(scheme(p), p.asOf);
+    }
+  }
+
   const used = added.filter((p) => p.asOf > (newest.get(scheme(p)) ?? ''));
   const replaced = new Set(used.map(scheme));
+
   return [...fetched.filter((p) => !replaced.has(scheme(p))), ...used];
 }

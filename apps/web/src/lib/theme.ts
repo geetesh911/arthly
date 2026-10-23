@@ -6,6 +6,7 @@ const KEY = 'theme';
 export function readTheme(storage: Pick<Storage, 'getItem'> = localStorage): Theme {
   try {
     const value = storage.getItem(KEY);
+
     return value === 'light' || value === 'dark' ? value : 'system';
   } catch {
     return 'system';
@@ -15,15 +16,22 @@ export function readTheme(storage: Pick<Storage, 'getItem'> = localStorage): The
 /** System needs no class: app.css follows prefers-color-scheme. */
 export function applyTheme(root: { classList: DOMTokenList }, theme: Theme): void {
   root.classList.remove('light', 'dark');
-  if (theme !== 'system') root.classList.add(theme);
+
+  if (theme !== 'system') {
+    root.classList.add(theme);
+  }
 }
 
 export function setTheme(theme: Theme): void {
   try {
-    if (theme === 'system') localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, theme);
+    if (theme === 'system') {
+      localStorage.removeItem(KEY);
+    } else {
+      localStorage.setItem(KEY, theme);
+    }
   } catch {
     // Storage blocked: the choice lasts until the page closes.
   }
+
   applyTheme(document.documentElement, theme);
 }

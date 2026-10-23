@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+
 import {
   AMFI_CAPS_PAGE,
   fetchAmfiCaps,
@@ -33,9 +34,12 @@ async function workbook(rows: unknown[][], title = 'during the six months ended 
   const XLSX = await import('xlsx');
   const book = XLSX.utils.book_new();
   const lines = [[`Average Market Capitalization of listed companies ${title}`], HEAD, ...rows];
+
   XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(lines), 'FINAL');
+
   return new Uint8Array(XLSX.write(book, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
 }
+
 const row = (isin: string, nse: string, category: string) => [
   1,
   'A Company Ltd',
@@ -65,6 +69,7 @@ describe('finding AMFI’s list', () => {
         'https://www.amfiindia.com/Themes/Theme1/downloads/AverageMarketCapitalizationoflistedcompaniesduringthesixmonthsended30June2022.xlsx',
       ),
     ).toBe(true);
+
     for (const url of [
       'http://portal.amfiindia.com/spages/AverageMarketCapitalization30Jun2026.xlsx',
       'https://amfiindia.example.com/spages/AverageMarketCapitalization30Jun2026.xlsx',
@@ -72,8 +77,10 @@ describe('finding AMFI’s list', () => {
       'https://portal.amfiindia.com/spages/AverageMarketCapitalization30Jun2026.pdf',
       'https://portal.amfiindia.com/spages/NAVAll.xlsx',
       'https://www.amfiindia.com/Themes/Theme1/downloads/Avg.%20Market%20Capitalization%20of%20listed%20companies%20during%20Jul-Dec%202019.xlsx',
-    ])
+    ]) {
       expect(isAmfiCapsUrl(url)).toBe(false);
+    }
+
     expect(() =>
       findAmfiCapsUrl(
         '<a href="https://example.com/AverageMarketCapitalization30Jun2026.xlsx">Excel</a>',
@@ -86,16 +93,24 @@ describe('finding AMFI’s list', () => {
     const asked: string[] = [];
     const fetcher = (async (input: string | URL) => {
       const url = String(input);
+
       asked.push(url);
-      if (url === AMFI_CAPS_PAGE)
+
+      if (url === AMFI_CAPS_PAGE) {
         return new Response(PAGE, { headers: { 'content-type': 'text/html' } });
-      if (url === URL_2026) return new Response(LIST);
+      }
+
+      if (url === URL_2026) {
+        return new Response(LIST);
+      }
+
       return new Response('', {
         status: 302,
         headers: { location: 'https://evil.example/x.xlsx' },
       });
     }) as typeof fetch;
     const { url, response } = await fetchAmfiCaps(fetcher, '2026-10-23');
+
     expect(url).toBe(URL_2026);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(LIST);
     expect(asked).toEqual([AMFI_CAPS_PAGE, URL_2026]);
@@ -107,6 +122,7 @@ describe('finding AMFI’s list', () => {
             status: 302,
             headers: { location: 'https://evil.example/AverageMarketCapitalization30Jun2026.xlsx' },
           })) as typeof fetch;
+
     await expect(fetchAmfiCaps(moved, '2026-10-23')).rejects.toThrow('Unapproved cap list URL');
   });
 });
@@ -114,6 +130,7 @@ describe('finding AMFI’s list', () => {
 describe('reading AMFI’s list', () => {
   it('reads the official workbook, keeping symbols only where they exist', async () => {
     const file = await parseAmfiCaps(LIST, URL_2026, '2026-10-23');
+
     expect(file).toMatchObject({
       version: 1,
       date: '2026-10-23',
@@ -149,6 +166,7 @@ describe('reading AMFI’s list', () => {
       URL_2026,
       '2026-10-23',
     );
+
     expect(file.rows).toEqual([{ isin: 'INE002A01018', nse: 'RELIANCE', cap: 'large' }]);
     expect(file.warnings).toEqual([
       'The list has 1 large and 0 mid caps, not 100 and 150',
@@ -163,18 +181,22 @@ describe('reading AMFI’s list', () => {
       URL_2026,
       '2026-10-23',
     );
+
     expect(file.asOf).toBe('2026-06-30');
   });
 
   it('refuses error pages, changed headings, future periods and empty lists', async () => {
     const html = new TextEncoder().encode('<html>Access Denied</html>');
+
     await expect(parseAmfiCaps(html, URL_2026, '2026-10-23')).rejects.toThrow('isn’t a workbook');
     const XLSX = await import('xlsx');
     const book = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([['Company', 'Code', 'Size']]), 'S');
     const renamed = new Uint8Array(
       XLSX.write(book, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer,
     );
+
     await expect(parseAmfiCaps(renamed, URL_2026, '2026-10-23')).rejects.toThrow(
       'headings have changed',
     );
@@ -204,7 +226,9 @@ describe('reading AMFI’s list', () => {
       { ...file, warnings: [42] },
       null,
     ];
-    for (const value of bad)
+
+    for (const value of bad) {
       expect(() => validateAmfiCaps(value)).toThrow('Unexpected cap list data');
+    }
   });
 });

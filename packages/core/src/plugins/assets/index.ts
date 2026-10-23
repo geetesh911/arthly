@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { AssetType } from '../../engine/asset-type.ts';
 import type { InstrumentKind } from '../../model/types.ts';
+
 import { bond } from './bond/index.ts';
 import { cash } from './cash/index.ts';
 import { deposit } from './deposit/index.ts';

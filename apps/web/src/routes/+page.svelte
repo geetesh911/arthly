@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import Wallet from '@lucide/svelte/icons/wallet';
+
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import CheckList from '#lib/components/CheckList.svelte';
   import Donut from '#lib/components/Donut.svelte';
   import Stat from '#lib/components/Stat.svelte';
-  import ValueChart from '#lib/components/ValueChart.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import * as Card from '#lib/components/ui/card/index.ts';
   import * as Empty from '#lib/components/ui/empty/index.ts';
@@ -14,6 +14,7 @@
   import { Separator } from '#lib/components/ui/separator/index.ts';
   import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
   import * as Tabs from '#lib/components/ui/tabs/index.ts';
+  import ValueChart from '#lib/components/ValueChart.svelte';
   import { CLASS_NAMES, date, inr, inrSigned, pct } from '#lib/format.ts';
   import type { OverviewDto } from '#lib/worker/dto.ts';
 
@@ -24,6 +25,7 @@
   $effect(() => {
     void app.version;
     const filter = $state.snapshot(app.filter);
+
     void api()
       .overview(filter, range)
       .then((d) => (data = d));

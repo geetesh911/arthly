@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import { xirr } from './xirr.ts';
 
 describe('xirr', () => {
@@ -11,6 +12,7 @@ describe('xirr', () => {
       { date: '2009-02-15', amount: 3250 },
       { date: '2009-04-01', amount: 2750 },
     ]);
+
     expect(r).toBeCloseTo(0.373362535, 6);
   });
 
@@ -35,8 +37,10 @@ describe('xirr', () => {
       date: `2025-${String(m + 1).padStart(2, '0')}-05`,
       amount: -5000,
     }));
+
     flows.push({ date: '2026-01-05', amount: 66000 });
     const r = xirr(flows)!;
+
     expect(r).toBeGreaterThan(0.17);
     expect(r).toBeLessThan(0.2);
   });
@@ -46,6 +50,7 @@ describe('xirr', () => {
       { date: '2025-01-01', amount: -1000 },
       { date: '2026-01-01', amount: 1 },
     ]);
+
     expect(r).toBeCloseTo(-0.999, 3);
   });
 

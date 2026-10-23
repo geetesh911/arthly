@@ -20,14 +20,18 @@ export const jsonExporter: Exporter = {
   encrypted: false,
   async run({ state }) {
     const entities: JsonExport['entities'] = {};
-    for (const name of ENTITY_NAMES)
+
+    for (const name of ENTITY_NAMES) {
       (entities as Record<string, unknown[]>)[name] = all(state, name);
+    }
+
     const file: JsonExport = {
       format: 'portfolio-export',
       version: 1,
       exportedAt: new Date().toISOString(),
       entities,
     };
+
     return utf8.encode(JSON.stringify(file, null, 1));
   },
 };

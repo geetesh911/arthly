@@ -2,6 +2,7 @@
 <script lang="ts">
   import Check from '@lucide/svelte/icons/check';
   import Copy from '@lucide/svelte/icons/copy';
+
   import { Button } from '#lib/components/ui/button/index.ts';
 
   let { code }: { code: string } = $props();

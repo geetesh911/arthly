@@ -3,8 +3,9 @@
 import { get, type State } from '../log/replay.ts';
 import { assetTypeFor } from '../plugins/assets/index.ts';
 import { addDays, fyEnd, fyOf, fyStart, type ISODate } from '../util/dates.ts';
+
 import type { CashFlowKind } from './asset-type.ts';
-import { engineCache, assetContext, type EngineOptions } from './portfolio.ts';
+import { assetContext, engineCache, type EngineOptions } from './portfolio.ts';
 import { positions } from './positions.ts';
 import type { PriceBook } from './prices.ts';
 import { DEFAULT_RATES } from './rates.ts';
@@ -30,11 +31,16 @@ export function upcoming(
   const to = addDays(from, days);
   const ctx = assetContext(book, from, rates, cache);
   const out: Upcoming[] = [];
+
   for (const p of positions(state, from, book, cache.ledgers)) {
     const i = get(state, 'instrument', p.instrumentId)!;
     const type = assetTypeFor(i.kind);
     const v = type.value(p, i, ctx);
-    if (v.status === 'closed') continue;
+
+    if (v.status === 'closed') {
+      continue;
+    }
+
     for (const f of type.projected?.(p, i, from, to, ctx) ?? []) {
       out.push({
         date: f.date,
@@ -45,12 +51,17 @@ export function upcoming(
         estimated: f.estimated,
       });
     }
+
     if (i.kind === 'ppf') {
       for (let fy = fyOf(from); fyEnd(fy) <= to; fy++) {
-        if (fyEnd(fy) < from) continue;
+        if (fyEnd(fy) < from) {
+          continue;
+        }
+
         const deposited = p.entries
           .filter((e) => e.type === 'contribution' && e.date >= fyStart(fy) && e.date <= fyEnd(fy))
           .reduce((s, e) => s + e.amount, 0);
+
         out.push({
           date: fyEnd(fy),
           kind: 'ppf-deadline',
@@ -62,5 +73,6 @@ export function upcoming(
       }
     }
   }
+
   return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }

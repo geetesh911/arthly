@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+
 import { collectFundHoldings, mergeFundHoldings, validateFundHoldings } from './collect.ts';
 import { parseFundWorkbook } from './parse.ts';
 import type { FundDisclosureFile, FundDisclosureIndex } from './types.ts';
@@ -12,11 +13,14 @@ const file: FundDisclosureFile = {
 };
 const bytes = new Uint8Array(readFileSync(new URL('./fixtures/ppfas.xls', import.meta.url)));
 const index: FundDisclosureIndex = { version: 1, date: '2026-10-23', files: [file], failures: [] };
+
 describe('fund portfolio collection', () => {
   it('rejects malformed feed identifiers and metadata before they enter the cache', async () => {
     const portfolios = await parseFundWorkbook(bytes, file);
     const valid = { version: 1 as const, date: index.date, portfolios, failures: [] };
+
     expect(validateFundHoldings(valid)).toEqual(valid);
+
     for (const invalid of [
       { schemeIsins: [123] },
       { amfiCodes: {} },
@@ -30,6 +34,7 @@ describe('fund portfolio collection', () => {
         validateFundHoldings({ ...valid, portfolios: [{ ...portfolios[0], ...invalid }] }),
       ).toThrow();
     }
+
     expect(() => validateFundHoldings({ ...valid, failures: [null] })).toThrow();
     expect(() => validateFundHoldings({ ...valid, retained: [1] })).toThrow();
     expect(validateFundHoldings({ ...valid, retained: ['a'] }).retained).toEqual(['a']);
@@ -38,16 +43,19 @@ describe('fund portfolio collection', () => {
     const portfolios = await parseFundWorkbook(bytes, file);
     const ids = portfolios.map((p) => p.id);
     const old = { version: 1 as const, date: '2026-10-22', portfolios, failures: [] };
+
     expect(mergeFundHoldings(undefined, old).retained).toEqual(ids);
     const kept = { ...portfolios[0]!, id: 'hdfc:kept' };
     const merged = mergeFundHoldings(
       { version: 1, date: '2026-10-23', portfolios, failures: [], retained: [ids[1]!, 'gone'] },
       { ...old, portfolios: [...portfolios, kept] },
     );
+
     expect(merged.retained?.sort()).toEqual([ids[1]!, 'hdfc:kept'].sort());
   });
   it('parses a whole official workbook and reuses an unchanged cached workbook', async () => {
     const fresh = await collectFundHoldings(index, async () => bytes);
+
     expect(fresh.portfolios).toHaveLength(7);
     let fetched = 0;
     const again = await collectFundHoldings(
@@ -58,6 +66,7 @@ describe('fund portfolio collection', () => {
       },
       fresh,
     );
+
     expect(again.portfolios).toHaveLength(7);
     expect(fetched).toBe(0);
   });
@@ -72,6 +81,7 @@ describe('fund portfolio collection', () => {
       old,
       true,
     );
+
     expect(next.portfolios).toHaveLength(7);
     expect(next.portfolios[0]?.asOf).toBe('2026-09-30');
     expect(next.failures).toHaveLength(2);
@@ -93,10 +103,12 @@ describe('consolidated workbooks', () => {
         ['Example Limited', 'INE123456789', 'Banks', weight, `${weight}%`],
         ['GRAND TOTAL', '', '', 100, '100%'],
       ]);
+
     XLSX.utils.book_append_sheet(book, sheet(100), 'GOOD');
     XLSX.utils.book_append_sheet(book, sheet(40), 'BAD');
     const workbook = new Uint8Array(XLSX.write(book, { type: 'buffer', bookType: 'xlsx' }));
     const result = await collectFundHoldings(index, async () => workbook);
+
     expect(result.portfolios).toHaveLength(1);
     expect(result.failures).toEqual([
       {

@@ -39,16 +39,23 @@ export function parseNseConstituents(text: string, marketCap: MarketCap): StockR
     const out: string[] = [];
     let cell = '',
       quoted = false;
+
     for (const ch of line) {
-      if (ch === '"') quoted = !quoted;
-      else if (ch === ',' && !quoted) {
+      if (ch === '"') {
+        quoted = !quoted;
+      } else if (ch === ',' && !quoted) {
         out.push(cell.trim());
         cell = '';
-      } else cell += ch;
+      } else {
+        cell += ch;
+      }
     }
+
     out.push(cell.trim());
+
     return out;
   };
+
   const lines = text
     .replace(/^\uFEFF/, '')
     .split(/\r?\n/)
@@ -57,11 +64,18 @@ export function parseNseConstituents(text: string, marketCap: MarketCap): StockR
   const symbol = head.indexOf('symbol'),
     isin = head.indexOf('isin code'),
     industry = head.indexOf('industry');
-  if ([symbol, isin, industry].some((n) => n < 0))
+
+  if ([symbol, isin, industry].some((n) => n < 0)) {
     throw new Error('NSE constituent headings have changed');
+  }
+
   const rows = lines.slice(1).flatMap((line) => {
     const p = split(line);
-    if (!p[symbol] || !p[isin]) return [];
+
+    if (!p[symbol] || !p[isin]) {
+      return [];
+    }
+
     return [
       {
         symbol: p[symbol]!.toUpperCase(),
@@ -71,7 +85,11 @@ export function parseNseConstituents(text: string, marketCap: MarketCap): StockR
       },
     ];
   });
-  if (!rows.length) throw new Error('NSE constituent list is empty');
+
+  if (!rows.length) {
+    throw new Error('NSE constituent list is empty');
+  }
+
   return rows;
 }
 
@@ -90,10 +108,20 @@ export async function fetchNseReference(
       ? r.value
       : (previous?.rows.filter((s) => s.marketCap === buckets[i]) ?? []),
   );
-  if (!rows.length) throw new Error('NSE classification lists are unavailable');
+
+  if (!rows.length) {
+    throw new Error('NSE classification lists are unavailable');
+  }
+
   // Defensive deduplication during index reconstitutions: larger cap bucket wins.
   const unique = new Map<string, StockReference>();
-  for (const row of rows) if (!unique.has(row.isin)) unique.set(row.isin, row);
+
+  for (const row of rows) {
+    if (!unique.has(row.isin)) {
+      unique.set(row.isin, row);
+    }
+  }
+
   return {
     date: stale.length && previous ? previous.date : date,
     rows: [...unique.values()],
@@ -107,6 +135,7 @@ export function validateNseReference(value: unknown): NseReferenceFile {
   const caps: unknown[] = Object.keys(NSE_LISTS);
   const text = (v: unknown, max: number, empty = false) =>
     typeof v === 'string' && v.length <= max && (empty || v.length > 0);
+
   if (
     !file ||
     !isISODate(file.date) ||
@@ -122,8 +151,10 @@ export function validateNseReference(value: unknown): NseReferenceFile {
         text(r.industry, 200, true) &&
         caps.includes(r.marketCap),
     )
-  )
+  ) {
     throw new Error('Unexpected NSE list data');
+  }
+
   return file;
 }
 
@@ -132,10 +163,22 @@ export function mergeNseReference(
   next: NseReferenceFile | undefined,
   old: NseReferenceFile | undefined,
 ): NseReferenceFile | undefined {
-  if (!next) return old ? { ...old, stale: ['large', 'mid', 'small', 'micro'] } : undefined;
-  if (!old || !next.stale?.length) return next;
+  if (!next) {
+    return old ? { ...old, stale: ['large', 'mid', 'small', 'micro'] } : undefined;
+  }
+
+  if (!old || !next.stale?.length) {
+    return next;
+  }
+
   const rows = [...next.rows, ...old.rows.filter((r) => next.stale!.includes(r.marketCap))];
   const unique = new Map<string, StockReference>();
-  for (const row of rows) if (!unique.has(row.isin)) unique.set(row.isin, row);
+
+  for (const row of rows) {
+    if (!unique.has(row.isin)) {
+      unique.set(row.isin, row);
+    }
+  }
+
   return { ...next, date: old.date < next.date ? old.date : next.date, rows: [...unique.values()] };
 }

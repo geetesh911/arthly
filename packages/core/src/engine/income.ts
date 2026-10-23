@@ -3,7 +3,8 @@
 import { get, type State } from '../log/replay.ts';
 import { assetTypeFor } from '../plugins/assets/index.ts';
 import { addDays, fyEnd, fyStart } from '../util/dates.ts';
-import { engineCache, assetContext, type EngineOptions } from './portfolio.ts';
+
+import { assetContext, engineCache, type EngineOptions } from './portfolio.ts';
 import { interestPaidOut, positions } from './positions.ts';
 import type { PriceBook } from './prices.ts';
 import { DEFAULT_RATES } from './rates.ts';
@@ -38,6 +39,7 @@ export function income(
   const before = addDays(from, -1);
   const ctx = assetContext(book, to, rates, cache);
   const rows: IncomeRow[] = [];
+
   for (const p of positions(state, to, book, cache.ledgers)) {
     const i = get(state, 'instrument', p.instrumentId)!;
     const memberId = get(state, 'account', p.accountId)!.memberId;
@@ -46,8 +48,10 @@ export function income(
     const base = { fy, memberId, accountId: p.accountId, instrumentId: p.instrumentId };
 
     const dividends = inYear.filter((e) => e.type === 'dividend' || e.type === 'dividend-reinvest');
+
     if (dividends.length) {
       const amount = dividends.reduce((s, e) => s + e.amount, 0);
+
       rows.push({
         ...base,
         type: 'dividend',
@@ -62,17 +66,22 @@ export function income(
     let received = inYear.filter((e) => e.type === 'interest').reduce((s, e) => s + e.amount, 0);
     let estimated = false;
     const projected = type.projected?.(p, i, before, to, ctx) ?? [];
+
     if (i.kind === 'ppf' || i.kind === 'epf') {
       const credits = projected.filter((f) => f.kind === 'credit');
+
       received = credits.reduce((s, f) => s + f.amount, 0);
       estimated = credits.some((f) => f.estimated);
     } else if (interestPaidOut(i) && !p.hasInterest) {
       const assumed = projected.filter((f) => f.kind === 'payout' || f.kind === 'coupon');
+
       received += assumed.reduce((s, f) => s + f.amount, 0);
       estimated = assumed.length > 0;
     }
+
     const accrued = type.accrued?.(p, i, before, to, ctx) ?? 0;
     const tds = inYear.filter((e) => e.type === 'tax').reduce((s, e) => s + e.amount, 0);
+
     if (received > 0.005 || accrued > 0.005 || tds > 0) {
       rows.push({
         ...base,
@@ -85,5 +94,6 @@ export function income(
       });
     }
   }
+
   return rows;
 }

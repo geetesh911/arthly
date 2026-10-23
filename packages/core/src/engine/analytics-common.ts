@@ -33,8 +33,13 @@ export const shareOf = (value: number, total: number) => (total > 0 ? value / to
 
 export function breakdown(rows: { label: string; value: number }[]): Breakdown {
   const map = new Map<string, number>();
-  for (const r of rows) map.set(r.label, (map.get(r.label) ?? 0) + r.value);
+
+  for (const r of rows) {
+    map.set(r.label, (map.get(r.label) ?? 0) + r.value);
+  }
+
   const total = rows.reduce((n, r) => n + r.value, 0);
+
   return {
     total,
     classified: total - (map.get('Unclassified') ?? 0),
@@ -55,6 +60,7 @@ export function finishConcentration(input: ExposureRow[], total: number): Concen
     }))
     .sort((a, b) => b.value - a.value);
   const hhi = rows.reduce((n, r) => n + r.share ** 2, 0);
+
   return {
     total: subtotal,
     count: rows.length,

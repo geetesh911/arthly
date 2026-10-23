@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { version } from '$app/env';
   import Download from '@lucide/svelte/icons/download';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
@@ -9,7 +10,7 @@
   import Sun from '@lucide/svelte/icons/sun';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import type { Group } from '@pv/core';
-  import { onMount } from 'svelte';
+
   import { api, list } from '#lib/api.ts';
   import { app, attempt, changed, lock, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -61,10 +62,14 @@
   });
 
   async function run(action: () => Promise<unknown>, message: string): Promise<boolean> {
-    if ((await attempt(action)) === undefined) return false;
+    if ((await attempt(action)) === undefined) {
+      return false;
+    }
+
     say(message);
     await changed();
     await load();
+
     return true;
   }
 
@@ -75,13 +80,21 @@
         'Excel and JSON files are not encrypted. Anyone who opens the file can read your holdings.',
       action: 'Export',
     });
-    if (!ok) return;
+
+    if (!ok) {
+      return;
+    }
+
     const file = await attempt(() => api().exportFile(kind));
-    if (file) saveFile(file);
+
+    if (file) {
+      saveFile(file);
+    }
   }
 
   async function backup() {
     const file = await attempt(() => api().backup());
+
     if (file) {
       saveFile(file);
       say('Backup saved. It is encrypted with your passphrase.');
@@ -92,6 +105,7 @@
   async function addPasskey() {
     await run(async () => {
       const key = await enrolPasskey(app.vault?.name ?? 'Arthly');
+
       await api().addPasskey(
         key.credentialId,
         key.prfSalt,
@@ -103,8 +117,11 @@
 
   async function changePass(event: Event) {
     event.preventDefault();
-    if (newPass.length < 10 || newPass !== newPass2)
+
+    if (newPass.length < 10 || newPass !== newPass2) {
       return say('Use at least 10 characters, typed the same twice');
+    }
+
     await run(() => api().changePassphrase(newPass), 'Passphrase changed');
     newPass = newPass2 = '';
   }
@@ -115,15 +132,27 @@
       description: 'The old one stops working.',
       action: 'Make a new code',
     });
-    if (!ok) return;
+
+    if (!ok) {
+      return;
+    }
+
     const c = await attempt(() => api().replaceRecoveryCode());
-    if (c) code = c;
+
+    if (c) {
+      code = c;
+    }
+
     await load();
   }
 
   async function addMember(event: Event) {
     event.preventDefault();
-    if (!newMember.trim()) return;
+
+    if (!newMember.trim()) {
+      return;
+    }
+
     await run(
       () =>
         api().save('member', {
@@ -139,6 +168,7 @@
 
   function accountsOf(memberId: string) {
     const n = accounts.filter((a) => a.memberId === memberId).length;
+
     return n ? plural(n, 'account') : 'No accounts';
   }
 
@@ -155,12 +185,19 @@
       action: 'Remove',
       destructive: true,
     });
-    if (ok) await run(() => api().removeAccount(a.id), 'Account removed');
+
+    if (ok) {
+      await run(() => api().removeAccount(a.id), 'Account removed');
+    }
   }
 
   async function addGroup(event: Event) {
     event.preventDefault();
-    if (!groupName.trim()) return;
+
+    if (!groupName.trim()) {
+      return;
+    }
+
     await run(
       () =>
         api().save('group', {
@@ -179,19 +216,30 @@
       description: 'Records you edited since are kept.',
       action: 'Undo',
     });
-    if (ok) await run(() => api().revertImport(batchId), 'Import undone');
+
+    if (ok) {
+      await run(() => api().revertImport(batchId), 'Import undone');
+    }
   }
 
   async function forget() {
-    if (!app.vault) return;
+    if (!app.vault) {
+      return;
+    }
+
     const ok = await ask({
       title: `Remove "${app.vault.name}" from this device?`,
       description: 'Without a backup or sync, its data is gone for good.',
       action: 'Remove',
       destructive: true,
     });
-    if (!ok) return;
+
+    if (!ok) {
+      return;
+    }
+
     const id = app.vault.vaultId;
+
     await lock();
     await api().removeVault(id);
   }
@@ -215,8 +263,11 @@
         variant="outline"
         bind:value={theme}
         onValueChange={(v) => {
-          if (v) setTheme(v as Theme);
-          else theme = readTheme();
+          if (v) {
+            setTheme(v as Theme);
+          } else {
+            theme = readTheme();
+          }
         }}
         aria-label="Theme"
       >
@@ -404,7 +455,10 @@
           onclick={() =>
             run(async () => {
               const r = await api().refreshPrices(true);
-              if (!r.ok) throw new Error(r.message);
+
+              if (!r.ok) {
+                throw new Error(r.message);
+              }
             }, 'Prices updated')}><RefreshCw />Update prices now</Button
         >
       </div>

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { onMount } from 'svelte';
+
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import PageHeader from '#lib/components/PageHeader.svelte';
@@ -23,10 +24,12 @@
 
   $effect(() => {
     void app.version;
-    if (fy !== null)
+
+    if (fy !== null) {
       void api()
         .income(fy)
         .then((r) => (rows = r));
+    }
   });
 
   const shown = $derived(

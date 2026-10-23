@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
 import { amfiDate, parseAmfi, parseBhavcopy } from './parse.ts';
 
 const fixture = (name: string) => readFileSync(join(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -9,6 +10,7 @@ const fixture = (name: string) => readFileSync(join(import.meta.dirname, 'fixtur
 describe('AMFI', () => {
   it('parses schemes with plan, option and category', () => {
     const { date, rows } = parseAmfi(fixture('NAVAll.txt'));
+
     expect(date).toBe('2026-10-21');
     expect(rows.find((r) => r[0] === '147481')).toEqual([
       '147481',
@@ -36,6 +38,7 @@ describe('AMFI', () => {
 describe('bhavcopy', () => {
   it('parses NSE stocks, ETFs and SGBs', () => {
     const { date, rows } = parseBhavcopy(fixture('nse-bhavcopy.csv'));
+
     expect(date).toBe('2026-10-21');
     expect(rows).toContainEqual(['SGBFEB32IV', 'GB', 'IN0020230184', 15155.6]);
     expect(rows).toContainEqual(['NIFTYBEES', 'EQ', 'INF204KB14I2', 259.57]);
@@ -43,6 +46,7 @@ describe('bhavcopy', () => {
 
   it('parses BSE in the same format', () => {
     const { rows } = parseBhavcopy(fixture('bse-bhavcopy.csv'));
+
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every((r) => r[2].startsWith('IN'))).toBe(true);
   });

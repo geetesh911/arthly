@@ -1,10 +1,12 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
-  import { getChartContext, Tooltip as TooltipPrimitive } from 'layerchart';
-  import { cn, type WithElementRef, type WithoutChildren } from '#lib/utils.ts';
-  import { getPayloadConfigFromPayload, useChart, type TooltipPayload } from './chart-utils.ts';
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
+  import { getChartContext, Tooltip as TooltipPrimitive } from 'layerchart';
+
+  import { cn, type WithElementRef, type WithoutChildren } from '#lib/utils.ts';
+
+  import { getPayloadConfigFromPayload, type TooltipPayload, useChart } from './chart-utils.ts';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function defaultFormatter(value: any, _payload: TooltipPayload[]) {
@@ -59,7 +61,9 @@
   );
 
   const formattedLabel = $derived.by(() => {
-    if (hideLabel || !visibleSeries?.length) return null;
+    if (hideLabel || !visibleSeries?.length) {
+      return null;
+    }
 
     const item = visibleSeries[0]!;
     const tooltipData = chartCtx.tooltip.data;
@@ -76,6 +80,7 @@
     );
 
     let value: unknown;
+
     if (!labelKey && typeof label === 'string') {
       value = chart.config[label as keyof typeof chart.config]?.label ?? label;
     } else if (labelKey) {
@@ -84,8 +89,14 @@
       value = dataLabel;
     }
 
-    if (value === undefined) return null;
-    if (!labelFormatter) return value;
+    if (value === undefined) {
+      return null;
+    }
+
+    if (!labelFormatter) {
+      return value;
+    }
+
     return labelFormatter(value, visibleSeries);
   });
 
@@ -145,7 +156,8 @@
               <itemConfig.icon />
             {:else if !hideIndicator}
               <div
-                style="--color-bg: {indicatorColor}; --color-border: {indicatorColor};"
+                style:--color-bg={indicatorColor}
+                style:--color-border={indicatorColor}
                 class={cn('shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)', {
                   'h-2.5 w-2.5': indicator === 'dot',
                   'h-full w-1': indicator === 'line',

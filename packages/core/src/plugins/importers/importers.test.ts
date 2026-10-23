@@ -2,16 +2,18 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
 import { checks } from '../../engine/checks.ts';
 import { evaluate, summary } from '../../engine/portfolio.ts';
 import { PriceBook } from '../../engine/prices.ts';
-import { applyPlan, pickImporter, planImport, sha256Hex, upToDate } from '../../import/plan.ts';
 import { readPdf } from '../../import/pdf-node.ts';
+import { applyPlan, pickImporter, planImport, sha256Hex, upToDate } from '../../import/plan.ts';
 import { inputFile } from '../../import/sheet.ts';
 import type { Cell, ImportContext, Importer, InputFile } from '../../import/types.ts';
-import { importApplyEvent, putEvent, type Event } from '../../log/events.ts';
+import { type Event, importApplyEvent, putEvent } from '../../log/events.ts';
 import { formatHlc } from '../../log/hlc.ts';
 import { all, replay } from '../../log/replay.ts';
+
 import { bobPpfStatement } from './bob-ppf-statement/index.ts';
 import { epfoPassbook } from './epfo-passbook/index.ts';
 import { growwMfHoldings } from './groww-mf-holdings/index.ts';
@@ -48,13 +50,18 @@ async function importTwice(file: InputFile, importer: Importer) {
     importApplyEvent(formatHlc(2, 0, 'aaaaaaaa'), applyPlan(first, 'bat_1')!),
   ]);
   const again = planImport(state, await importer.parse(file, ctx), options);
+
   return { first, state, again };
 }
 
 function fixtures(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return fixtures(path);
+
+    if (statSync(path).isDirectory()) {
+      return fixtures(path);
+    }
+
     return path.includes('/fixtures/') && /\.(xlsx|xls|csv|pdf)$/.test(path)
       ? [path.slice(here.length + 1)]
       : [];
@@ -74,11 +81,13 @@ describe('picking an importer', () => {
 describe('groww-mf-holdings', () => {
   it('parses holdings, one per scheme and folio, and the file totals', async () => {
     const draft = await growwMfHoldings.parse(mfFile(), ctx);
+
     expect(draft.asOf).toBe('2026-10-21');
     expect(draft.totals).toEqual({ invested: 1_025_000, value: 1_094_818.5 });
     expect(draft.snapshots).toHaveLength(6);
     expect(draft.accounts.map((a) => a.label)).toContain('PPFAS Mutual Fund folio ••••5678');
     const ppfas = draft.snapshots.find((s) => s.instrument.includes('parag'))!;
+
     expect(ppfas).toMatchObject({ units: 1500.75, invested: 120_000, value: 135_067.75 });
     expect(draft.instruments.find((i) => i.name.includes('Corporate Bond'))?.assetClass).toBe(
       'debt',
@@ -92,6 +101,7 @@ describe('groww-mf-holdings', () => {
 describe('groww-stock-holdings', () => {
   it('parses stocks, ETFs and SGBs with their asset classes', async () => {
     const draft = await growwStockHoldings.parse(stockFile(), ctx);
+
     expect(draft.asOf).toBe('2026-10-20');
     expect(draft.accounts).toEqual([
       {
@@ -134,6 +144,7 @@ describe('bob-ppf-statement', () => {
 
   it('reads deposits and interest by value date, oldest first', async () => {
     const draft = await bobPpfStatement.parse(ppfFile(), ctx);
+
     expect(draft.asOf).toBe('2026-09-15');
     expect(draft.accounts).toEqual([
       {
@@ -177,6 +188,7 @@ describe('bob-ppf-statement', () => {
   it('agrees with the PPF rules, so the statement balance checks out', async () => {
     const { state, again } = await importTwice(ppfFile(), bobPpfStatement);
     const [h] = evaluate(state, new PriceBook(), '2026-09-15');
+
     expect(h!.balance).toBeCloseTo(44_861, 6);
     expect(h!.value).toBeGreaterThan(44_861);
     expect(h!.invested).toBe(38_050);
@@ -198,6 +210,7 @@ describe('bob-ppf-statement', () => {
       ]),
       ctx,
     );
+
     expect(draft.transactions.map((t) => [t.date, t.type, t.amount])).toEqual([
       ['2025-04-01', 'contribution', 150_000],
       ['2025-05-10', 'withdrawal', 50_000],
@@ -224,6 +237,7 @@ describe('bob-ppf-statement', () => {
       ]),
       ctx,
     );
+
     expect(draft.warnings).toContain(
       "The running balance in the file doesn't add up after 2025-05-10. Check the entries against your passbook.",
     );
@@ -236,6 +250,7 @@ describe('bob-ppf-statement', () => {
       ['02/07/2025', '02/07/2025', 'UPI/SHOP', null, '437.50', null, '9,685.50Cr'],
       ['30/06/2025', '30/06/2025', 'INT.PD', null, null, '123.00', '10,123.00Cr'],
     ]);
+
     expect(await bobPpfStatement.detect(savings)).toBeLessThan(0.6);
     expect(await bobPpfStatement.detect(mfFile())).toBe(0);
   });
@@ -258,6 +273,7 @@ describe('epfo-passbook', () => {
 
   it('reads contributions, interest and balances from the PDF, split by share', async () => {
     const draft = await epfoPassbook.parse(epfFile(), ctx);
+
     expect(draft.asOf).toBe('2026-03-31');
     expect(draft.accounts).toEqual([
       {
@@ -281,6 +297,7 @@ describe('epfo-passbook', () => {
       t.amount,
       t.meta!.part,
     ]);
+
     expect(rows).toHaveLength(38);
     expect(rows.slice(0, 3)).toEqual([
       ['2025-04-15', 'epf', 'contribution', 3_600, 'employee'],
@@ -311,6 +328,7 @@ describe('epfo-passbook', () => {
     const { state, again } = await importTwice(epfFile(), epfoPassbook);
     const holdings = evaluate(state, new PriceBook(), '2026-03-31');
     const held = (kind: string) => holdings.find((h) => h.instrument.kind === kind)!;
+
     expect(held('epf').balance).toBeCloseTo(252_713, 6);
     // EPS earns no interest, so its value is what went in.
     expect(held('eps').value).toBeCloseTo(75_000, 6);
@@ -333,6 +351,7 @@ describe('epfo-passbook', () => {
       ]),
       ctx,
     );
+
     expect(draft.accounts[0]!.label).toBe('Beta Systems Ltd EPF ••••1111');
     expect(draft.transactions).toEqual([]);
     expect(draft.asOf).toBe('2026-10-18');
@@ -359,6 +378,7 @@ describe('epfo-passbook', () => {
       ]),
       ctx,
     );
+
     expect(draft.transactions.map((t) => [t.date, t.type, t.amount, t.meta!.part])).toEqual([
       ['2026-05-15', 'contribution', 1_800, 'employee'],
       ['2026-05-15', 'contribution', 550, 'employer'],
@@ -383,6 +403,7 @@ describe('epfo-passbook', () => {
       ]),
       ctx,
     );
+
     expect(draft.warnings.slice(0, 3)).toEqual([
       "The contributions in the passbook don't add up to its totals for the year. Check the entries against your passbook.",
       "The passbook's entries don't add up to its closing balance. Check them against your passbook.",
@@ -399,12 +420,16 @@ describe('epfo-passbook', () => {
 describe('personal data', () => {
   it('never appears in a parsed draft', async () => {
     const paths = fixtures(here);
+
     expect(paths.length).toBeGreaterThanOrEqual(2);
+
     for (const path of paths) {
       const file = fixture(path);
       const picked = await pickImporter(file, importers);
+
       expect(picked, path).not.toBeNull();
       const text = JSON.stringify(await picked!.importer.parse(file, ctx));
+
       expect(text, path).not.toMatch(/\b[A-Z]{3}[PCHFATBLJG][A-Z]\d{4}[A-Z]\b/);
       expect(text, path).not.toMatch(/(?<!\d)[6-9]\d{9}(?!\d)/);
       expect(text, path).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
@@ -417,6 +442,7 @@ describe('import plan', () => {
   async function plan(state = replay([]), amfi?: ImportContext['amfi']) {
     const file = mfFile();
     const draft = await growwMfHoldings.parse(file, ctx);
+
     return planImport(state, draft, {
       importer: { id: 'groww-mf-holdings', version: 1 },
       file: { name: file.name, sha256: await sha256Hex(file.bytes), size: file.bytes.length },
@@ -427,6 +453,7 @@ describe('import plan', () => {
 
   it('imports a file once, then says it is up to date', async () => {
     const first = await plan();
+
     expect(first.totals?.ok).toBe(true);
     expect(
       first.items
@@ -444,6 +471,7 @@ describe('import plan', () => {
       importApplyEvent(formatHlc(2, 0, 'aaaaaaaa'), data),
     ];
     const state = replay(events);
+
     expect(
       all(state, 'snapshot').every(
         (s) => s.source.kind === 'import' && s.source.batchId === 'bat_1',
@@ -454,10 +482,12 @@ describe('import plan', () => {
     );
 
     const again = await plan(state);
+
     expect(upToDate(again)).toBe(true);
     expect(applyPlan(again)).toBeNull();
 
     const s = summary(state, new PriceBook([], [], all(state, 'snapshot')), '2026-10-21');
+
     expect(s.netWorth).toBeCloseTo(1_094_818.5, 2);
     expect(s.netInvested).toBeCloseTo(1_025_000, 2);
     expect(s.xirrEstimate).toBe(true);
@@ -475,6 +505,7 @@ describe('import plan', () => {
       { code: '120504', name: 'Axis Midcap Fund - Direct Plan - IDCW' },
     ]);
     const ppfas = p.matches.find((m) => m.instrument.name.startsWith('Parag'))!;
+
     expect(ppfas).toMatchObject({
       how: 'amfi',
       confirm: true,
@@ -489,12 +520,14 @@ describe('import plan', () => {
   it('flags file totals that do not match the lines', async () => {
     const file = mfFile();
     const draft = await growwMfHoldings.parse(file, ctx);
+
     draft.totals = { invested: 1_000_000, value: 1_094_818.5 };
     const p = planImport(replay([]), draft, {
       importer: { id: 'groww-mf-holdings', version: 1 },
       file: { name: 'holdings.xlsx', sha256: 'x', size: 1 },
       memberId: 'mem_1',
     });
+
     expect(p.totals?.ok).toBe(false);
     expect(p.findings.some((f) => f.key === 'recon.total')).toBe(true);
   });

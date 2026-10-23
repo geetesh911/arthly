@@ -11,14 +11,21 @@ const fromB64url = (text: string) =>
   Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 export async function passkeysSupported(): Promise<boolean> {
-  if (!window.PublicKeyCredential) return false;
+  if (!window.PublicKeyCredential) {
+    return false;
+  }
+
   try {
     const caps = await (
       PublicKeyCredential as unknown as {
         getClientCapabilities?: () => Promise<Record<string, boolean>>;
       }
     ).getClientCapabilities?.();
-    if (caps && 'extension:prf' in caps) return !!caps['extension:prf'];
+
+    if (caps && 'extension:prf' in caps) {
+      return !!caps['extension:prf'];
+    }
+
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch {
     return false;
@@ -42,7 +49,11 @@ async function evaluate(credentialId: string, prfSalt: string): Promise<Uint8Arr
   })) as PublicKeyCredential | null;
   const first = (assertion?.getClientExtensionResults() as PrfResults | undefined)?.prf?.results
     ?.first;
-  if (!first) throw new Error("This device's passkey can't unlock the vault");
+
+  if (!first) {
+    throw new Error("This device's passkey can't unlock the vault");
+  }
+
   return new Uint8Array(first);
 }
 
@@ -70,15 +81,23 @@ export async function enrolPasskey(
       } as AuthenticationExtensionsClientInputs,
     },
   })) as PublicKeyCredential | null;
-  if (!credential) throw new Error('No passkey was created');
+
+  if (!credential) {
+    throw new Error('No passkey was created');
+  }
+
   const credentialId = b64url(credential.rawId);
   const results = credential.getClientExtensionResults() as PrfResults;
-  if (results.prf?.enabled === false)
+
+  if (results.prf?.enabled === false) {
     throw new Error("This device's passkeys don't support unlocking");
+  }
+
   // Some browsers only give the PRF output when the passkey is used, not when it's made.
   const prfOutput = results.prf?.results?.first
     ? new Uint8Array(results.prf.results.first)
     : await evaluate(credentialId, prfSalt);
+
   return { credentialId, prfSalt, prfOutput };
 }
 
@@ -86,6 +105,7 @@ export async function usePasskey(
   passkeys: { credentialId: string; prfSalt: string }[],
 ): Promise<{ credentialId: string; prfOutput: Uint8Array }> {
   let last: unknown;
+
   for (const p of passkeys) {
     try {
       return { credentialId: p.credentialId, prfOutput: await evaluate(p.credentialId, p.prfSalt) };
@@ -93,5 +113,6 @@ export async function usePasskey(
       last = error;
     }
   }
+
   throw last ?? new Error('No passkey on this device');
 }

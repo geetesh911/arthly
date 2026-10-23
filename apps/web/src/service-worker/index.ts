@@ -19,7 +19,10 @@ const ASSETS = [
       .filter((path) => path !== '_headers'),
   ),
 ].map((path) => `${scope}${path}`);
-if (!ASSETS.includes(scope)) ASSETS.push(scope);
+
+if (!ASSETS.includes(scope)) {
+  ASSETS.push(scope);
+}
 
 sw.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
@@ -36,37 +39,54 @@ sw.addEventListener('activate', (event) => {
 });
 
 sw.addEventListener('message', (event) => {
-  if (event.data === 'skip-waiting') void sw.skipWaiting();
+  if (event.data === 'skip-waiting') {
+    void sw.skipWaiting();
+  }
 });
 
 async function receiveShare(request: Request): Promise<Response> {
   const form = await request.formData();
   const cache = await caches.open(SHARED);
   let n = 0;
+
   for (const value of form.getAll('files')) {
-    if (typeof value === 'string') continue;
+    if (typeof value === 'string') {
+      continue;
+    }
+
     await cache.put(
       `/shared/${n++}`,
       new Response(value, { headers: { 'x-name': encodeURIComponent(value.name) } }),
     );
   }
+
   return Response.redirect(`${scope}#/add?shared=${n}`, 303);
 }
 
 sw.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
   if (event.request.method === 'POST' && url.pathname.endsWith('/share')) {
     event.respondWith(receiveShare(event.request));
+
     return;
   }
-  if (event.request.method !== 'GET' || url.origin !== location.origin) return;
+
+  if (event.request.method !== 'GET' || url.origin !== location.origin) {
+    return;
+  }
+
   // The price relay (functions/api/prices) always goes to the network.
-  if (url.pathname.startsWith(`${scope}api/`)) return;
+  if (url.pathname.startsWith(`${scope}api/`)) {
+    return;
+  }
+
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const hit =
         (await cache.match(url.pathname)) ??
         (url.pathname.endsWith('/') ? await cache.match(`${url.pathname}index.html`) : undefined);
+
       return hit ?? fetch(event.request);
     }),
   );

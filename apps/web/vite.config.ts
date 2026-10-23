@@ -10,10 +10,14 @@ import { defineConfig, type Plugin } from 'vite';
 function workerFiles(): Plugin {
   const id = 'virtual:worker-files';
   const files: string[] = [];
+
   return {
     name: 'worker-files',
     writeBundle(_, bundle) {
-      if (this.environment.name !== 'client') return;
+      if (this.environment.name !== 'client') {
+        return;
+      }
+
       files.push(...Object.keys(bundle).filter((f) => f.includes('/immutable/workers/')));
     },
     resolveId: (source) => (source === id ? `\0${id}` : undefined),

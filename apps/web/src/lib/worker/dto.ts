@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Plain data the worker sends to the screens.
 import type {
-  AssetClass,
-  Analytics,
   AllocationTargets,
+  Analytics,
+  AssetClass,
   Benchmarks,
   Check,
-  Entry,
   EntityMap,
   EntityName,
+  Entry,
   HoldingStatus,
   ISODate,
   Lot,

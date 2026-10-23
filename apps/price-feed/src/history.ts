@@ -3,8 +3,8 @@
 import {
   addPoint,
   capSeries,
-  historyGroup,
   type HistoryGroup,
+  historyGroup,
 } from '@pv/core/plugins/prices/feed/format.ts';
 
 export { capSeries };
@@ -17,6 +17,7 @@ export function appendPrices(
   for (const p of prices) {
     const name = historyGroup(p.key);
     const group = groups.get(name) ?? {};
+
     groups.set(name, group);
     addPoint((group[p.key] ??= []), p.date, p.close);
   }
@@ -24,6 +25,8 @@ export function appendPrices(
 
 export function capGroups(groups: Map<string, HistoryGroup>, today: string): void {
   for (const group of groups.values()) {
-    for (const key of Object.keys(group)) group[key] = capSeries(group[key]!, today);
+    for (const key of Object.keys(group)) {
+      group[key] = capSeries(group[key]!, today);
+    }
   }
 }

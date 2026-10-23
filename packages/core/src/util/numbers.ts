@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 function roundTo(value: number, places: number): number {
   const factor = 10 ** places;
+
   return Math.round((value + Number.EPSILON * Math.sign(value)) * factor) / factor;
 }
 

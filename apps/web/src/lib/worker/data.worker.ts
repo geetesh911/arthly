@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The data worker: the only place the data key and decrypted records live.
 import * as Comlink from 'comlink';
+
 import { DataService } from './service.ts';
 import { indexedDbStorage } from './storage.ts';
 

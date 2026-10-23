@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import Info from '@lucide/svelte/icons/info';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-  import { untrack } from 'svelte';
+
   import { api } from '#lib/api.ts';
   import { attempt, changed, say } from '#lib/app.svelte.ts';
   import * as Alert from '#lib/components/ui/alert/index.ts';
@@ -42,7 +43,10 @@
   async function reject(ref: string) {
     rejected = [...rejected, ref];
     const next = await attempt(() => api().replan(current.planId, $state.snapshot(rejected)));
-    if (next) current = next;
+
+    if (next) {
+      current = next;
+    }
   }
 
   async function confirm() {
@@ -50,8 +54,13 @@
     const result = await attempt(() =>
       api().confirmImport(current.planId, $state.snapshot(excluded)),
     );
+
     busy = false;
-    if (!result) return;
+
+    if (!result) {
+      return;
+    }
+
     say(result.written ? `Imported ${current.fileName}` : 'Already up to date');
     await changed();
     onDone();

@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
-  import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-  import { cn, type WithElementRef } from '#lib/utils.ts';
   import type { HTMLSelectAttributes } from 'svelte/elements';
+  import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+
+  import { cn, type WithElementRef } from '#lib/utils.ts';
 
   type NativeSelectProps = Omit<WithElementRef<HTMLSelectAttributes>, 'size'> & {
     size?: 'sm' | 'default';

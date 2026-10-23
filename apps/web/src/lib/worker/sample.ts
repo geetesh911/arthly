@@ -3,11 +3,11 @@
 import {
   addDays,
   addMonths,
-  putEvent,
   type Clock,
   type EntityMap,
   type EntityName,
   type Event,
+  putEvent,
 } from '@pv/core';
 
 export function sampleEvents(clock: Clock, today: string): Event[] {
@@ -94,8 +94,10 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
   });
 
   let nav = 50;
+
   for (let m = 0; m < 30; m++) {
     const date = addMonths(start, m);
+
     nav *= 1.012;
     put('transaction', {
       id: `txn_demo_sip${m}`,
@@ -116,6 +118,7 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
       price: nav,
     });
   }
+
   put('manualPrice', {
     id: 'mp_demo_flexi_now',
     instrumentId: 'ins_demo_flexi',
@@ -150,6 +153,7 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
     currency: 'INR',
     source: manual,
   });
+
   for (let y = 0; y < 3; y++) {
     put('transaction', {
       id: `txn_demo_ppf${y}`,
@@ -162,10 +166,12 @@ export function sampleEvents(clock: Clock, today: string): Event[] {
       source: manual,
     });
   }
+
   put('group', {
     id: 'grp_demo',
     name: 'Long term',
     holdings: [{ instrumentId: 'ins_demo_flexi' }, { instrumentId: 'ins_demo_gold' }],
   });
+
   return events;
 }

@@ -37,10 +37,13 @@ export class MemoryProvider implements StorageProvider {
   offline = false;
 
   private check(): void {
-    if (this.offline) throw new OfflineError('offline');
+    if (this.offline) {
+      throw new OfflineError('offline');
+    }
   }
   async list(prefix: string) {
     this.check();
+
     return [...this.files.entries()]
       .filter(([path]) => path.startsWith(prefix))
       .map(([path, bytes]) => ({ path, size: bytes.length }));
@@ -48,7 +51,11 @@ export class MemoryProvider implements StorageProvider {
   async read(path: string) {
     this.check();
     const bytes = this.files.get(path);
-    if (!bytes) throw new Error(`Not found: ${path}`);
+
+    if (!bytes) {
+      throw new Error(`Not found: ${path}`);
+    }
+
     return bytes.slice();
   }
   async write(path: string, bytes: Uint8Array) {

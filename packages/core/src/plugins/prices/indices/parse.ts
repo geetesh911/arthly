@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // NSE's daily index snapshot (ind_close_all_DDMMYYYY.csv) and BSE's daily all-indices file
 // (allindices_DDMMYYYY.csv). Both list every index the exchange published that day.
-import { isISODate, makeDate, type ISODate } from '../../../util/dates.ts';
+import { isISODate, type ISODate, makeDate } from '../../../util/dates.ts';
 import { csvLine } from '../feed/parse.ts';
+
 import type { IndexObservation, IndexProvider, ReturnBasis } from './types.ts';
 
 export interface ParsedIndices {
@@ -19,25 +20,47 @@ const slug = (text: string) =>
 
 /** Nifty's fixed-income indices are total return, apart from the clean-price one. */
 function nseBasis(name: string): ReturnBasis {
-  if (/\bVIX\b/i.test(name)) return 'volatility';
-  if (/clean price/i.test(name)) return 'price';
+  if (/\bVIX\b/i.test(name)) {
+    return 'volatility';
+  }
+
+  if (/clean price/i.test(name)) {
+    return 'price';
+  }
+
   // Dividend points, and strategy indices built on futures, leverage or arbitrage.
-  if (/dividend points|inverse|leverage|futures|arbitrage/i.test(name)) return 'unknown';
-  if (/\bTR\b|total return/i.test(name)) return 'total';
-  if (/G-?Sec|Bond|1D Rate|T-Bill|SDL|Gilt|Money Market/i.test(name)) return 'total';
+  if (/dividend points|inverse|leverage|futures|arbitrage/i.test(name)) {
+    return 'unknown';
+  }
+
+  if (/\bTR\b|total return/i.test(name)) {
+    return 'total';
+  }
+
+  if (/G-?Sec|Bond|1D Rate|T-Bill|SDL|Gilt|Money Market/i.test(name)) {
+    return 'total';
+  }
+
   return 'price';
 }
 
 /** BSE doesn't say which of its bond and strategy indices include interest. */
 function bseBasis(name: string): ReturnBasis {
-  if (/G-?Sec|Bond|Liquid Rate|Inverse|Leverage/i.test(name)) return 'unknown';
+  if (/G-?Sec|Bond|Liquid Rate|Inverse|Leverage/i.test(name)) {
+    return 'unknown';
+  }
+
   return 'price';
 }
 
 /** A number, nothing for a blank or a dash, or NaN when the cell holds something else. */
 function number(cell: string | undefined): number | undefined {
   const text = (cell ?? '').replaceAll(',', '');
-  if (text === '' || text === '-') return undefined;
+
+  if (text === '' || text === '-') {
+    return undefined;
+  }
+
   return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(text) ? Number(text) : NaN;
 }
 
@@ -65,15 +88,23 @@ function parse(text: string, layout: Layout): ParsedIndices {
   const col = Object.fromEntries(
     Object.entries(layout.heads).map(([k, h]) => [k, head.indexOf(h.toLowerCase())]),
   );
-  if (col.name! < 0 || col.date! < 0 || col.close! < 0)
+
+  if (col.name! < 0 || col.date! < 0 || col.close! < 0) {
     throw new Error(`${layout.label} index file headings have changed`);
+  }
+
   const warnings: string[] = [];
   const found = new Map<string, IndexObservation | null>();
+
   for (const line of lines.slice(1)) {
     const p = csvLine(line);
     const cell = (k: string) => (col[k]! >= 0 ? (p[col[k]!] ?? '') : '');
     const name = cell('name');
-    if (!name) continue;
+
+    if (!name) {
+      continue;
+    }
+
     const values = {
       open: number(cell('open')),
       high: number(cell('high')),
@@ -89,10 +120,14 @@ function parse(text: string, layout: Layout): ParsedIndices {
     };
     const date = layout.date(cell('date'));
     const warn = (why: string) => warnings.push(`${layout.label}: ${name} ${why}`);
-    if (Object.values(values).some((n) => Number.isNaN(n))) warn('has a malformed number');
-    else if (!date) warn('has an impossible date');
-    else if (!(values.close! > 0)) warn('has no closing level');
-    else {
+
+    if (Object.values(values).some((n) => Number.isNaN(n))) {
+      warn('has a malformed number');
+    } else if (!date) {
+      warn('has an impossible date');
+    } else if (!(values.close! > 0)) {
+      warn('has no closing level');
+    } else {
       const row: IndexObservation = {
         id: `${layout.provider}:${slug(layout.id(cell))}`,
         provider: layout.provider,
@@ -115,24 +150,36 @@ function parse(text: string, layout: Layout): ParsedIndices {
         pb: values.pb,
         dividendYield: fraction(values.dividendYield),
       };
-      for (const [k, v] of Object.entries(extra))
-        if (v !== undefined) (row as unknown as Record<string, number>)[k] = v;
+
+      for (const [k, v] of Object.entries(extra)) {
+        if (v !== undefined) {
+          (row as unknown as Record<string, number>)[k] = v;
+        }
+      }
+
       const seen = found.get(row.id);
-      if (seen === undefined) found.set(row.id, row);
-      else if (seen && (seen.date !== row.date || seen.close !== row.close)) {
+
+      if (seen === undefined) {
+        found.set(row.id, row);
+      } else if (seen && (seen.date !== row.date || seen.close !== row.close)) {
         found.set(row.id, null);
         warn('is listed twice with different levels');
       }
     }
   }
+
   const rows = [...found.values()].filter((r): r is IndexObservation => r !== null);
-  if (!rows.length && !warnings.length)
+
+  if (!rows.length && !warnings.length) {
     throw new Error(`${layout.label} index file has no indices`);
+  }
+
   return { rows, warnings };
 }
 
 function checkedDate(year: number, month: number, day: number): ISODate | undefined {
   const date = makeDate(year, month, day);
+
   return isISODate(date) ? date : undefined;
 }
 
@@ -164,6 +211,7 @@ export function parseNseIndices(text: string): ParsedIndices {
     },
     date: (t) => {
       const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(t);
+
       return m ? checkedDate(+m[3]!, +m[2]!, +m[1]!) : undefined;
     },
     id: (cell) => cell('name'),
@@ -187,6 +235,7 @@ export function parseBseIndices(text: string): ParsedIndices {
     },
     date: (t) => {
       const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+
       return m ? checkedDate(+m[3]!, +m[1]!, +m[2]!) : undefined;
     },
     id: (cell) => cell('code') || cell('name'),

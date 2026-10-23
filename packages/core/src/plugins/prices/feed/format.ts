@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The public price feed's files. The feed job writes them and the app reads them; all under /v1/.
 import { sha256 } from '@noble/hashes/sha2.js';
+
 import { toHex, utf8 } from '../../../util/bytes.ts';
 import { addDays, endOfMonth, type ISODate } from '../../../util/dates.ts';
 
@@ -63,12 +64,19 @@ export const DAILY_DAYS = 400;
 /** Adds a close to a series kept in date order; a newer close for the same date replaces it. */
 export function addPoint(series: [ISODate, number][], date: ISODate, close: number): void {
   const last = series.at(-1);
-  if (last && last[0] === date) last[1] = close;
-  else if (!last || last[0] < date) series.push([date, close]);
-  else {
+
+  if (last && last[0] === date) {
+    last[1] = close;
+  } else if (!last || last[0] < date) {
+    series.push([date, close]);
+  } else {
     const at = series.findIndex(([d]) => d >= date);
-    if (series[at]![0] === date) series[at]![1] = close;
-    else series.splice(at, 0, [date, close]);
+
+    if (series[at]![0] === date) {
+      series[at]![1] = close;
+    } else {
+      series.splice(at, 0, [date, close]);
+    }
   }
 }
 
@@ -76,10 +84,16 @@ export function addPoint(series: [ISODate, number][], date: ISODate, close: numb
 export function capSeries(series: [ISODate, number][], today: ISODate): [ISODate, number][] {
   const cutoff = addDays(today, -DAILY_DAYS);
   const out: [ISODate, number][] = [];
+
   for (const [i, point] of series.entries()) {
     const next = series[i + 1];
-    if (point[0] >= cutoff) out.push(point);
-    else if (!next || endOfMonth(next[0]) !== endOfMonth(point[0])) out.push(point);
+
+    if (point[0] >= cutoff) {
+      out.push(point);
+    } else if (!next || endOfMonth(next[0]) !== endOfMonth(point[0])) {
+      out.push(point);
+    }
   }
+
   return out;
 }

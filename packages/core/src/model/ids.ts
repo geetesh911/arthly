@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { sha256 } from '@noble/hashes/sha2.js';
+
 import { base32Encode } from '../util/base32.ts';
 import { randomBytes, utf8 } from '../util/bytes.ts';
 import { roundAmount, roundUnits } from '../util/numbers.ts';
+
 import type { AccountKind, InstrumentIds, TransactionType } from './types.ts';
 
 /** 26 base32 characters, about 130 bits. */
@@ -10,6 +12,7 @@ const ID_LENGTH = 26;
 
 export function hashId(prefix: string, parts: readonly unknown[]): string {
   const digest = sha256(utf8.encode(JSON.stringify(parts)));
+
   return `${prefix}_${base32Encode(digest).slice(0, ID_LENGTH)}`;
 }
 
@@ -32,15 +35,31 @@ export function normaliseName(name: string): string {
 /** Keeps the last 4 characters: "1234567890" → "••••7890". */
 export function mask(ref: string): string {
   const clean = ref.replace(/\s+/g, '');
+
   return clean.length <= 4 ? clean : `••••${clean.slice(-4)}`;
 }
 
 export function instrumentKey(ids: InstrumentIds, name: string): string {
-  if (ids.isin) return `isin:${ids.isin.toUpperCase()}`;
-  if (ids.amfi) return `amfi:${ids.amfi}`;
-  if (ids.nse) return `nse:${ids.nse.toUpperCase()}`;
-  if (ids.bse) return `bse:${ids.bse}`;
-  if (ids.us) return `us:${ids.us.toUpperCase()}`;
+  if (ids.isin) {
+    return `isin:${ids.isin.toUpperCase()}`;
+  }
+
+  if (ids.amfi) {
+    return `amfi:${ids.amfi}`;
+  }
+
+  if (ids.nse) {
+    return `nse:${ids.nse.toUpperCase()}`;
+  }
+
+  if (ids.bse) {
+    return `bse:${ids.bse}`;
+  }
+
+  if (ids.us) {
+    return `us:${ids.us.toUpperCase()}`;
+  }
+
   return `name:${normaliseName(name)}`;
 }
 

@@ -2,25 +2,26 @@
 // Reads the public price feed. Latest prices always come as whole files, and history as whole
 // groups of about 75 instruments, so the host never learns which single instrument you hold.
 import { gunzip } from '../../../crypto/chunk.ts';
-import { priceKeys, type Price } from '../../../engine/prices.ts';
+import { type Price, priceKeys } from '../../../engine/prices.ts';
 import type { RateTables } from '../../../engine/rates.ts';
 import type { AmfiScheme } from '../../../import/types.ts';
 import type { Instrument } from '../../../model/types.ts';
 import { utf8 } from '../../../util/bytes.ts';
-import type { PriceContext, PriceSource } from '../types.ts';
-import { validateNseReference, type NseReferenceFile } from '../reference.ts';
+import { type CapFile, validateAmfiCaps } from '../caps/caps.ts';
 import { validateFundHoldings } from '../fund-holdings/collect.ts';
 import type { FundHoldingsFile } from '../fund-holdings/types.ts';
 import { validateIndexData } from '../indices/data.ts';
 import type { IndexDataFile } from '../indices/types.ts';
-import { validateAmfiCaps, type CapFile } from '../caps/caps.ts';
+import { type NseReferenceFile, validateNseReference } from '../reference.ts';
+import type { PriceContext, PriceSource } from '../types.ts';
+
 import {
-  FEED_PATHS,
-  historyGroup,
   type AmfiFile,
   type ExchangeFile,
+  FEED_PATHS,
   type FxFile,
   type HistoryGroup,
+  historyGroup,
   type Manifest,
 } from './format.ts';
 
@@ -40,6 +41,7 @@ export function latestPrices(files: {
   const { amfi, exchange, fx } = files;
   const prices: Price[] = [];
   const schemes: AmfiScheme[] = [];
+
   for (const [code, isinGrowth, isinReinvest, name, category, nav, date] of amfi?.rows ?? []) {
     prices.push({ key: `amfi:${code}`, date, close: nav, currency: 'INR', source: 'amfi' });
     schemes.push({
@@ -50,14 +52,21 @@ export function latestPrices(files: {
       ...(category ? { category } : {}),
     });
   }
-  if (exchange)
+
+  if (exchange) {
     for (const [symbol, , isin, close] of exchange.rows) {
       const { date, source } = exchange;
       const base = { date, close, currency: 'INR' as const, source };
-      if (isin) prices.push({ ...base, key: `isin:${isin}` });
+
+      if (isin) {
+        prices.push({ ...base, key: `isin:${isin}` });
+      }
+
       prices.push({ ...base, key: `${source}:${symbol}` });
     }
-  if (fx)
+  }
+
+  if (fx) {
     prices.push({
       key: 'fx:USDINR',
       date: fx.date,
@@ -65,19 +74,29 @@ export function latestPrices(files: {
       currency: 'INR',
       source: 'ecb',
     });
+  }
+
   return { prices, schemes };
 }
 
 async function getBytes(ctx: PriceContext, url: string): Promise<Uint8Array<ArrayBuffer>> {
   const res = await ctx.fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`${url}: ${res.status}`);
+
+  if (!res.ok) {
+    throw new Error(`${url}: ${res.status}`);
+  }
+
   return new Uint8Array(await res.arrayBuffer());
 }
 
 async function getJson<T>(ctx: PriceContext, url: string): Promise<T> {
   let bytes = await getBytes(ctx, url);
+
   // GitHub Pages serves .gz as a file, not as an encoding; browsers may still have unpacked it.
-  if (url.endsWith('.gz') && bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = await gunzip(bytes);
+  if (url.endsWith('.gz') && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    bytes = await gunzip(bytes);
+  }
+
   return JSON.parse(utf8.decode(bytes)) as T;
 }
 
@@ -109,6 +128,7 @@ export class FeedClient {
           .then(validateNseReference)
           .catch(() => undefined)
       : undefined;
+
     return { manifest, ...latestPrices({ amfi, exchange, fx }), nse };
   }
 
@@ -117,6 +137,7 @@ export class FeedClient {
       getJson<RateTables['ppf']>(ctx, this.url(FEED_PATHS.ppfRates)),
       getJson<RateTables['epf']>(ctx, this.url(FEED_PATHS.epfRates)),
     ]);
+
     return { ppf, epf };
   }
 
@@ -139,16 +160,23 @@ export class FeedClient {
     const wanted = new Set(keys);
     const groups = [...new Set(keys.map(historyGroup))];
     const prices: Price[] = [];
+
     for (const group of groups) {
       const data = await getJson<HistoryGroup>(ctx, this.url(FEED_PATHS.history(group))).catch(
         () => ({}) as HistoryGroup,
       );
+
       for (const [key, points] of Object.entries(data)) {
-        if (!wanted.has(key)) continue;
-        for (const [date, close] of points)
+        if (!wanted.has(key)) {
+          continue;
+        }
+
+        for (const [date, close] of points) {
           prices.push({ key, date, close, currency: 'INR', source: 'feed' });
+        }
       }
     }
+
     return prices;
   }
 }
@@ -162,11 +190,14 @@ export function feedSource(client: FeedClient): PriceSource {
     covers: (i) => i.currency === 'INR' && priceKeys(i).length > 0,
     async latest(list, ctx) {
       const keys = new Set(list.flatMap(priceKeys));
+
       keys.add('fx:USDINR');
+
       return (await client.latest(ctx)).prices.filter((p) => keys.has(p.key));
     },
     async history(list: Instrument[], from, to, ctx) {
       const keys = [...list.flatMap(priceKeys), 'fx:USDINR'];
+
       return (await client.history(keys, ctx)).filter((p) => p.date >= from && p.date <= to);
     },
   };

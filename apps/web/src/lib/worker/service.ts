@@ -5,58 +5,78 @@ import {
   activeWraps,
   addDays,
   addFundReports,
-  daysBetween,
   addPasskey,
   all,
+  type AllocationTargets,
+  type AmfiScheme,
   applyPlan,
+  benchmarks,
+  type CapFile,
   checks as runChecks,
   createVault,
+  daysBetween,
   DEFAULT_RATES,
   deleteEvent,
   dismissalId,
+  type EngineCache,
   engineCache,
+  type EntityMap,
+  type EntityName,
   evaluate,
   excelExporter,
+  failedIndexData,
   FeedClient,
+  fromMs,
+  FUND_SOURCES,
+  type FundHoldingsFile,
+  type FundPortfolio,
+  type FundSourceId,
   fyOf,
   get,
   history,
+  type Holding,
   importApplyEvent,
-  importRevertEvent,
   importers,
+  type ImportPlan,
+  importRevertEvent,
   income,
+  type IndexDataFile,
   inputFile,
   jsonExporter,
+  type KdfParams,
+  type Keyring,
+  type LocalStore,
   makeBackup,
   MemoryLocalStore,
+  mergeFundHoldings,
+  mergeIndexData,
+  mergeNseReference,
   newRecoveryCode,
+  NSE_LIST_INDEX,
+  type NseReferenceFile,
   openChunk,
   parseHlc,
   pickImporter,
   planImport,
+  portfolioAnalytics,
+  type Price,
   PriceBook,
   priceKeys,
   putEvent,
+  type RateTables,
   readBackup,
+  readFundReport,
   RelayClient,
+  type RelayLatest,
+  type RelayPart,
   replay,
   restoreBackup,
   revokeWrap,
   sealChunk,
   setPassphrase,
   sha256Hex,
+  type State,
   summary,
-  portfolioAnalytics,
-  validAllocationTargets,
-  mergeNseReference,
-  mergeFundHoldings,
-  readFundReport,
-  withAddedReports,
-  mergeIndexData,
-  failedIndexData,
-  benchmarks,
-  NSE_LIST_INDEX,
-  FUND_SOURCES,
   templateExporter,
   today as localToday,
   unlockWithPasskey,
@@ -64,32 +84,13 @@ import {
   unlockWithRecoveryCode,
   upcoming,
   upToDate,
+  validAllocationTargets,
   VaultLog,
   verifyKeyring,
   versionOf,
-  fromMs,
-  type AmfiScheme,
-  type AllocationTargets,
-  type CapFile,
-  type NseReferenceFile,
-  type FundHoldingsFile,
-  type FundPortfolio,
-  type FundSourceId,
-  type IndexDataFile,
-  type EngineCache,
-  type EntityMap,
-  type EntityName,
-  type Holding,
-  type ImportPlan,
-  type KdfParams,
-  type Keyring,
-  type LocalStore,
-  type Price,
-  type RateTables,
-  type RelayLatest,
-  type RelayPart,
-  type State,
+  withAddedReports,
 } from '@pv/core';
+
 import type {
   AccountDto,
   AddedFundReportDto,
@@ -193,6 +194,7 @@ export class DataService {
 
   async vaults(): Promise<VaultSummary[]> {
     const out: VaultSummary[] = [];
+
     for (const v of await this.storage.vaults()) {
       const ring = await (await this.storage.open(v.vaultId)).getMeta<Keyring>('keyring');
       const passkeys = ring
@@ -202,8 +204,10 @@ export class DataService {
             label: w.label ?? '',
           }))
         : [];
+
       out.push({ ...v, passkeys });
     }
+
     return out.sort((a, b) => a.created.localeCompare(b.created));
   }
 
@@ -219,10 +223,13 @@ export class DataService {
       ...(this.env.kdf ? { kdf: this.env.kdf } : {}),
     });
     const vaultId = keyring.vaultId;
+
     await this.storage.addVault({ vaultId, name, created: now.toISOString() });
     const local = await this.storage.open(vaultId);
+
     await this.attach(vaultId, name, dk, local, keyring, false);
     await this.save('member', { id: `mem_${vaultId.slice(6, 16)}`, name: memberName });
+
     return { vaultId, recoveryCode };
   }
 
@@ -232,19 +239,30 @@ export class DataService {
       passphrase: 'demo',
       kdf: { alg: 'argon2id', m: 256, t: 1, p: 1 },
     });
+
     await this.attach(keyring.vaultId, 'Sample data', dk, new MemoryLocalStore(), keyring, true);
     const { sampleEvents } = await import('./sample.ts');
+
     await this.open!.log.append(sampleEvents(this.open!.log.clock, localToday(this.env.now())));
     this.refresh();
   }
 
   async unlock(vaultId: string, secret: Secret): Promise<void> {
     const entry = (await this.storage.vaults()).find((v) => v.vaultId === vaultId);
-    if (!entry) throw new Error('No such vault on this device');
+
+    if (!entry) {
+      throw new Error('No such vault on this device');
+    }
+
     const local = await this.storage.open(vaultId);
     const keyring = await local.getMeta<Keyring>('keyring');
-    if (!keyring) throw new Error('This vault has no keyring on this device');
+
+    if (!keyring) {
+      throw new Error('This vault has no keyring on this device');
+    }
+
     const dk = await unlockSecret(keyring, secret);
+
     await this.attach(vaultId, entry.name, dk, local, keyring, false);
   }
 
@@ -266,6 +284,7 @@ export class DataService {
       'added/fund-reports',
       [],
     );
+
     this.open = {
       vaultId,
       name,
@@ -297,7 +316,10 @@ export class DataService {
 
   /** Called on user activity; the vault locks after the idle time. */
   touch(): void {
-    if (!this.open) return;
+    if (!this.open) {
+      return;
+    }
+
     clearTimeout(this.lockTimer);
     this.lockTimer = setTimeout(() => this.lock(), this.autoLockMs);
   }
@@ -305,6 +327,7 @@ export class DataService {
   async setAutoLock(minutes: number): Promise<void> {
     const v = this.need();
     const clamped = Math.min(60, Math.max(1, Math.round(minutes)));
+
     await v.local.setMeta('autoLockMinutes', clamped);
     this.autoLockMs = clamped * 60_000;
     this.touch();
@@ -316,13 +339,17 @@ export class DataService {
 
   current(): { vaultId: string; name: string; demo: boolean; readOnly: boolean } | null {
     const v = this.open;
+
     return v
       ? { vaultId: v.vaultId, name: v.name, demo: v.demo, readOnly: v.state.readOnly }
       : null;
   }
 
   async removeVault(vaultId: string): Promise<void> {
-    if (this.open?.vaultId === vaultId) this.lock();
+    if (this.open?.vaultId === vaultId) {
+      this.lock();
+    }
+
     await this.storage.removeVault(vaultId);
   }
 
@@ -339,6 +366,7 @@ export class DataService {
 
   async changePassphrase(passphrase: string): Promise<void> {
     const v = this.need();
+
     await v.log.setKeyring(
       await setPassphrase(v.log.keyring, v.dk, passphrase, { kdf: this.env.kdf }),
     );
@@ -347,7 +375,9 @@ export class DataService {
   async replaceRecoveryCode(): Promise<string> {
     const v = this.need();
     const { keyring, code } = await newRecoveryCode(v.log.keyring, v.dk, this.env.now());
+
     await v.log.setKeyring(keyring);
+
     return code;
   }
 
@@ -364,6 +394,7 @@ export class DataService {
       { credentialId, prfSalt, prfOutput: new Uint8Array(prfOutput), label },
       this.env.now(),
     );
+
     await v.log.setKeyring(ring);
   }
 
@@ -371,25 +402,35 @@ export class DataService {
     const v = this.need();
     const wraps = activeWraps(v.log.keyring);
     const target = wraps.find((w) => w.id === wrapId);
-    if (!target) return;
+
+    if (!target) {
+      return;
+    }
+
     if (target.type === 'passphrase' && wraps.filter((w) => w.type === 'passphrase').length === 1) {
       throw new Error('The passphrase can be changed, not removed');
     }
+
     await v.log.setKeyring(await revokeWrap(v.log.keyring, v.dk, wrapId));
   }
 
   // ---- reading ----
 
   private need(): OpenVault {
-    if (!this.open) throw new LockedError('The vault is locked');
+    if (!this.open) {
+      throw new LockedError('The vault is locked');
+    }
+
     return this.open;
   }
 
   private refresh(): void {
     const v = this.need();
+
     v.state = replay(v.log.events());
     v.cache = engineCache(v.state);
     const latest = [...v.prices.history, ...v.prices.latest];
+
     v.book = new PriceBook(latest, all(v.state, 'manualPrice'), all(v.state, 'snapshot'));
   }
 
@@ -403,6 +444,7 @@ export class DataService {
 
   private opts() {
     const v = this.need();
+
     return { rates: this.rates(), cache: v.cache };
   }
 
@@ -411,6 +453,7 @@ export class DataService {
     const balance = ['fd', 'ppf', 'epf', 'eps', 'cash'].includes(h.instrument.kind);
     const units = balance ? null : h.position.units;
     const groups = all(v.state, 'group');
+
     return {
       key: h.key,
       accountId: h.account.id,
@@ -440,6 +483,7 @@ export class DataService {
 
   private upcomingDto(days: number): UpcomingDto[] {
     const v = this.need();
+
     return upcoming(v.state, v.book, this.today(), days, this.opts()).map((u) => ({
       date: u.date,
       kind: u.kind,
@@ -453,11 +497,13 @@ export class DataService {
     const v = this.need();
     const lastBackup = await v.local.getMeta<string>('lastBackup');
     let persisted: boolean | undefined;
+
     try {
       persisted = await navigator.storage?.persisted?.();
     } catch {
       persisted = undefined;
     }
+
     return {
       ...(lastBackup ? { lastBackup } : {}),
       ...(persisted !== undefined ? { persisted } : {}),
@@ -487,6 +533,7 @@ export class DataService {
           step: range === 'all' ? 'month' : 'day',
         })
       : [];
+
     return {
       date,
       netWorth: s.netWorth,
@@ -520,6 +567,7 @@ export class DataService {
 
   holdings(filter: Filter = {}): HoldingDto[] {
     const v = this.need();
+
     return summary(v.state, v.book, this.today(), filter, this.opts()).holdings.map((h) =>
       this.holdingDto(h),
     );
@@ -530,6 +578,7 @@ export class DataService {
     const date = this.today();
     const holdings = summary(v.state, v.book, date, filter, this.opts()).holdings;
     const portfolios = withAddedReports(v.prices.fundHoldings?.portfolios ?? [], v.addedFunds);
+
     return {
       ...portfolioAnalytics(holdings, date, {
         schemes: v.prices.schemes,
@@ -584,16 +633,21 @@ export class DataService {
   /** How many members NSE's constituent lists give each of their indices. */
   private listedMembers(): Record<string, number> {
     const counts: Record<string, number> = {};
+
     for (const row of this.need().prices.nse?.rows ?? []) {
       const id = NSE_LIST_INDEX[row.marketCap];
+
       counts[id] = (counts[id] ?? 0) + 1;
     }
+
     return counts;
   }
 
   async saveAllocationTargets(targets: AllocationTargets, memberId?: string): Promise<void> {
-    if (!validAllocationTargets(targets))
+    if (!validAllocationTargets(targets)) {
       throw new Error('Targets must be between 0 and 100% and total 100%.');
+    }
+
     await this.save('setting', { id: `analyticsTargets:${memberId || 'all'}`, value: targets });
   }
 
@@ -601,10 +655,15 @@ export class DataService {
     const v = this.need();
     const date = this.today();
     const h = evaluate(v.state, v.book, date, this.opts()).find((x) => x.key === key);
-    if (!h) return null;
+
+    if (!h) {
+      return null;
+    }
+
     const first = h.position.entries[0]?.date ?? date;
     const filter = { accountId: h.account.id, instrumentId: h.instrument.id };
     const single = history(v.state, v.book, first, date, { ...this.opts(), step: 'month', filter });
+
     return {
       holding: this.holdingDto(h),
       entries: h.position.entries,
@@ -620,6 +679,7 @@ export class DataService {
 
   income(fy: number) {
     const v = this.need();
+
     return income(v.state, v.book, fy, this.opts()).map((r) => ({
       ...r,
       memberName: get(v.state, 'member', r.memberId)?.name ?? '',
@@ -632,7 +692,11 @@ export class DataService {
     const dates = all(v.state, 'transaction').map((t) => t.date);
     const first = dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : this.today();
     const years: number[] = [];
-    for (let fy = fyOf(this.today()); fy >= fyOf(first); fy--) years.push(fy);
+
+    for (let fy = fyOf(this.today()); fy >= fyOf(first); fy--) {
+      years.push(fy);
+    }
+
     return years;
   }
 
@@ -643,6 +707,7 @@ export class DataService {
   async checks() {
     const v = this.need();
     const settings = get(v.state, 'setting', 'checks')?.value as Record<string, number> | undefined;
+
     return runChecks(
       v.state,
       v.book,
@@ -666,13 +731,25 @@ export class DataService {
     const s = this.need().state;
     const members = new Map(all(s, 'member').map((m) => [m.id, m.name]));
     const counts = new Map<string, { transactions: number; balances: number }>();
+
     const count = (accountId: string) => {
       let c = counts.get(accountId);
-      if (!c) counts.set(accountId, (c = { transactions: 0, balances: 0 }));
+
+      if (!c) {
+        counts.set(accountId, (c = { transactions: 0, balances: 0 }));
+      }
+
       return c;
     };
-    for (const t of all(s, 'transaction')) count(t.accountId).transactions += 1;
-    for (const x of all(s, 'snapshot')) count(x.accountId).balances += 1;
+
+    for (const t of all(s, 'transaction')) {
+      count(t.accountId).transactions += 1;
+    }
+
+    for (const x of all(s, 'snapshot')) {
+      count(x.accountId).balances += 1;
+    }
+
     return all(s, 'account')
       .map((a) => ({
         id: a.id,
@@ -689,22 +766,27 @@ export class DataService {
 
   private writable() {
     const v = this.need();
-    if (v.state.readOnly)
+
+    if (v.state.readOnly) {
       throw new Error(
         'This vault was changed by a newer version of the app. Update the app to make changes.',
       );
+    }
+
     return v;
   }
 
   async save<K extends EntityName>(entity: K, value: EntityMap[K]): Promise<void> {
     const v = this.writable();
     const base = versionOf(v.state, entity, value.id);
+
     await v.log.append([putEvent(v.log.clock.next(), entity, value, base)]);
     this.refresh();
   }
 
   async remove(entity: EntityName, id: string): Promise<void> {
     const v = this.writable();
+
     await v.log.append([
       deleteEvent(v.log.clock.next(), entity, id, versionOf(v.state, entity, id)),
     ]);
@@ -713,14 +795,25 @@ export class DataService {
 
   async rename(entity: 'member' | 'account', id: string, name: string): Promise<void> {
     const text = name.trim();
-    if (!text) throw new Error('Type a name first');
+
+    if (!text) {
+      throw new Error('Type a name first');
+    }
+
     const s = this.need().state;
+
     if (entity === 'member') {
       const member = get(s, 'member', id);
-      if (member) await this.save('member', { ...member, name: text });
+
+      if (member) {
+        await this.save('member', { ...member, name: text });
+      }
     } else {
       const account = get(s, 'account', id);
-      if (account) await this.save('account', { ...account, label: text });
+
+      if (account) {
+        await this.save('account', { ...account, label: text });
+      }
     }
   }
 
@@ -728,10 +821,19 @@ export class DataService {
   async removeMember(id: string): Promise<void> {
     const s = this.need().state;
     const member = get(s, 'member', id);
-    if (!member) return;
-    if (all(s, 'member').length === 1) throw new Error('A portfolio needs at least one member');
-    if (all(s, 'account').some((a) => a.memberId === id))
+
+    if (!member) {
+      return;
+    }
+
+    if (all(s, 'member').length === 1) {
+      throw new Error('A portfolio needs at least one member');
+    }
+
+    if (all(s, 'account').some((a) => a.memberId === id)) {
       throw new Error(`Remove ${member.name}’s accounts first`);
+    }
+
     await this.remove('member', id);
   }
 
@@ -739,7 +841,11 @@ export class DataService {
   async removeAccount(id: string): Promise<void> {
     const v = this.writable();
     const s = v.state;
-    if (!get(s, 'account', id)) return;
+
+    if (!get(s, 'account', id)) {
+      return;
+    }
+
     const drop = (entity: EntityName, key: string) =>
       deleteEvent(v.log.clock.next(), entity, key, versionOf(s, entity, key));
     const events = [
@@ -761,6 +867,7 @@ export class DataService {
         ),
       drop('account', id),
     ];
+
     await v.log.append(events);
     this.refresh();
   }
@@ -773,9 +880,16 @@ export class DataService {
   async restoreConflict(key: string): Promise<void> {
     const v = this.need();
     const conflict = v.state.conflicts.get(key);
-    if (!conflict) return;
-    if (conflict.loser.value === undefined) await this.remove(conflict.entity, conflict.id);
-    else await this.save(conflict.entity, conflict.loser.value as EntityMap[EntityName]);
+
+    if (!conflict) {
+      return;
+    }
+
+    if (conflict.loser.value === undefined) {
+      await this.remove(conflict.entity, conflict.id);
+    } else {
+      await this.save(conflict.entity, conflict.loser.value as EntityMap[EntityName]);
+    }
   }
 
   // ---- importing ----
@@ -784,7 +898,11 @@ export class DataService {
     const v = this.need();
     const file = inputFile(name, bytes, readPdf);
     const picked = await pickImporter(file, importers);
-    if (!picked) return { kind: 'unknown', headings: await headingsOnly(file) };
+
+    if (!picked) {
+      return { kind: 'unknown', headings: await headingsOnly(file) };
+    }
+
     const draft = await picked.importer.parse(file, {
       memberId,
       today: this.today(),
@@ -798,7 +916,9 @@ export class DataService {
     };
     const plan = planImport(v.state, draft, options);
     const planId = crypto.randomUUID();
+
     v.plans.set(planId, { plan, draft, options });
+
     return { kind: 'plan', plan: this.planDto(planId, plan, picked.importer.label) };
   }
 
@@ -806,10 +926,16 @@ export class DataService {
   replan(planId: string, rejected: string[]): PlanDto {
     const v = this.need();
     const saved = v.plans.get(planId);
-    if (!saved) throw new Error('This preview has expired');
+
+    if (!saved) {
+      throw new Error('This preview has expired');
+    }
+
     const options = { ...saved.options, rejected };
     const plan = planImport(v.state, saved.draft, options);
+
     v.plans.set(planId, { ...saved, plan, options });
+
     return this.planDto(
       planId,
       plan,
@@ -823,26 +949,38 @@ export class DataService {
   ): Promise<{ written: number; batchId?: string }> {
     const v = this.need();
     const saved = v.plans.get(planId);
-    if (!saved) throw new Error('This preview has expired');
+
+    if (!saved) {
+      throw new Error('This preview has expired');
+    }
+
     const items = saved.plan.items.map((item, index) =>
       exclude.includes(index) ? { ...item, include: false } : item,
     );
     const data = applyPlan({ ...saved.plan, items });
+
     v.plans.delete(planId);
-    if (!data) return { written: 0 };
+
+    if (!data) {
+      return { written: 0 };
+    }
+
     await v.log.append([importApplyEvent(v.log.clock.next(), data)]);
     this.refresh();
+
     return { written: data.puts.length, batchId: data.batchId };
   }
 
   async revertImport(batchId: string): Promise<void> {
     const v = this.need();
+
     await v.log.append([importRevertEvent(v.log.clock.next(), batchId)]);
     this.refresh();
   }
 
   batches(): BatchDto[] {
     const v = this.need();
+
     return [...v.state.batches.values()]
       .map((b) => ({
         batchId: b.batchId,
@@ -863,20 +1001,26 @@ export class DataService {
       plan.matches.find((m) => m.instrument.id === id)?.instrument.name ??
       get(v.state, 'instrument', id)?.name ??
       id;
+
     const label = (put: ImportPlan['items'][number]['put']): string => {
       switch (put.entity) {
         case 'snapshot':
           return `${instrumentName(put.value.instrumentId)}: ${put.value.units} units`;
+
         case 'transaction':
           return `${put.value.date} ${put.value.type} ${instrumentName(put.value.instrumentId)}`;
+
         case 'account':
           return `Account: ${put.value.label}`;
+
         case 'instrument':
           return `New: ${put.value.name}`;
+
         default:
           return `${put.entity}: ${'name' in put.value ? String(put.value.name) : put.id}`;
       }
     };
+
     return {
       planId,
       importer,
@@ -918,6 +1062,7 @@ export class DataService {
     empty: T,
   ): Promise<T> {
     const sealed = await local.getMeta<Uint8Array>(chunk.replace('/', ':'));
+
     if (sealed) {
       try {
         return await openChunk<T>(dk, vaultId, chunk, sealed);
@@ -925,6 +1070,7 @@ export class DataService {
         // Damaged prices are fetched again on the next refresh; added reports are added again.
       }
     }
+
     return empty;
   }
 
@@ -935,8 +1081,10 @@ export class DataService {
   async addFundReport(name: string, bytes: Uint8Array): Promise<AddedFundReportDto> {
     const v = this.need();
     const { portfolios, skipped } = await readFundReport(name, bytes, this.today());
+
     await this.saveAddedFunds(v, addFundReports(v.addedFunds, portfolios));
     const ids = new Set(portfolios.map((p) => p.id));
+
     return {
       schemes: portfolios.length,
       asOf: portfolios
@@ -978,6 +1126,7 @@ export class DataService {
         .map((p) => p.date)
         .sort()
         .at(-1);
+
     return {
       ...(v.prices.fetched ? { fetched: v.prices.fetched } : {}),
       funds: newest(['amfi']),
@@ -991,12 +1140,21 @@ export class DataService {
    */
   async refreshPrices(force = false): Promise<{ ok: boolean; message?: string }> {
     const v = this.need();
-    if (v.demo) return { ok: true };
+
+    if (v.demo) {
+      return { ok: true };
+    }
+
     const age = v.prices.fetched
       ? this.env.now().getTime() - Date.parse(v.prices.fetched)
       : Infinity;
-    if (!force && age < PRICE_REFRESH_MS) return { ok: true };
+
+    if (!force && age < PRICE_REFRESH_MS) {
+      return { ok: true };
+    }
+
     const held = new Set(all(v.state, 'instrument').flatMap(priceKeys));
+
     held.add('fx:USDINR');
     const saved = v.prices.fetched
       ? 'Using the prices saved earlier.'
@@ -1019,13 +1177,18 @@ export class DataService {
       }),
       (error: Error) => ({ caps: v.prices.caps, capsFailure: error.message }),
     );
+
     const attachFunds = async (prices: PriceCache) => {
       const funds = await fundTask;
+
       if (funds) {
         prices.fundHoldings = funds;
-        if (funds.portfolios.length && !funds.failures.length)
+
+        if (funds.portfolios.length && !funds.failures.length) {
           prices.fundHoldingsFetched = this.env.now().toISOString();
+        }
       }
+
       prices.indices = await indexTask;
       Object.assign(prices, await capsTask);
       v.prices = prices;
@@ -1033,19 +1196,30 @@ export class DataService {
         'cache:prices',
         await sealChunk(v.dk, v.vaultId, 'cache/prices', prices),
       );
-      if (this.open === v) this.refresh();
+
+      if (this.open === v) {
+        this.refresh();
+      }
     };
+
     try {
       const { prices, failed } = feed
         ? { prices: await this.feedPrices(v.prices, feed, held, force), failed: [] }
         : await this.relayPrices(v.prices, held);
+
       await attachFunds(prices);
-      if (failed.length === 0) return { ok: true };
+
+      if (failed.length === 0) {
+        return { ok: true };
+      }
+
       const what = failed.map((f) => `${PART_NAMES[f.part]} (${f.reason})`).join(' or ');
+
       return { ok: false, message: `Couldn't update ${what}. ${saved}` };
     } catch (error) {
       await attachFunds({ ...v.prices });
       const from = feed ? 'the price feed' : 'prices';
+
       return {
         ok: false,
         message: `Couldn't fetch ${from} (${(error as Error).message}). ${saved}`,
@@ -1057,6 +1231,7 @@ export class DataService {
   private async fetchIndices(): Promise<IndexDataFile> {
     const ctx = { fetch: this.env.fetch };
     const feed = this.feedUrl();
+
     if (feed) {
       try {
         return await new FeedClient(feed).indices(ctx);
@@ -1064,6 +1239,7 @@ export class DataService {
         /* Older feeds don't publish index data; the relay does. */
       }
     }
+
     return new RelayClient(this.env.relayUrl).indices(ctx);
   }
 
@@ -1074,12 +1250,20 @@ export class DataService {
   private async fetchCaps(old: PriceCache, force: boolean): Promise<CapFile | undefined> {
     const v = this.need();
     const kinds = new Set(['stock', 'mf', 'etf']);
-    if (!all(v.state, 'instrument').some((i) => kinds.has(i.kind))) return undefined;
-    const today = this.today();
-    if (!force && old.caps && !old.capsFailure && today < addDays(old.caps.date, 7))
+
+    if (!all(v.state, 'instrument').some((i) => kinds.has(i.kind))) {
       return undefined;
+    }
+
+    const today = this.today();
+
+    if (!force && old.caps && !old.capsFailure && today < addDays(old.caps.date, 7)) {
+      return undefined;
+    }
+
     const ctx = { fetch: this.env.fetch };
     const feed = this.feedUrl();
+
     if (feed) {
       try {
         return await new FeedClient(feed).caps(ctx);
@@ -1087,6 +1271,7 @@ export class DataService {
         /* Older feeds don't publish the cap list; the relay does. */
       }
     }
+
     return new RelayClient(this.env.relayUrl).caps(ctx, today);
   }
 
@@ -1095,14 +1280,22 @@ export class DataService {
     force: boolean,
   ): Promise<FundHoldingsFile | undefined> {
     const v = this.need();
-    if (!all(v.state, 'instrument').some((i) => i.kind === 'mf' || i.kind === 'etf'))
+
+    if (!all(v.state, 'instrument').some((i) => i.kind === 'mf' || i.kind === 'etf')) {
       return undefined;
+    }
+
     const age = old.fundHoldingsFetched
       ? this.env.now().getTime() - Date.parse(old.fundHoldingsFetched)
       : Infinity;
-    if (!force && age < 24 * 3600_000) return undefined;
+
+    if (!force && age < 24 * 3600_000) {
+      return undefined;
+    }
+
     const ctx = { fetch: this.env.fetch };
     const feed = this.feedUrl();
+
     if (feed) {
       try {
         return mergeFundHoldings(await new FeedClient(feed).fundHoldings(ctx), old.fundHoldings);
@@ -1110,6 +1303,7 @@ export class DataService {
         /* Older feeds can still use the app's official-source relay. */
       }
     }
+
     return new RelayClient(this.env.relayUrl).fundHoldings(ctx, old.fundHoldings, force);
   }
 
@@ -1132,11 +1326,14 @@ export class DataService {
     const historyAge = prices.historyFetched
       ? this.env.now().getTime() - Date.parse(prices.historyFetched)
       : Infinity;
+
     if (force || historyAge > 24 * 3600_000) {
       prices.history = await client.history([...held], ctx).catch(() => prices.history);
       prices.historyFetched = this.env.now().toISOString();
     }
+
     prices.rates = await client.rates(ctx).catch(() => prices.rates ?? DEFAULT_RATES);
+
     return prices;
   }
 
@@ -1145,8 +1342,11 @@ export class DataService {
     held: Set<string>,
   ): Promise<{ prices: PriceCache; failed: RelayLatest['failed'] }> {
     const latest = await new RelayClient(this.env.relayUrl).latest({ fetch: this.env.fetch });
-    if (latest.failed.length === 3)
+
+    if (latest.failed.length === 3) {
       throw new Error([...new Set(latest.failed.map((f) => f.reason))].join('; '));
+    }
+
     const fresh = latest.prices.filter((p) => held.has(p.key));
     const got = new Set(fresh.map((p) => p.key));
     const day = (p: Price) => `${p.key} ${p.date}`;
@@ -1161,6 +1361,7 @@ export class DataService {
       schemes: latest.schemes.length ? latest.schemes : old.schemes,
       nse: mergeNseReference(latest.nse, old.nse),
     };
+
     return { prices, failed: latest.failed };
   }
 
@@ -1177,13 +1378,18 @@ export class DataService {
     });
     const name =
       kind === 'template' ? 'arthly-template.xlsx' : `arthly-${this.today()}${exporter.extension}`;
+
     return { name, mime: exporter.mime, bytes };
   }
 
   async backup(): Promise<FileOut> {
     const v = this.need();
     const bytes = await makeBackup(v.log, v.local, this.env.now());
-    if (!v.demo) await v.local.setMeta('lastBackup', this.today());
+
+    if (!v.demo) {
+      await v.local.setMeta('lastBackup', this.today());
+    }
+
     return { name: `arthly-${this.today()}.pvault`, mime: 'application/octet-stream', bytes };
   }
 
@@ -1191,16 +1397,23 @@ export class DataService {
   async restore(bytes: Uint8Array, secret: Secret, name = 'Restored portfolio'): Promise<string> {
     const file = readBackup(bytes);
     const vaultId = file.keyring.vaultId;
+
     if ((await this.storage.vaults()).some((x) => x.vaultId === vaultId)) {
       throw new Error('This portfolio is already on this device');
     }
+
     const dk = await unlockSecret(file.keyring, secret);
-    if (!(await verifyKeyring(file.keyring, dk)))
+
+    if (!(await verifyKeyring(file.keyring, dk))) {
       throw new Error('The backup file has been changed outside the app');
+    }
+
     await this.storage.addVault({ vaultId, name, created: this.env.now().toISOString() });
     const local = await this.storage.open(vaultId);
+
     await restoreBackup(file, local, dk);
     await this.attach(vaultId, name, dk, local, file.keyring, false);
+
     return vaultId;
   }
 }
@@ -1209,8 +1422,10 @@ export class DataService {
 async function headingsOnly(file: ReturnType<typeof inputFile>): Promise<string[]> {
   const sheets = await file.sheets().catch(() => []);
   const out: string[] = [];
+
   for (const sheet of sheets) {
     let best: string[] = [];
+
     for (const row of sheet.rows.slice(0, 40)) {
       const cells = row.filter(
         (c): c is string =>
@@ -1219,15 +1434,28 @@ async function headingsOnly(file: ReturnType<typeof inputFile>): Promise<string[
           Number.isNaN(Number(c)) &&
           !/\d{4}-\d{2}-\d{2}/.test(c),
       );
-      if (cells.length > best.length) best = cells.map((c) => c.trim());
+
+      if (cells.length > best.length) {
+        best = cells.map((c) => c.trim());
+      }
     }
-    if (best.length >= 3) out.push(...best);
+
+    if (best.length >= 3) {
+      out.push(...best);
+    }
   }
+
   return [...new Set(out)];
 }
 
 async function unlockSecret(keyring: Keyring, secret: Secret): Promise<CryptoKey> {
-  if ('passphrase' in secret) return unlockWithPassphrase(keyring, secret.passphrase);
-  if ('recoveryCode' in secret) return unlockWithRecoveryCode(keyring, secret.recoveryCode);
+  if ('passphrase' in secret) {
+    return unlockWithPassphrase(keyring, secret.passphrase);
+  }
+
+  if ('recoveryCode' in secret) {
+    return unlockWithRecoveryCode(keyring, secret.recoveryCode);
+  }
+
   return unlockWithPasskey(keyring, secret.credentialId, new Uint8Array(secret.prfOutput));
 }

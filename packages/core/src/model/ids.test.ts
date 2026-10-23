@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import {
   accountId,
   importedTransactionId,
@@ -26,6 +27,7 @@ describe('ids', () => {
   it('gives the same account ID for the same institution however it is written', () => {
     const a = accountId({ memberId: 'm1', institution: 'Groww', kind: 'mf', ref: '••••1234' });
     const b = accountId({ memberId: 'm1', institution: 'GROWW ', kind: 'mf', ref: '••••1234' });
+
     expect(a).toBe(b);
     expect(
       accountId({ memberId: 'm2', institution: 'Groww', kind: 'mf', ref: '••••1234' }),
@@ -41,6 +43,7 @@ describe('ids', () => {
       units: 1.0000001,
       amount: 100.001,
     };
+
     expect(importedTransactionId(t, 0)).toBe(
       importedTransactionId({ ...t, units: 1, amount: 100 }, 0),
     );
@@ -49,6 +52,7 @@ describe('ids', () => {
 
   it('makes snapshot IDs per account, instrument and date', () => {
     const s = { accountId: 'a', instrumentId: 'i', asOf: '2026-10-21' };
+
     expect(snapshotId(s)).toBe(snapshotId({ ...s }));
     expect(snapshotId({ ...s, asOf: '2026-10-22' })).not.toBe(snapshotId(s));
   });

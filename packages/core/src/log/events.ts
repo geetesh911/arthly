@@ -48,13 +48,22 @@ const UPGRADERS: Record<number, Upgrader> = {};
 
 /** Brings an event to the current format, or returns null if it is newer than this build. */
 export function upgrade(event: Event): Event | null {
-  if (event.v > FORMAT_VERSION) return null;
+  if (event.v > FORMAT_VERSION) {
+    return null;
+  }
+
   let current = event;
+
   while (current.v < FORMAT_VERSION) {
     const lift = UPGRADERS[current.v];
-    if (!lift) throw new Error(`No upgrader from format ${current.v}`);
+
+    if (!lift) {
+      throw new Error(`No upgrader from format ${current.v}`);
+    }
+
     current = lift(current);
   }
+
   return current;
 }
 
@@ -65,6 +74,7 @@ export function putEvent<K extends EntityName>(
   base?: string,
 ): PutEvent {
   const data = { entity, id: value.id, value, ...(base ? { base } : {}) } as PutEvent['data'];
+
   return { hlc, v: FORMAT_VERSION, type: 'entity.put', data };
 }
 

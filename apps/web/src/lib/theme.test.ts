@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import { applyTheme, readTheme } from './theme.ts';
 
 function root() {
@@ -8,12 +9,14 @@ function root() {
     add: (...c: string[]) => c.forEach((x) => set.add(x)),
     remove: (...c: string[]) => c.forEach((x) => set.delete(x)),
   } as unknown as DOMTokenList;
+
   return { classList, set };
 }
 
 describe('theme', () => {
   it('puts only the chosen class on the root, and none for system', () => {
     const r = root();
+
     applyTheme(r, 'dark');
     expect([...r.set]).toEqual(['dark']);
     applyTheme(r, 'light');

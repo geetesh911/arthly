@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { ENTITY_NAMES, type EntityMap, type EntityName } from '../model/types.ts';
-import { upgrade, type Event, type Finding, type ImportApplyData, type Put } from './events.ts';
+
+import { type Event, type Finding, type ImportApplyData, type Put, upgrade } from './events.ts';
 
 export interface Version<T> {
   value: T;
@@ -51,6 +52,7 @@ export const keyOf = (entity: EntityName, id: string): string => `${entity}:${id
 
 export function emptyState(): State {
   const tables = Object.fromEntries(ENTITY_NAMES.map((n) => [n, new Map()])) as unknown as Tables;
+
   return {
     tables,
     deleted: new Map(),
@@ -64,7 +66,13 @@ export function emptyState(): State {
 /** Sorts by hlc and drops duplicates. */
 export function orderEvents(events: Iterable<Event>): Event[] {
   const byHlc = new Map<string, Event>();
-  for (const e of events) if (!byHlc.has(e.hlc)) byHlc.set(e.hlc, e);
+
+  for (const e of events) {
+    if (!byHlc.has(e.hlc)) {
+      byHlc.set(e.hlc, e);
+    }
+  }
+
   return [...byHlc.values()].sort((a, b) => (a.hlc < b.hlc ? -1 : a.hlc > b.hlc ? 1 : 0));
 }
 
@@ -72,35 +80,53 @@ export function orderEvents(events: Iterable<Event>): Event[] {
 export function replay(events: Iterable<Event>): State {
   const state = emptyState();
   const ordered: Event[] = [];
+
   for (const raw of orderEvents(events)) {
     const event = upgrade(raw);
-    if (event) ordered.push(event);
-    else state.readOnly = true;
+
+    if (event) {
+      ordered.push(event);
+    } else {
+      state.readOnly = true;
+    }
   }
 
   // An undone import is replayed as if it never happened.
   const reverts = new Map<string, string>();
+
   for (const e of ordered) {
-    if (e.type === 'import.revert' && !reverts.has(e.data.batchId))
+    if (e.type === 'import.revert' && !reverts.has(e.data.batchId)) {
       reverts.set(e.data.batchId, e.hlc);
+    }
   }
+
   const skippedHlcs = new Set<string>();
+
   for (const e of ordered) {
-    if (e.type === 'import.apply' && reverts.has(e.data.batchId)) skippedHlcs.add(e.hlc);
+    if (e.type === 'import.apply' && reverts.has(e.data.batchId)) {
+      skippedHlcs.add(e.hlc);
+    }
   }
 
   for (const e of ordered) {
     state.head = e.hlc;
+
     switch (e.type) {
       case 'entity.put':
         write(state, e.data, e.hlc, undefined, e.data.base, skippedHlcs);
         break;
+
       case 'entity.delete':
         remove(state, e.data.entity, e.data.id, e.hlc, e.data.base, skippedHlcs);
         break;
+
       case 'import.apply': {
         const { batchId } = e.data;
-        if (state.batches.has(batchId)) break;
+
+        if (state.batches.has(batchId)) {
+          break;
+        }
+
         state.batches.set(batchId, {
           batchId,
           hlc: e.hlc,
@@ -112,26 +138,39 @@ export function replay(events: Iterable<Event>): State {
           findings: e.data.findings ?? [],
           ...(reverts.has(batchId) ? { reverted: reverts.get(batchId)! } : {}),
         });
-        if (!reverts.has(batchId)) for (const p of e.data.puts) write(state, p, e.hlc, batchId);
+
+        if (!reverts.has(batchId)) {
+          for (const p of e.data.puts) {
+            write(state, p, e.hlc, batchId);
+          }
+        }
+
         break;
       }
+
       case 'import.revert':
         break;
     }
   }
 
   for (const batch of state.batches.values()) {
-    if (!batch.reverted) continue;
+    if (!batch.reverted) {
+      continue;
+    }
+
     batch.kept = batch.keys.filter((key) => {
       const current = currentHlc(state, key);
+
       return current !== undefined && current > batch.hlc;
     });
   }
+
   return state;
 }
 
 function currentHlc(state: State, key: string): string | undefined {
   const [entity, ...rest] = key.split(':') as [EntityName, ...string[]];
+
   return state.tables[entity].get(rest.join(':'))?.hlc ?? state.deleted.get(key);
 }
 
@@ -148,6 +187,7 @@ function noteConflict(
   const current = state.tables[entity].get(id);
   const currentDelete = state.deleted.get(key);
   const seen = current?.hlc ?? currentDelete;
+
   if (base !== undefined && seen !== undefined && base !== seen && !skipped?.has(base)) {
     state.conflicts.set(key, {
       entity,
@@ -168,9 +208,13 @@ function write(
   base?: string,
   skipped?: Set<string>,
 ): void {
-  if (put.value.id !== put.id) return;
+  if (put.value.id !== put.id) {
+    return;
+  }
+
   noteConflict(state, put.entity, put.id, hlc, put.value, base, skipped);
   const table = state.tables[put.entity] as Map<string, Version<unknown>>;
+
   table.set(put.id, batchId ? { value: put.value, hlc, batchId } : { value: put.value, hlc });
   state.deleted.delete(keyOf(put.entity, put.id));
 }

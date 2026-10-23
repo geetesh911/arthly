@@ -3,19 +3,20 @@
 import { all, get, type State } from '../log/replay.ts';
 import type { Account, AssetClass, Group, Instrument, Snapshot } from '../model/types.ts';
 import { assetTypeFor } from '../plugins/assets/index.ts';
-import { addDays, daysBetween, endOfMonth, minDate, type ISODate } from '../util/dates.ts';
+import { addDays, daysBetween, endOfMonth, type ISODate, minDate } from '../util/dates.ts';
+
 import type { AssetContext, HoldingStatus } from './asset-type.ts';
 import {
   interestPaidOut,
   isBalanceKind,
-  ledgers,
-  positions,
   type Ledgers,
+  ledgers,
   type Position,
+  positions,
 } from './positions.ts';
 import type { PriceBook } from './prices.ts';
 import { DEFAULT_RATES, type RateTables } from './rates.ts';
-import { xirr, type Flow } from './xirr.ts';
+import { type Flow, xirr } from './xirr.ts';
 
 export interface Filter {
   memberId?: string;
@@ -90,12 +91,17 @@ export interface EngineCache {
 
 export function engineCache(state: State): EngineCache {
   const snapshots = new Map<string, Snapshot[]>();
+
   for (const s of all(state, 'snapshot')) {
     const key = `${s.accountId}|${s.instrumentId}`;
+
     (snapshots.get(key) ?? snapshots.set(key, []).get(key)!).push(s);
   }
-  for (const list of snapshots.values())
+
+  for (const list of snapshots.values()) {
     list.sort((a, b) => (a.asOf < b.asOf ? -1 : a.asOf > b.asOf ? 1 : 0));
+  }
+
   return { ledgers: ledgers(state), snapshots, groups: all(state, 'group') };
 }
 
@@ -115,12 +121,30 @@ function inGroup(g: Group, accountId: string, instrumentId: string): boolean {
 }
 
 function matches(h: Holding, filter: Filter | undefined): boolean {
-  if (!filter) return true;
-  if (filter.memberId && h.memberId !== filter.memberId) return false;
-  if (filter.accountId && h.account.id !== filter.accountId) return false;
-  if (filter.instrumentId && h.instrument.id !== filter.instrumentId) return false;
-  if (filter.groupId && !h.groupIds.includes(filter.groupId)) return false;
-  if (filter.assetClass && h.instrument.assetClass !== filter.assetClass) return false;
+  if (!filter) {
+    return true;
+  }
+
+  if (filter.memberId && h.memberId !== filter.memberId) {
+    return false;
+  }
+
+  if (filter.accountId && h.account.id !== filter.accountId) {
+    return false;
+  }
+
+  if (filter.instrumentId && h.instrument.id !== filter.instrumentId) {
+    return false;
+  }
+
+  if (filter.groupId && !h.groupIds.includes(filter.groupId)) {
+    return false;
+  }
+
+  if (filter.assetClass && h.instrument.assetClass !== filter.assetClass) {
+    return false;
+  }
+
   return true;
 }
 
@@ -135,6 +159,7 @@ export function evaluate(
   const cache = options.cache ?? engineCache(state);
   const ctx = assetContext(book, date, rates, cache);
   const out: Holding[] = [];
+
   for (const p of positions(state, date, book, cache.ledgers)) {
     const instrument = get(state, 'instrument', p.instrumentId)!;
     const account = get(state, 'account', p.accountId)!;
@@ -143,9 +168,14 @@ export function evaluate(
     const fx = (d: ISODate) => book.fx(instrument.currency, d)?.rate ?? 1;
     const value = v.value * fx(date);
     let invested: number;
-    if (instrument.kind === 'cash') invested = value;
-    else if (isBalanceKind(instrument.kind)) invested = type.invested(p, instrument) * fx(date);
-    else invested = p.lots.reduce((sum, lot) => sum + lot.costInr, 0);
+
+    if (instrument.kind === 'cash') {
+      invested = value;
+    } else if (isBalanceKind(instrument.kind)) {
+      invested = type.invested(p, instrument) * fx(date);
+    } else {
+      invested = p.lots.reduce((sum, lot) => sum + lot.costInr, 0);
+    }
 
     const assumed: Flow[] =
       interestPaidOut(instrument) && !p.hasInterest && type.projected
@@ -162,6 +192,7 @@ export function evaluate(
     const since = flows.reduce((min, f) => (f.date < min ? f.date : min), date);
     const yearOld = daysBetween(since, date) >= 365;
     const gain = value - invested;
+
     out.push({
       key: p.key,
       position: p,
@@ -187,6 +218,7 @@ export function evaluate(
       weight: 0,
     });
   }
+
   return out;
 }
 
@@ -199,6 +231,7 @@ function totals(holdings: Holding[], date: ISODate) {
     (min, f) => (!min || f.date < min ? f.date : min),
     undefined,
   );
+
   return {
     netWorth,
     netInvested,
@@ -218,15 +251,19 @@ export function summary(
   const { netWorth, netInvested, firstFlow, xirr: rate } = totals(all, date);
   const held = all.filter((h) => h.status !== 'closed');
   const allocation: Summary['allocation'] = { assetClass: {}, member: {}, group: {} };
+
   for (const h of held) {
     h.weight = netWorth > 0 ? h.value / netWorth : 0;
     const cls = h.instrument.assetClass;
+
     allocation.assetClass[cls] = (allocation.assetClass[cls] ?? 0) + h.value;
     allocation.member[h.memberId] = (allocation.member[h.memberId] ?? 0) + h.value;
+
     for (const g of h.groupIds.length ? h.groupIds : ['']) {
       allocation.group[g] = (allocation.group[g] ?? 0) + h.value;
     }
   }
+
   return {
     date,
     netWorth,
@@ -253,12 +290,21 @@ export interface HistoryPoint {
 
 export function historyDates(from: ISODate, to: ISODate, step: 'day' | 'month'): ISODate[] {
   const dates: ISODate[] = [];
+
   if (step === 'day') {
-    for (let d = from; d <= to; d = addDays(d, 1)) dates.push(d);
+    for (let d = from; d <= to; d = addDays(d, 1)) {
+      dates.push(d);
+    }
+
     return dates;
   }
-  for (let d = endOfMonth(from); d < to; d = endOfMonth(addDays(d, 1))) dates.push(d);
+
+  for (let d = endOfMonth(from); d < to; d = endOfMonth(addDays(d, 1))) {
+    dates.push(d);
+  }
+
   dates.push(to);
+
   return dates;
 }
 
@@ -272,18 +318,22 @@ export function history(
 ): HistoryPoint[] {
   const cache = options.cache ?? engineCache(state);
   const step = options.step ?? (daysBetween(from, to) > 400 ? 'month' : 'day');
+
   return historyDates(from, minDate(to, '9999-12-31'), step).map((date) => {
     const holdings = evaluate(state, book, date, { ...options, cache, skipXirr: true }).filter(
       (h) => matches(h, options.filter),
     );
     const assetClass: HistoryPoint['assetClass'] = {};
+
     for (const h of holdings) {
       assetClass[h.instrument.assetClass] = (assetClass[h.instrument.assetClass] ?? 0) + h.value;
     }
+
     const { netWorth, netInvested } = totals(holdings, date);
     const costOnly = holdings.some(
       (h) => h.status === 'open' && h.estimate && !h.priceDate && !isBalanceKind(h.instrument.kind),
     );
+
     return { date, value: netWorth, netInvested, assetClass, costOnly };
   });
 }

@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
-  import { cn, type WithElementRef } from '#lib/utils.ts';
-  import ChartStyle from './chart-style.svelte';
-  import { setChartContext, type ChartConfig } from './chart-utils.ts';
   import type { HTMLAttributes } from 'svelte/elements';
+
+  import { cn, type WithElementRef } from '#lib/utils.ts';
+
+  import ChartStyle from './chart-style.svelte';
+  import { type ChartConfig, setChartContext } from './chart-utils.ts';
 
   const uid = $props.id();
 

@@ -4,12 +4,12 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Trash from '@lucide/svelte/icons/trash';
   import type { AssetClass, Group, Instrument } from '@pv/core';
+
   import { api, list } from '#lib/api.ts';
   import { app, attempt, changed, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import Stat from '#lib/components/Stat.svelte';
-  import ValueChart from '#lib/components/ValueChart.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import * as Card from '#lib/components/ui/card/index.ts';
   import { Checkbox } from '#lib/components/ui/checkbox/index.ts';
@@ -17,6 +17,7 @@
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
   import * as Table from '#lib/components/ui/table/index.ts';
+  import ValueChart from '#lib/components/ValueChart.svelte';
   import { ask } from '#lib/confirm.svelte.ts';
   import { CLASS_NAMES, date, inr, inrExact, inrSigned, pct, units } from '#lib/format.ts';
   import type { HoldingDetailDto } from '#lib/worker/dto.ts';
@@ -42,11 +43,17 @@
 
   async function saveInstrument(event: Event) {
     event.preventDefault();
-    if (!instrument) return;
+
+    if (!instrument) {
+      return;
+    }
+
     const clean = $state.snapshot(instrument);
+
     clean.ids = Object.fromEntries(
       Object.entries(clean.ids).filter(([, v]) => v),
     ) as Instrument['ids'];
+
     if ((await attempt(() => api().save('instrument', clean))) !== undefined) {
       editing = false;
       say('Saved');
@@ -66,13 +73,17 @@
   }
 
   async function toggleGroup(g: Group) {
-    if (!detail) return;
+    if (!detail) {
+      return;
+    }
+
     const { accountId, instrumentId } = detail.holding;
     const holdings = inGroup(g)
       ? g.holdings.filter(
           (x) => !(x.instrumentId === instrumentId && (!x.accountId || x.accountId === accountId)),
         )
       : [...g.holdings, { accountId, instrumentId }];
+
     await attempt(() => api().save('group', { ...$state.snapshot(g), holdings }));
     await changed();
   }
@@ -84,7 +95,11 @@
       action: 'Delete',
       destructive: true,
     });
-    if (!ok) return;
+
+    if (!ok) {
+      return;
+    }
+
     await attempt(() => api().remove('transaction', id));
     await changed();
   }

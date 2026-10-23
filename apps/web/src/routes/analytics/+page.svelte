@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import AllocationPlanner from '#lib/components/AllocationPlanner.svelte';
@@ -25,16 +26,22 @@
     void app.version;
     const filter = $state.snapshot(app.filter);
     let active = true;
+
     data = null;
     error = '';
     void api()
       .analytics(filter)
       .then((d) => {
-        if (active) data = d;
+        if (active) {
+          data = d;
+        }
       })
       .catch((e) => {
-        if (active) error = (e as Error).message;
+        if (active) {
+          error = (e as Error).message;
+        }
       });
+
     return () => {
       active = false;
     };
@@ -42,14 +49,20 @@
   // What went wrong in the latest fund report refresh, grouped by AMC.
   const fundFailures = $derived.by(() => {
     const groups: Record<string, string[]> = {};
-    for (const f of data?.reference.fundFailures ?? []) (groups[f.label] ??= []).push(f.message);
+
+    for (const f of data?.reference.fundFailures ?? []) {
+      (groups[f.label] ??= []).push(f.message);
+    }
+
     return Object.entries(groups);
   });
   async function refresh() {
     refreshing = true;
     refreshMessage = '';
+
     try {
       const result = await api().refreshPrices(true);
+
       refreshMessage = result.ok ? 'Prices refreshed.' : (result.message ?? 'Using saved prices.');
       app.version++;
     } catch (e) {

@@ -4,6 +4,7 @@ import { all, type State } from '../log/replay.ts';
 import { defaultAssetClass } from '../model/classify.ts';
 import { instrumentId, normaliseName } from '../model/ids.ts';
 import type { Instrument, InstrumentIds } from '../model/types.ts';
+
 import type { AmfiScheme, InstrumentDraft } from './types.ts';
 
 export type MatchHow = 'existing-id' | 'existing-name' | 'amfi' | 'new' | 'unmatched';
@@ -33,8 +34,15 @@ export function similarity(a: string, b: string): number {
   const x = new Set(nameTokens(a));
   const y = new Set(nameTokens(b));
   let hit = 0;
-  for (const t of x) if (y.has(t)) hit += 1;
+
+  for (const t of x) {
+    if (y.has(t)) {
+      hit += 1;
+    }
+  }
+
   const union = x.size + y.size - hit;
+
   return union === 0 ? 0 : hit / union;
 }
 
@@ -46,18 +54,31 @@ export function bestAmfiMatch(
   const direct = /\bdirect\b/i.test(name);
   const growth = !/idcw|dividend/i.test(name);
   let best: { scheme: AmfiScheme; score: number } | null = null;
+
   for (const scheme of schemes) {
     const lc = scheme.name.toLowerCase();
-    if (direct !== /\bdirect\b/.test(lc)) continue;
-    if (growth && /idcw|dividend|bonus/.test(lc)) continue;
+
+    if (direct !== /\bdirect\b/.test(lc)) {
+      continue;
+    }
+
+    if (growth && /idcw|dividend|bonus/.test(lc)) {
+      continue;
+    }
+
     const score = similarity(name, scheme.name);
-    if (!best || score > best.score) best = { scheme, score };
+
+    if (!best || score > best.score) {
+      best = { scheme, score };
+    }
   }
+
   return best && best.score >= 0.6 ? best : null;
 }
 
 function sameId(a: InstrumentIds, b: InstrumentIds): boolean {
   const eq = (x?: string, y?: string) => !!x && !!y && x.toUpperCase() === y.toUpperCase();
+
   return (
     eq(a.isin, b.isin) ||
     eq(a.amfi, b.amfi) ||
@@ -87,17 +108,23 @@ export function matchInstruments(
   rejected: ReadonlySet<string> = new Set(),
 ): InstrumentMatch[] {
   const known = all(state, 'instrument');
+
   return drafts.map((d): InstrumentMatch => {
     const hasIds = Object.values(d.ids).some(Boolean);
+
     if (hasIds) {
       const byId = known.find((i) => sameId(i.ids, d.ids));
-      if (byId)
+
+      if (byId) {
         return { ref: d.ref, instrument: byId, existing: true, how: 'existing-id', confirm: false };
+      }
     }
+
     const byName = known.find(
       (i) => i.kind === d.kind && normaliseName(i.name) === normaliseName(d.name),
     );
-    if (byName)
+
+    if (byName) {
       return {
         ref: d.ref,
         instrument: byName,
@@ -105,14 +132,18 @@ export function matchInstruments(
         how: 'existing-name',
         confirm: false,
       };
+    }
+
     if (!hasIds && d.kind === 'mf') {
       const best = rejected.has(d.ref) ? null : bestAmfiMatch(d.name, amfi);
+
       if (best) {
         const ids: InstrumentIds = {
           amfi: best.scheme.code,
           ...(best.scheme.isinGrowth ? { isin: best.scheme.isinGrowth } : {}),
         };
         const existing = known.find((i) => sameId(i.ids, ids));
+
         return existing
           ? {
               ref: d.ref,
@@ -131,6 +162,7 @@ export function matchInstruments(
               confirm: true,
             };
       }
+
       return {
         ref: d.ref,
         instrument: fresh(d, {}),
@@ -139,6 +171,7 @@ export function matchInstruments(
         confirm: false,
       };
     }
+
     return { ref: d.ref, instrument: fresh(d, d.ids), existing: false, how: 'new', confirm: false };
   });
 }

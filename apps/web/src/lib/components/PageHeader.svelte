@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
-  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import type { Snippet } from 'svelte';
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+
   import { Button } from '#lib/components/ui/button/index.ts';
   import { cn } from '#lib/utils.ts';
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+
 import {
   backfillIndexHistory,
   failedIndexData,
@@ -24,12 +25,18 @@ function files(extra: Record<string, string | Error> = {}) {
     [INDEX_SOURCES.bse.url('2026-10-22')]: BSE,
     ...extra,
   };
+
   const read = async (url: string) => {
     asked.push(url);
     const v = table[url];
-    if (v instanceof Error) throw v;
+
+    if (v instanceof Error) {
+      throw v;
+    }
+
     return v;
   };
+
   return { read, asked };
 }
 
@@ -47,6 +54,7 @@ describe('fetchIndexData', () => {
   it('reads each exchange’s newest file, going back past days with none', async () => {
     const { read, asked } = files();
     const data = await fetchIndexData(read, '2026-10-24');
+
     expect(asked).toEqual([
       INDEX_SOURCES.nse.url('2026-10-23'),
       INDEX_SOURCES.bse.url('2026-10-23'),
@@ -65,6 +73,7 @@ describe('fetchIndexData', () => {
   it('keeps one exchange when the other refuses, and says why', async () => {
     const { read } = files({ [INDEX_SOURCES.bse.url('2026-10-22')]: new Error('Refused') });
     const data = await fetchIndexData(read, '2026-10-22');
+
     expect(data.series.every((s) => s.provider === 'nse')).toBe(true);
     expect(data.sources[1]).toEqual({
       provider: 'bse',
@@ -76,6 +85,7 @@ describe('fetchIndexData', () => {
   it('stops at a file with changed headings instead of reading an older one', async () => {
     const { read, asked } = files({ [INDEX_SOURCES.nse.url('2026-10-22')]: 'Name,Value\nx,1' });
     const data = await fetchIndexData(read, '2026-10-22');
+
     expect(data.sources[0]!.failure).toBe('NSE index file headings have changed');
     expect(asked.filter((u) => u.includes('nseindia'))).toHaveLength(1);
   });
@@ -96,6 +106,7 @@ describe('fetchIndexData', () => {
       ].join('\n'),
     });
     const data = await fetchIndexData(read, '2026-10-21');
+
     expect(data.series.map((s) => [s.id, s.date])).toEqual([['nse:nifty-50', '2026-10-21']]);
     expect(data.warnings).toEqual(['NSE: Nifty Early is dated after today']);
   });
@@ -115,6 +126,7 @@ describe('mergeIndexData', () => {
 
   it('adds each refresh’s closes to the saved history', () => {
     const first = mergeIndexData(day1, undefined);
+
     expect(first.history).toEqual({
       'nse:a': [['2026-10-21', 100]],
       'bse:b': [['2026-10-21', 50]],
@@ -131,6 +143,7 @@ describe('mergeIndexData', () => {
       },
       first,
     );
+
     expect(second.history['nse:a']).toEqual([
       ['2026-10-21', 100],
       ['2026-10-22', 101],
@@ -153,6 +166,7 @@ describe('mergeIndexData', () => {
       { ...day1, date: '2026-10-22', series: [obs('nse:a', '2026-10-20', 90)] },
       mergeIndexData(day1, undefined),
     );
+
     expect(merged.series[0]).toEqual(obs('nse:a', '2026-10-21', 100));
     expect(merged.history['nse:a']).toEqual([
       ['2026-10-20', 90],
@@ -163,6 +177,7 @@ describe('mergeIndexData', () => {
   it('keeps saved data when a whole refresh fails', () => {
     const saved = mergeIndexData(day1, undefined);
     const merged = mergeIndexData(failedIndexData('offline', '2026-10-23'), saved);
+
     expect(merged.series).toEqual(saved.series);
     expect(merged.history).toEqual(saved.history);
     expect(merged.sources.map((s) => [s.date, s.failure])).toEqual([
@@ -233,6 +248,7 @@ describe('backfillIndexHistory', () => {
     );
     const { read, asked } = files();
     const filled = await backfillIndexHistory(saved, read, '2026-10-23', 3);
+
     // Only the exchange that answered today is asked, and only for series still listed.
     expect(asked).toEqual(
       ['2026-10-22', '2026-10-21', '2026-10-20'].map((d) => INDEX_SOURCES.nse.url(d)),

@@ -2,12 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FX_URL, RelayClient } from './client.ts';
-import { AMFI_URL, bseUrl, nseUrl, recentWeekdays, relay, type RelayEnv } from './server.ts';
-import { NSE_LISTS } from '../reference.ts';
+
+import { AMFI_CAPS_PAGE } from '../caps/caps.ts';
 import { FUND_SOURCES, fundListings } from '../fund-holdings/sources.ts';
 import { INDEX_SOURCES } from '../indices/data.ts';
-import { AMFI_CAPS_PAGE } from '../caps/caps.ts';
+import { NSE_LISTS } from '../reference.ts';
+
+import { FX_URL, RelayClient } from './client.ts';
+import { AMFI_URL, bseUrl, nseUrl, recentWeekdays, relay, type RelayEnv } from './server.ts';
 
 const fixture = (name: string) =>
   new Uint8Array(readFileSync(join(import.meta.dirname, '../feed/fixtures', name)));
@@ -31,14 +33,18 @@ function sites(table: Record<string, () => Response>) {
   const asked: string[] = [];
   const fetch = (async (input: RequestInfo | URL) => {
     const url = String(input instanceof Request ? input.url : input);
+
     asked.push(url);
+
     return table[url]?.() ?? new Response('Not found', { status: 404 });
   }) as typeof globalThis.fetch;
+
   return { fetch, asked };
 }
 
 function memoryCache() {
   const store = new Map<string, Response>();
+
   return {
     store,
     async match(key: RequestInfo | URL) {
@@ -56,14 +62,17 @@ describe('the relay', () => {
   it('serves the whole disclosure index and rejects unapproved workbook destinations', async () => {
     const { fetch, asked } = sites({});
     const index = await get('fund-disclosures', { fetch, now: () => NOW });
+
     expect(index.status).toBe(502);
     const listings = Object.values(FUND_SOURCES).flatMap((s) =>
       fundListings(s, '2026-10-22').map((r) => r.url),
     );
+
     expect(asked.sort()).toEqual(listings.sort());
     const bad = new Request(
       `${BASE}fund-workbook?url=${encodeURIComponent('http://127.0.0.1/a.xlsx')}`,
     );
+
     expect((await relay('fund-workbook', bad, { fetch, now: () => NOW })).status).toBe(400);
     expect(asked).toHaveLength(listings.length);
   });
@@ -75,6 +84,7 @@ describe('the relay', () => {
     const env = { fetch, now: () => NOW, cache: memoryCache() };
     const run = (query: string) =>
       relay('fund-workbook', new Request(`${BASE}fund-workbook?${query}`), env);
+
     expect((await run(`url=${encodeURIComponent(url)}`)).status).toBe(200);
     expect((await run(`url=${encodeURIComponent(url.replaceAll('%20', ' '))}&x=1`)).status).toBe(
       200,
@@ -100,6 +110,7 @@ describe('the relay', () => {
         new Request(`${BASE}fund-workbook?url=${encodeURIComponent(url)}`),
         env,
       );
+
     expect(await (await run(first)).text()).toBe('first');
     expect(await (await run(second)).text()).toBe('second');
     expect(await (await run(first)).text()).toBe('first');
@@ -115,10 +126,12 @@ describe('the relay', () => {
         ? new Response(`<a href="${url}">Consolidated</a>`)
         : new Response('offline', { status: 503 })) as typeof globalThis.fetch;
     const cache = memoryCache();
+
     expect((await get('fund-disclosures', { fetch, now: () => NOW, cache })).status).toBe(502);
     expect(cache.store.size).toBe(0);
     up = true;
     const response = await get('fund-disclosures', { fetch, now: () => NOW, cache });
+
     expect(response.status).toBe(200);
     expect(((await response.json()) as { files: unknown[] }).files).toHaveLength(1);
   });
@@ -128,6 +141,7 @@ describe('the relay', () => {
       Object.fromEntries(Object.values(NSE_LISTS).map((url) => [url, () => new Response(csv)])),
     );
     const res = await get('nse-reference', { fetch, now: () => NOW });
+
     expect(res.status).toBe(200);
     expect(asked.sort()).toEqual(Object.values(NSE_LISTS).sort());
     expect(res.headers.get('x-relay-source')).toBe('nse-reference');
@@ -145,12 +159,14 @@ describe('the relay', () => {
       ),
     );
     const res = await get('nse-reference', { fetch, now: () => NOW });
+
     expect(res.status).toBe(200);
     expect(((await res.json()) as { stale: string[] }).stale).toEqual(['large']);
   });
   it('passes on AMFI’s NAV file', async () => {
     const { fetch, asked } = sites({ [AMFI_URL]: () => new Response(text('NAVAll.txt')) });
     const res = await get('amfi', { fetch, now: () => NOW });
+
     expect(asked).toEqual([AMFI_URL]);
     expect(res.headers.get('x-relay-source')).toBe('amfi');
     expect(res.headers.get('cache-control')).toBe('public, max-age=10800');
@@ -161,6 +177,7 @@ describe('the relay', () => {
     const zip = () => new Response(fixture('nse-bhavcopy.csv.zip'));
     const { fetch, asked } = sites({ [nseUrl('2026-10-21')]: zip });
     const res = await get('exchange', { fetch, now: () => NOW });
+
     expect(res.headers.get('x-relay-source')).toBe('nse');
     expect(res.headers.get('content-type')).toBe('application/zip');
     expect(asked).toEqual([nseUrl('2026-10-22'), bseUrl('2026-10-22'), nseUrl('2026-10-21')]);
@@ -175,6 +192,7 @@ describe('the relay', () => {
       [bseUrl('2026-10-21')]: () => new Response(text('bse-bhavcopy.csv')),
     });
     const res = await get('exchange', { fetch, now: () => NOW });
+
     expect(res.headers.get('x-relay-source')).toBe('bse');
     expect(asked).toEqual([nseUrl('2026-10-22'), bseUrl('2026-10-22'), bseUrl('2026-10-21')]);
   });
@@ -182,6 +200,7 @@ describe('the relay', () => {
   it('skips weekends, and gives up after a week', async () => {
     const { fetch, asked } = sites({});
     const res = await get('exchange', { fetch, now: () => NOW });
+
     expect(res.status).toBe(502);
     expect(await res.text()).toBe("NSE and BSE didn't send a closing-price file");
     expect(asked.filter((u) => u.includes('NSE'))).toEqual(
@@ -203,8 +222,10 @@ describe('the relay', () => {
       [BSE_INDICES]: () => new Response(indexFile('allindices_22102026.csv')),
     });
     const res = await get('index-data', { fetch, now: () => NOW });
+
     expect(res.headers.get('x-relay-source')).toBe('index-data');
     const data = await res.json();
+
     expect(data.series).toHaveLength(29);
     expect(data.sources.map((s: { date: string }) => s.date)).toEqual(['2026-10-22', '2026-10-22']);
     expect(asked.sort()).toEqual([NSE_INDICES, BSE_INDICES]);
@@ -222,6 +243,7 @@ describe('the relay', () => {
     });
     const env = { fetch, now: () => NOW, cache };
     const partial = await (await get('index-data', env)).json();
+
     expect(partial.sources[1].failure).toBe('The site refused the request');
     expect(partial.series).toHaveLength(17);
     expect(cache.store.size).toBe(0);
@@ -233,6 +255,7 @@ describe('the relay', () => {
   it('says so when neither exchange sends an index file', async () => {
     const { fetch } = sites({});
     const res = await get('index-data', { fetch, now: () => NOW });
+
     expect(res.status).toBe(502);
     expect(await res.text()).toBe(
       'No NSE index file in the last week; No BSE index file in the last week',
@@ -250,6 +273,7 @@ describe('the relay', () => {
       [BSE_INDICES]: () => new Response(indexFile('allindices_22102026.csv')),
     });
     const data = await (await get('index-data', { fetch, now: () => NOW })).json();
+
     expect(data.sources[0].failure).toBe('The response is too large');
   });
 
@@ -259,6 +283,7 @@ describe('the relay', () => {
       [CAPS_URL]: () => new Response(CAPS_LIST),
     });
     const res = await get('amfi-caps', { fetch, now: () => NOW });
+
     expect(res.status).toBe(200);
     expect(res.headers.get('x-relay-source')).toBe('amfi-caps');
     expect(res.headers.get('x-source-url')).toBe(CAPS_URL);
@@ -270,6 +295,7 @@ describe('the relay', () => {
     const cache = memoryCache();
     const { fetch } = sites({ [AMFI_CAPS_PAGE]: () => new Response('<html></html>') });
     const res = await get('amfi-caps', { fetch, now: () => NOW, cache });
+
     expect(res.status).toBe(502);
     expect(await res.text()).toBe('AMFI’s page has no cap list');
     expect(cache.store.size).toBe(0);
@@ -277,8 +303,10 @@ describe('the relay', () => {
 
   it('fetches nothing else', async () => {
     const { fetch, asked } = sites({});
+
     expect((await get('google.com', { fetch, now: () => NOW })).status).toBe(404);
     const post = new Request(`${BASE}amfi`, { method: 'POST' });
+
     expect((await relay('amfi', post, { fetch, now: () => NOW })).status).toBe(405);
     expect(asked).toEqual([]);
   });
@@ -291,11 +319,13 @@ describe('the relay', () => {
         amfiUp ? new Response(text('NAVAll.txt')) : new Response('down', { status: 503 }),
     });
     const env = { fetch, now: () => NOW, cache };
+
     expect((await get('amfi', env)).status).toBe(502);
     expect(cache.store.size).toBe(0);
     amfiUp = true;
     expect((await get('amfi', env)).status).toBe(200);
     const again = await relay('amfi', new Request(`${BASE}amfi?x=1`), env);
+
     expect(await again.text()).toContain('Scheme Code');
     expect(asked).toEqual([AMFI_URL, AMFI_URL]);
   });
@@ -313,8 +343,10 @@ describe('the relay client', () => {
       [FX_URL]: fx,
     });
     const latest = await new RelayClient(BASE).latest({ fetch });
+
     expect(latest.failed).toEqual([]);
     const price = (key: string) => latest.prices.find((p) => p.key === key);
+
     expect(price('amfi:147481')).toMatchObject({ date: '2026-10-21', close: 30.8127 });
     expect(price('isin:IN0020230184')).toMatchObject({ close: 15155.6, source: 'nse' });
     expect(price('nse:NIFTYBEES')?.close).toBe(259.57);
@@ -325,6 +357,7 @@ describe('the relay client', () => {
   it('reads BSE’s file, which isn’t zipped', async () => {
     const { fetch } = sites({ [`${BASE}exchange`]: relayed(text('bse-bhavcopy.csv'), 'bse') });
     const file = await new RelayClient(BASE).exchange({ fetch });
+
     expect(file.source).toBe('bse');
     expect(file.rows.length).toBeGreaterThan(0);
   });
@@ -337,6 +370,7 @@ describe('the relay client', () => {
       [FX_URL]: fx,
     });
     const latest = await new RelayClient(BASE).latest({ fetch });
+
     expect(latest.failed).toEqual([
       { part: 'stocks', reason: "NSE and BSE didn't send a closing-price file" },
     ]);
@@ -351,8 +385,10 @@ describe('the relay client', () => {
         { headers: { 'x-relay-source': 'nse-reference' } },
       );
     const good = sites({ [`${BASE}nse-reference`]: nse([row]) });
+
     expect((await new RelayClient(BASE).latest({ fetch: good.fetch })).nse?.rows).toEqual([row]);
     const bad = sites({ [`${BASE}nse-reference`]: nse([row, { ...row, isin: undefined }]) });
+
     expect((await new RelayClient(BASE).latest({ fetch: bad.fetch })).nse).toBeUndefined();
   });
 
@@ -377,10 +413,12 @@ describe('the relay client', () => {
       history: {},
     };
     const good = sites({ [`${BASE}index-data`]: answer(data) });
+
     expect(await new RelayClient(BASE).indices({ fetch: good.fetch })).toEqual(data);
     const bad = sites({
       [`${BASE}index-data`]: answer({ ...data, series: [{ ...data.series[0], close: -1 }] }),
     });
+
     await expect(new RelayClient(BASE).indices({ fetch: bad.fetch })).rejects.toThrow(
       'Unexpected index data',
     );
@@ -393,9 +431,11 @@ describe('the relay client', () => {
       });
     const good = sites({ [`${BASE}amfi-caps`]: list(CAPS_URL) });
     const caps = await new RelayClient(BASE).caps({ fetch: good.fetch }, '2026-10-23');
+
     expect(caps).toMatchObject({ asOf: '2026-06-30', date: '2026-10-23', url: CAPS_URL });
     expect(caps.rows).toHaveLength(9);
     const unnamed = sites({ [`${BASE}amfi-caps`]: list() });
+
     await expect(
       new RelayClient(BASE).caps({ fetch: unnamed.fetch }, '2026-10-23'),
     ).rejects.toThrow('Unapproved cap list URL');
@@ -406,6 +446,7 @@ describe('the relay client', () => {
     const page = () => new Response('<html></html>', { headers: { 'content-type': 'text/html' } });
     const { fetch } = sites({ [`${BASE}amfi`]: page, [`${BASE}exchange`]: page });
     const latest = await new RelayClient(BASE).latest({ fetch });
+
     expect(latest.failed.map((f) => f.reason)).toEqual([
       'this host has no price relay',
       'this host has no price relay',

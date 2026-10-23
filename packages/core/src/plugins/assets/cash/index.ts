@@ -11,6 +11,7 @@ export const cash: AssetType = {
       .filter((s) => s.asOf <= ctx.date)
       .at(-1);
     const value = latest ? (latest.value ?? latest.units) : p.units || p.principal;
+
     return {
       value,
       estimate: false,

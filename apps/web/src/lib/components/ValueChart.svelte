@@ -2,6 +2,7 @@
 <script lang="ts">
   import { scaleUtc } from 'd3-scale';
   import { AreaChart } from 'layerchart';
+
   import * as Chart from '#lib/components/ui/chart/index.ts';
   import { date, inr, inrShort } from '#lib/format.ts';
   import type { Point } from '#lib/worker/dto.ts';

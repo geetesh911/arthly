@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Helpers for engine tests: build a state from plain records.
-import { importApplyEvent, putEvent, type Event, type ImportApplyData } from '../log/events.ts';
+import { type Event, type ImportApplyData, importApplyEvent, putEvent } from '../log/events.ts';
 import { formatHlc } from '../log/hlc.ts';
 import { replay, type State } from '../log/replay.ts';
 import type { Account, EntityMap, EntityName, Instrument, Transaction } from '../model/types.ts';
@@ -13,6 +13,7 @@ export class Ledger {
     this.events.push(
       putEvent(formatHlc(1_700_000_000_000 + this.n++, 0, 'testtest'), entity, value),
     );
+
     return this;
   }
 
@@ -24,6 +25,7 @@ export class Ledger {
         ...data,
       }),
     );
+
     return this;
   }
 

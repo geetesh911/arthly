@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
 import { mask, outline } from './pdf-outline.ts';
 
 describe('mask', () => {
@@ -24,6 +25,7 @@ describe('outline', () => {
     const text = await outline(
       new Uint8Array(readFileSync(join(import.meta.dirname, 'fixtures/outline.pdf'))),
     );
+
     expect(text).toContain('Page 1 (596 × 843)');
     expect(text).toContain('"Member ID/Name: ABC9999999999 / ABC ABC"');
     expect(text).toContain('"Wage Month"');

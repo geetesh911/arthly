@@ -5,16 +5,16 @@
 // NSE's and BSE's daily all-index files, and the monthly portfolio lists and workbooks of the AMCs
 // in fund-holdings/sources.ts. It only ever fetches whole public files, so it learns nothing about
 // what anyone holds, and it can't be used to reach any other site.
-import { fromMs, weekdaysBack, type ISODate } from '../../../util/dates.ts';
+import { fromMs, type ISODate, weekdaysBack } from '../../../util/dates.ts';
 import { capped } from '../../../util/http.ts';
 import { fetchAmfiCaps } from '../caps/caps.ts';
-import { fetchNseReference } from '../reference.ts';
-import { fetchIndexData } from '../indices/data.ts';
 import {
   fetchFundDisclosureIndex,
   fetchFundWorkbook,
   isFundWorkbookUrl,
 } from '../fund-holdings/sources.ts';
+import { fetchIndexData } from '../indices/data.ts';
+import { fetchNseReference } from '../reference.ts';
 
 export interface RelayEnv {
   fetch: typeof fetch;
@@ -55,8 +55,13 @@ async function get(env: RelayEnv, url: string): Promise<Response | 'missing' | '
     const res = await env.fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15_000) });
     // BSE answers a day with no file with its home page, not a 404.
     const page = res.headers.get('content-type')?.startsWith('text/html');
-    if (res.ok && !page) return res;
+
+    if (res.ok && !page) {
+      return res;
+    }
+
     await res.body?.cancel();
+
     return res.status === 404 || page ? 'missing' : 'refused';
   } catch {
     return 'refused';
@@ -77,37 +82,56 @@ function answer(res: Response, type: string, source: string, keep = true): Respo
 async function fetchSource(source: string, env: RelayEnv): Promise<Response> {
   if (source === 'fund-disclosures') {
     const index = await fetchFundDisclosureIndex(env.fetch, indiaToday(env.now()));
-    if (!index.files.length)
+
+    if (!index.files.length) {
       return Response.json(index, { status: 502, headers: { 'cache-control': 'no-store' } });
+    }
+
     return answer(Response.json(index), 'application/json', 'fund-disclosures');
   }
+
   if (source === 'nse-reference') {
     try {
       const data = await fetchNseReference(async (url) => {
         const res = await get(env, url);
-        if (!(res instanceof Response)) throw new Error('NSE list unavailable');
+
+        if (!(res instanceof Response)) {
+          throw new Error('NSE list unavailable');
+        }
+
         return capped(res, MAX_LIST_BYTES).text();
       }, indiaToday(env.now()));
+
       return answer(Response.json(data), 'application/json', 'nse-reference');
     } catch {
       return new Response('NSE classification lists are unavailable', { status: 502 });
     }
   }
+
   if (source === 'index-data') {
     try {
       const data = await fetchIndexData(async (url) => {
         const res = await get(env, url);
-        if (res === 'missing') return undefined;
-        if (res === 'refused') throw new Error('The site refused the request');
+
+        if (res === 'missing') {
+          return undefined;
+        }
+
+        if (res === 'refused') {
+          throw new Error('The site refused the request');
+        }
+
         return capped(res, MAX_LIST_BYTES).text();
       }, indiaToday(env.now()));
       // While one exchange is down, don't keep the answer for hours.
       const whole = data.sources.every((s) => !s.failure);
+
       return answer(Response.json(data), 'application/json', 'index-data', whole);
     } catch (error) {
       return new Response((error as Error).message, { status: 502 });
     }
   }
+
   if (source === 'amfi-caps') {
     // The workbook itself: parsing it is too much work for a Cloudflare request, so the app does.
     try {
@@ -117,33 +141,53 @@ async function fetchSource(source: string, env: RelayEnv): Promise<Response> {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'amfi-caps',
       );
+
       res.headers.set('x-source-url', url);
+
       return res;
     } catch (error) {
       return new Response((error as Error).message, { status: 502 });
     }
   }
+
   if (source === 'amfi') {
     const res = await get(env, AMFI_URL);
-    if (res instanceof Response) return answer(res, 'text/plain; charset=utf-8', 'amfi');
+
+    if (res instanceof Response) {
+      return answer(res, 'text/plain; charset=utf-8', 'amfi');
+    }
+
     return new Response("AMFI didn't send its NAV file", { status: 502 });
   }
+
   if (source === 'exchange') {
     // Today's file appears in the evening, and holidays have none, so go back up to a week.
     const sites = [
       { url: nseUrl, type: 'application/zip', name: 'nse', open: true },
       { url: bseUrl, type: 'text/csv; charset=utf-8', name: 'bse', open: true },
     ];
+
     for (const day of recentWeekdays(env.now(), 5)) {
       for (const site of sites.filter((s) => s.open)) {
         const res = await get(env, site.url(day));
-        if (res instanceof Response) return answer(res, site.type, site.name);
-        if (res === 'refused') site.open = false;
+
+        if (res instanceof Response) {
+          return answer(res, site.type, site.name);
+        }
+
+        if (res === 'refused') {
+          site.open = false;
+        }
       }
-      if (!sites.some((s) => s.open)) break;
+
+      if (!sites.some((s) => s.open)) {
+        break;
+      }
     }
+
     return new Response("NSE and BSE didn't send a closing-price file", { status: 502 });
   }
+
   return new Response('Not found', { status: 404 });
 }
 
@@ -153,23 +197,36 @@ async function fetchSource(source: string, env: RelayEnv): Promise<Response> {
  * fund-disclosures>".
  */
 export async function relay(source: string, request: Request, env: RelayEnv): Promise<Response> {
-  if (request.method !== 'GET') return new Response('Method not allowed', { status: 405 });
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
   const url = new URL(request.url);
   let workbook: string | undefined;
+
   if (source === 'fund-workbook') {
     const asked = url.searchParams.get('url');
-    if (!asked || !isFundWorkbookUrl(asked))
+
+    if (!asked || !isFundWorkbookUrl(asked)) {
       return new Response('Unapproved portfolio URL', { status: 400 });
+    }
+
     workbook = new URL(asked).href;
   }
+
   // One cache entry per source, and per workbook however its URL was written; any other query
   // string is ignored.
   const key = new Request(
     `${url.origin}${url.pathname}${workbook ? `?url=${encodeURIComponent(workbook)}` : ''}`,
   );
   const hit = await env.cache?.match(key).catch(() => undefined);
-  if (hit) return hit;
+
+  if (hit) {
+    return hit;
+  }
+
   let res: Response;
+
   if (workbook) {
     try {
       res = answer(
@@ -180,11 +237,19 @@ export async function relay(source: string, request: Request, env: RelayEnv): Pr
     } catch {
       res = new Response('The fund portfolio workbook is unavailable', { status: 502 });
     }
-  } else res = await fetchSource(source, env);
+  } else {
+    res = await fetchSource(source, env);
+  }
+
   if (res.ok && env.cache && res.headers.get('cache-control') !== 'no-store') {
     const put = env.cache.put(key, res.clone()).catch(() => undefined);
-    if (env.waitUntil) env.waitUntil(put);
-    else await put;
+
+    if (env.waitUntil) {
+      env.waitUntil(put);
+    } else {
+      await put;
+    }
   }
+
   return res;
 }

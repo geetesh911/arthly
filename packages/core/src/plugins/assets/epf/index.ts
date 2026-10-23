@@ -18,8 +18,13 @@ export const epf: AssetType = {
   kinds: ['epf'],
   value(p, _i, ctx) {
     const r = run(p, ctx, ctx.date);
-    if (r.closed) return { value: 0, estimate: false, status: 'closed' };
+
+    if (r.closed) {
+      return { value: 0, estimate: false, status: 'closed' };
+    }
+
     const estimated = r.accrued > 0 || r.credits.some((c) => c.estimated);
+
     return {
       value: r.balance + r.accrued,
       estimate: estimated,

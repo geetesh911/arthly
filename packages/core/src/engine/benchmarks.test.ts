@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import type { IndexDataFile, IndexObservation } from '../plugins/prices/indices/types.ts';
+
 import { benchmarks } from './benchmarks.ts';
 
 const obs = (id: string, date: string, close: number, extra = {}): IndexObservation => ({

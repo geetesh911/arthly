@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { PieChart } from 'layerchart';
+
   import * as Chart from '#lib/components/ui/chart/index.ts';
   import { inr, inrShort, pct } from '#lib/format.ts';
 

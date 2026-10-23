@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import { summary } from '../../engine/portfolio.ts';
 import { PriceBook } from '../../engine/prices.ts';
 import { Ledger } from '../../engine/testkit.ts';
 import { applyPlan, pickImporter, planImport, upToDate } from '../../import/plan.ts';
 import { inputFile, readSheets } from '../../import/sheet.ts';
-import { importApplyEvent, type Event } from '../../log/events.ts';
+import { type Event, importApplyEvent } from '../../log/events.ts';
 import { formatHlc } from '../../log/hlc.ts';
 import { replay, type State } from '../../log/replay.ts';
 import { utf8 } from '../../util/bytes.ts';
 import { importers } from '../importers/index.ts';
+
 import { excelExporter, templateExporter } from './excel/index.ts';
 import { jsonExporter } from './json/index.ts';
 
@@ -77,7 +79,9 @@ function records(state: State) {
       [...table.values()]
         .map((v) => {
           const value = { ...(v.value as unknown as Record<string, unknown>) };
+
           delete value.source;
+
           return value;
         })
         .sort((a, b) => String(a.id).localeCompare(String(b.id))),
@@ -88,9 +92,12 @@ function records(state: State) {
 async function reimport(name: string, bytes: Uint8Array, into: State) {
   const file = inputFile(name, bytes);
   const picked = await pickImporter(file, importers);
+
   expect(picked?.importer.id).toBe('template');
   const draft = await picked!.importer.parse(file, { memberId: 'mem_1', today: '2026-10-22' });
+
   expect(draft.warnings).toEqual([]);
+
   return planImport(into, draft, {
     importer: picked!.importer,
     file: { name, sha256: 'x', size: bytes.length },
@@ -102,6 +109,7 @@ function applied(plan: ReturnType<typeof planImport>): State {
   const events: Event[] = [
     importApplyEvent(formatHlc(1, 0, 'aaaaaaaa'), applyPlan(plan, 'bat_1')!),
   ];
+
   return replay(events);
 }
 
@@ -110,6 +118,7 @@ describe('Excel export', () => {
     const state = sample().state();
     const bytes = await excelExporter.run({ state, book, date: '2026-10-21' });
     const sheets = await readSheets(bytes);
+
     expect(sheets.map((s) => s.name)).toEqual([
       'Summary',
       'Holdings',
@@ -125,6 +134,7 @@ describe('Excel export', () => {
       '_groups',
     ]);
     const top = sheets[0]!.rows;
+
     expect(top[3]).toEqual(['Net worth', summary(state, book, '2026-10-21').netWorth]);
     expect(sheets[1]!.rows).toHaveLength(3);
     expect(sheets[2]!.rows).toHaveLength(3);
@@ -134,6 +144,7 @@ describe('Excel export', () => {
     const state = sample().state();
     const bytes = await excelExporter.run({ state, book, date: '2026-10-21' });
     const plan = await reimport('export.xlsx', bytes, replay([]));
+
     expect(records(applied(plan))).toEqual(records(state));
     expect(upToDate(await reimport('export.xlsx', bytes, state))).toBe(true);
   });
@@ -144,6 +155,7 @@ describe('JSON export', () => {
     const state = sample().state();
     const bytes = await jsonExporter.run({ state, book, date: '2026-10-21' });
     const parsed = JSON.parse(utf8.decode(bytes));
+
     expect(parsed).toMatchObject({ format: 'portfolio-export', version: 1 });
     expect(records(applied(await reimport('export.json', bytes, replay([]))))).toEqual(
       records(state),
@@ -155,6 +167,7 @@ describe('template', () => {
   it('has only the data tabs and a read-me', async () => {
     const bytes = await templateExporter.run({ state: sample().state(), book, date: '2026-10-21' });
     const sheets = await readSheets(bytes);
+
     expect(sheets.map((s) => s.name)).toEqual([
       '_members',
       '_accounts',
@@ -176,12 +189,15 @@ describe('template', () => {
     ].join('\n');
     const file = inputFile('transactions.csv', utf8.encode(csv));
     const picked = await pickImporter(file, importers);
+
     expect(picked?.importer.id).toBe('template');
     const draft = await picked!.importer.parse(file, { memberId: 'mem_1', today: '2026-10-22' });
+
     expect(draft.warnings).toEqual(['Row 4 on Sheet1: "2026-13-01" is not a YYYY-MM-DD date']);
     expect(draft.records).toHaveLength(2);
     expect(new Set(draft.records!.map((r) => r.id)).size).toBe(2);
     const again = await picked!.importer.parse(file, { memberId: 'mem_1', today: '2026-10-22' });
+
     expect(again.records!.map((r) => r.id)).toEqual(draft.records!.map((r) => r.id));
   });
 });

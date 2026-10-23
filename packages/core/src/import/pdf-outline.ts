@@ -17,8 +17,14 @@ const LABELS = new Set(
 );
 
 function hide(word: string): string {
-  if (LABELS.has(word.toLowerCase())) return word;
-  if (/^\p{Lu}{2,}$/u.test(word)) return 'ABC';
+  if (LABELS.has(word.toLowerCase())) {
+    return word;
+  }
+
+  if (/^\p{Lu}{2,}$/u.test(word)) {
+    return 'ABC';
+  }
+
   return /^\p{Ll}/u.test(word) ? 'abc' : 'Abc';
 }
 
@@ -31,13 +37,17 @@ export function mask(text: string): string {
 export async function outline(bytes: Uint8Array): Promise<string> {
   const pages = await readPdfLayout(bytes);
   const out = [`${pages.length} page(s). Words that aren't labels show as Abc, digits as 9.`];
+
   for (const [n, page] of pages.entries()) {
     out.push('', `Page ${n + 1} (${Math.round(page.width)} × ${Math.round(page.height)})`);
-    for (const row of page.rows)
+
+    for (const row of page.rows) {
       out.push(
         `${String(Math.round(row.y)).padStart(4)} │ ` +
           row.pieces.map((p) => `${Math.round(p.x)}:${JSON.stringify(mask(p.text))}`).join('  '),
       );
+    }
   }
+
   return out.join('\n');
 }

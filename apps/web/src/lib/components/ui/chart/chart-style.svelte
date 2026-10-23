@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
-  import { THEMES, type ChartConfig } from './chart-utils.ts';
+  import { type ChartConfig, THEMES } from './chart-utils.ts';
 
   let { id, config }: { id: string; config: ChartConfig } = $props();
 
@@ -9,14 +9,18 @@
   );
 
   const themeContents = $derived.by(() => {
-    if (!colorConfig || !colorConfig.length) return;
+    if (!colorConfig || !colorConfig.length) {
+      return;
+    }
 
     const themeContents = [];
+
     for (const [_theme, prefix] of Object.entries(THEMES)) {
       let content = `${prefix} [data-chart=${id}] {\n`;
       const color = colorConfig.map(([key, itemConfig]) => {
         const theme = _theme as keyof typeof itemConfig.theme;
         const color = itemConfig.theme?.[theme] || itemConfig.color;
+
         return color ? `\t--color-${key}: ${color};` : null;
       });
 

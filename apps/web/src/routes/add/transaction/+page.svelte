@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { type Account, type Instrument, randomId, type TransactionType } from '@pv/core';
+
   import { api, list } from '#lib/api.ts';
   import { attempt, changed, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -12,7 +14,6 @@
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { money, todayIso } from '#lib/forms.ts';
-  import { randomId, type Account, type Instrument, type TransactionType } from '@pv/core';
 
   let accounts = $state<Account[]>([]);
   let instruments = $state<Instrument[]>([]);
@@ -48,9 +49,13 @@
     const ref =
       new URLSearchParams(page.url.search).get('ref') ??
       new URLSearchParams(location.hash.split('?')[1] ?? '').get('ref');
+
     if (ref?.includes('|')) {
       [accountId, instrumentId] = ref.split('|') as [string, string];
-      if (location.hash.includes('record-')) type = 'sell';
+
+      if (location.hash.includes('record-')) {
+        type = 'sell';
+      }
     }
   });
 
@@ -67,6 +72,7 @@
       currency: instruments.find((i) => i.id === instrumentId)?.currency ?? 'INR',
       source: { kind: 'manual' as const },
     };
+
     if ((await attempt(() => api().save('transaction', value))) !== undefined) {
       say('Saved');
       await changed();

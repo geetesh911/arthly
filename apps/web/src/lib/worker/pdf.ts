@@ -8,7 +8,9 @@ export async function readPdf(bytes: Uint8Array, password?: string): Promise<Pdf
     import('pdfjs-dist'),
     import('pdfjs-dist/build/pdf.worker.mjs'),
   ]);
+
   // When this is set, pdf.js parses in the calling thread.
   (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = parser;
+
   return pdfLines(await pdfLayout(pdfjs, bytes, password));
 }

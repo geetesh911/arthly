@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
-  import { ASSET_CLASSES, rebalancePlan, type AllocationTargets } from '@pv/core';
+  import { type AllocationTargets, ASSET_CLASSES, rebalancePlan } from '@pv/core';
+
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import { CLASS_NAMES, inr, inrSigned, pct } from '#lib/format.ts';
+
   import { Button } from './ui/button/index.ts';
   import * as Card from './ui/card/index.ts';
   import { Input } from './ui/input/index.ts';
@@ -23,21 +25,26 @@
     void memberId;
     const total = Object.values(current).reduce((n, v) => n + v, 0);
     const initial: AllocationTargets = {};
-    for (const cls of ASSET_CLASSES)
+
+    for (const cls of ASSET_CLASSES) {
       initial[cls] = saved
         ? (saved[cls] ?? 0)
         : total > 0
           ? Math.round(((current[cls] ?? 0) / total) * 10000) / 100
           : 0;
+    }
+
     if (!saved && total > 0) {
       const largest = ASSET_CLASSES.reduce((a, b) =>
         (current[a] ?? 0) >= (current[b] ?? 0) ? a : b,
       );
+
       initial[largest] =
         Math.round(
           (initial[largest]! + 100 - Object.values(initial).reduce((n, v) => n + v, 0)) * 100,
         ) / 100;
     }
+
     targets = initial;
     contribution = 0;
     message = '';
@@ -49,6 +56,7 @@
     saving = true;
     error = '';
     message = '';
+
     try {
       await api().saveAllocationTargets($state.snapshot(targets), memberId);
       message = 'Targets saved for this selection.';

@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { gzipSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+
 import type { Instrument } from '../../../model/types.ts';
+import { parseFundWorkbook } from '../fund-holdings/parse.ts';
+
 import {
-  FEED_PATHS,
-  historyGroup,
   type AmfiFile,
   type ExchangeFile,
+  FEED_PATHS,
   type FxFile,
+  historyGroup,
 } from './format.ts';
 import { FeedClient, feedSource } from './index.ts';
-import { parseFundWorkbook } from '../fund-holdings/parse.ts';
 
 const amfi: AmfiFile = {
   date: '2026-10-21',
@@ -38,11 +40,18 @@ function fakeFetch(files: Record<string, unknown>) {
   const requested: string[] = [];
   const fn = (async (input: string | URL | Request) => {
     const path = new URL(String(input)).pathname.replace(/^\/feed\//, '');
+
     requested.push(path);
-    if (!(path in files)) return new Response('missing', { status: 404 });
+
+    if (!(path in files)) {
+      return new Response('missing', { status: 404 });
+    }
+
     const json = Buffer.from(JSON.stringify(files[path]));
+
     return new Response(path.endsWith('.gz') ? gzipSync(json) : json);
   }) as typeof fetch;
+
   return { fn, requested };
 }
 
@@ -81,6 +90,7 @@ describe('feed client', () => {
     );
     const data = { version: 1, date: '2026-10-23', portfolios, failures: [] };
     const { fn, requested } = fakeFetch({ [FEED_PATHS.fundHoldings]: data });
+
     expect(await new FeedClient('https://example.org/feed/').fundHoldings({ fetch: fn })).toEqual(
       data,
     );
@@ -91,6 +101,7 @@ describe('feed client', () => {
         portfolios: [{ ...portfolios[0], schemeIsins: [123] }],
       },
     });
+
     await expect(
       new FeedClient('https://example.org/feed/').fundHoldings({ fetch: invalid.fn }),
     ).rejects.toThrow('Invalid fund portfolio');
@@ -104,11 +115,13 @@ describe('feed client', () => {
       rows: [{ isin: 'INE002A01018', nse: 'RELIANCE', cap: 'large' }],
     };
     const feed = new FeedClient('https://example.org/feed/');
+
     expect(await feed.caps({ fetch: fakeFetch({ [FEED_PATHS.caps]: caps }).fn })).toEqual(caps);
     await expect(feed.caps({ fetch: fakeFetch({}).fn })).rejects.toThrow('404');
     const bad = fakeFetch({
       [FEED_PATHS.caps]: { ...caps, rows: [{ ...caps.rows[0], cap: 'micro' }] },
     });
+
     await expect(feed.caps({ fetch: bad.fn })).rejects.toThrow('Unexpected cap list data');
   });
   it('reads and checks index data, and fails for an older feed without it', async () => {
@@ -131,10 +144,12 @@ describe('feed client', () => {
     };
     const feed = new FeedClient('https://example.org/feed/');
     const { fn, requested } = fakeFetch({ [FEED_PATHS.indices]: data });
+
     expect(await feed.indices({ fetch: fn })).toEqual(data);
     expect(requested).toEqual([FEED_PATHS.indices]);
     await expect(feed.indices({ fetch: fakeFetch({}).fn })).rejects.toThrow('404');
     const bad = fakeFetch({ [FEED_PATHS.indices]: { ...data, history: { 'bse:sensex': 1 } } });
+
     await expect(feed.indices({ fetch: bad.fn })).rejects.toThrow('Unexpected index data');
   });
   it('reads classification metadata when present while remaining compatible with older feeds', async () => {
@@ -150,6 +165,7 @@ describe('feed client', () => {
       },
       [FEED_PATHS.reference]: reference,
     });
+
     expect((await new FeedClient('https://example.org/feed/').latest({ fetch: fn })).nse).toEqual(
       reference,
     );
@@ -157,6 +173,7 @@ describe('feed client', () => {
   it('reads whole latest files and the AMFI scheme list', async () => {
     const { fn } = fakeFetch(files);
     const latest = await new FeedClient('https://example.org/feed/').latest({ fetch: fn });
+
     expect(latest.prices.map((p) => p.key).sort()).toEqual([
       'amfi:147481',
       'fx:USDINR',
@@ -177,6 +194,7 @@ describe('feed client', () => {
     const { fn, requested } = fakeFetch(files);
     const source = feedSource(new FeedClient('https://example.org/feed'));
     const prices = await source.history!([ppfas], '2026-10-21', '2026-10-31', { fetch: fn });
+
     expect(prices.map((p) => [p.key, p.date, p.close])).toEqual([
       ['amfi:147481', '2026-10-21', 30.81],
     ]);
@@ -189,6 +207,7 @@ describe('feed client', () => {
     const prices = await feedSource(new FeedClient('https://example.org/feed/')).latest([ppfas], {
       fetch: fn,
     });
+
     expect(prices.map((p) => p.key).sort()).toEqual(['amfi:147481', 'fx:USDINR']);
   });
 });

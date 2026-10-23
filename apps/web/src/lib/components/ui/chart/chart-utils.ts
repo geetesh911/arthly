@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { getContext, setContext, type Component, type Snippet } from 'svelte';
+import { type Component, getContext, setContext, type Snippet } from 'svelte';
 import type { Tooltip } from 'layerchart';
 
 export const THEMES = { light: '', dark: '.dark' } as const;
@@ -26,7 +26,9 @@ export function getPayloadConfigFromPayload(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: Record<string, any> | null,
 ) {
-  if (typeof payload !== 'object' || payload === null) return undefined;
+  if (typeof payload !== 'object' || payload === null) {
+    return undefined;
+  }
 
   const payloadConfig =
     'config' in payload && typeof payload.config === 'object' && payload.config !== null

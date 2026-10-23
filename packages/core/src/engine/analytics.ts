@@ -3,17 +3,18 @@ import type { AmfiScheme } from '../import/types.ts';
 import type { AssetClass, BondTerms, DepositTerms, Instrument } from '../model/types.ts';
 import type { StockReference } from '../plugins/prices/reference.ts';
 import { daysBetween } from '../util/dates.ts';
-import type { Holding } from './portfolio.ts';
-import { fundExposure, type FundExposureReference } from './fund-exposure.ts';
+
 import {
-  breakdown,
-  finishConcentration,
-  shareOf as share,
   type Breakdown,
+  breakdown,
   type Concentration,
   type ExposureRow,
+  finishConcentration,
+  shareOf as share,
 } from './analytics-common.ts';
-export type { Slice, Breakdown, Concentration, ExposureRow } from './analytics-common.ts';
+import { fundExposure, type FundExposureReference } from './fund-exposure.ts';
+import type { Holding } from './portfolio.ts';
+export type { Breakdown, Concentration, ExposureRow, Slice } from './analytics-common.ts';
 
 export const ASSET_CLASSES: AssetClass[] = [
   'equity',
@@ -49,6 +50,7 @@ export interface Analytics {
 
 function identity(i: Instrument, reference?: StockReference): string {
   const isin = i.ids.isin || reference?.isin;
+
   return isin
     ? `isin:${isin.toUpperCase()}`
     : i.ids.amfi
@@ -61,12 +63,14 @@ function identity(i: Instrument, reference?: StockReference): string {
             ? `us:${i.ids.us.toUpperCase()}`
             : i.id;
 }
+
 function concentration(
   holdings: Holding[],
   total: number,
   keyFor: (h: Holding) => string,
 ): Concentration {
   const map = new Map<string, ExposureRow>();
+
   for (const h of holdings) {
     const key = keyFor(h);
     const r = map.get(key) ?? {
@@ -78,11 +82,13 @@ function concentration(
       share: 0,
       portfolioShare: 0,
     };
+
     r.value += h.value;
     r.invested = (r.invested ?? 0) + h.invested;
     r.gain = (r.gain ?? 0) + h.gain;
     map.set(key, r);
   }
+
   return finishConcentration([...map.values()], total);
 }
 
@@ -110,18 +116,27 @@ export function portfolioAnalytics(
   const total = held.reduce((n, h) => n + h.value, 0);
   const schemesByCode = new Map(reference.schemes?.map((s) => [s.code, s]));
   const schemesByIsin = new Map<string, AmfiScheme>();
-  for (const s of reference.schemes ?? [])
-    for (const isin of [s.isinGrowth, s.isinReinvest])
-      if (isin) schemesByIsin.set(isin.toUpperCase(), s);
+
+  for (const s of reference.schemes ?? []) {
+    for (const isin of [s.isinGrowth, s.isinReinvest]) {
+      if (isin) {
+        schemesByIsin.set(isin.toUpperCase(), s);
+      }
+    }
+  }
+
   const stocksByIsin = new Map(reference.stocks?.map((s) => [s.isin.toUpperCase(), s]));
   const stocksBySymbol = new Map(reference.stocks?.map((s) => [s.symbol.toUpperCase(), s]));
+
   const words = (h: Holding) => {
     const i = h.instrument;
     const s =
       (i.ids.amfi ? schemesByCode.get(i.ids.amfi) : undefined) ??
       (i.ids.isin ? schemesByIsin.get(i.ids.isin.toUpperCase()) : undefined);
+
     return `${i.name} ${s?.name ?? ''} ${s?.category ?? ''}`.toLowerCase();
   };
+
   const stock = (h: Holding) =>
     (h.instrument.ids.isin ? stocksByIsin.get(h.instrument.ids.isin.toUpperCase()) : undefined) ??
     (h.instrument.ids.nse ? stocksBySymbol.get(h.instrument.ids.nse.toUpperCase()) : undefined);
@@ -129,13 +144,17 @@ export function portfolioAnalytics(
   const split = (list: Holding[], label: (h: Holding) => string) =>
     breakdown(list.map((h) => ({ label: label(h), value: h.value })));
   const assetValues: AllocationTargets = {};
-  for (const h of held)
+
+  for (const h of held) {
     assetValues[h.instrument.assetClass] = (assetValues[h.instrument.assetClass] ?? 0) + h.value;
+  }
+
   const underlying = fundExposure(held, date, reference);
   const termHoldings = held.filter((h) => ['fd', 'bond', 'sgb'].includes(h.instrument.kind));
   const marketHoldings = held.filter((h) =>
     ['stock', 'us-stock', 'mf', 'etf'].includes(h.instrument.kind),
   );
+
   return {
     date,
     total,
@@ -147,17 +166,28 @@ export function portfolioAnalytics(
     marketCap: underlying.marketCap,
     strategy: split(funds, (h) => {
       const w = words(h);
-      if (/\bactive(?:ly)?\b/.test(w)) return 'Active';
+
+      if (/\bactive(?:ly)?\b/.test(w)) {
+        return 'Active';
+      }
+
       // An FoF's wrapper does not establish how its underlying funds are managed.
-      if (/\bfof\b|fund(?:s)? of fund/.test(w)) return 'Unclassified';
-      if (h.instrument.kind === 'etf' || /\betf\b|\bindex(?:ed)?\b|passive/.test(w))
+      if (/\bfof\b|fund(?:s)? of fund/.test(w)) {
+        return 'Unclassified';
+      }
+
+      if (h.instrument.kind === 'etf' || /\betf\b|\bindex(?:ed)?\b|passive/.test(w)) {
         return 'Passive';
+      }
+
       if (
         /equity scheme|debt scheme|hybrid scheme|flexi\s*cap|multi\s*cap|large\s*cap|mid\s*cap|small\s*cap|elss|liquid fund|overnight fund|balanced advantage/.test(
           w,
         )
-      )
+      ) {
         return 'Active';
+      }
+
       return 'Unclassified';
     }),
     currency: split(held, (h) => h.instrument.currency),
@@ -174,8 +204,13 @@ export function portfolioAnalytics(
     ),
     maturities: split(termHoldings, (h) => {
       const maturity = (h.instrument.terms as DepositTerms | BondTerms | undefined)?.maturity;
-      if (!maturity) return 'Unclassified';
+
+      if (!maturity) {
+        return 'Unclassified';
+      }
+
       const days = daysBetween(date, maturity);
+
       return days <= 0
         ? 'Matured / due'
         : days <= 90
@@ -206,6 +241,7 @@ export function portfolioAnalytics(
 
 export function validAllocationTargets(targets: AllocationTargets): boolean {
   const entries = Object.entries(targets);
+
   return (
     entries.length > 0 &&
     entries.every(
@@ -224,6 +260,7 @@ export function rebalancePlan(
   const total = Object.values(current).reduce((n, v) => n + v, 0);
   const valid =
     validAllocationTargets(targets) && Number.isFinite(contribution) && contribution >= 0;
+
   return {
     valid,
     total: total + contribution,
@@ -232,6 +269,7 @@ export function rebalancePlan(
           const value = current[assetClass] ?? 0;
           const targetPct = targets[assetClass] ?? 0;
           const targetValue = ((total + contribution) * targetPct) / 100;
+
           return {
             assetClass,
             value,

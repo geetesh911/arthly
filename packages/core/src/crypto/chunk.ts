@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // A chunk is `"PVC1" | nonce (12) | AES-256-GCM(gzip(JSON))`, with AAD `<vaultId>:<path>`.
-import { concatBytes, equalBytes, randomBytes, utf8, type Bytes } from '../util/bytes.ts';
+import { type Bytes, concatBytes, equalBytes, randomBytes, utf8 } from '../util/bytes.ts';
 
 const MAGIC = utf8.encode('PVC1');
 const NONCE_LENGTH = 12;
@@ -14,6 +14,7 @@ async function pipe(
   transform: CompressionStream | DecompressionStream,
 ): Promise<Bytes> {
   const stream = new Blob([bytes]).stream().pipeThrough(transform);
+
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -37,6 +38,7 @@ export async function sealChunk(
     key,
     plain,
   );
+
   return concatBytes(MAGIC, nonce, new Uint8Array(sealed));
 }
 
@@ -49,8 +51,10 @@ export async function openChunk<T = unknown>(
   if (bytes.length < MAGIC.length + NONCE_LENGTH + 16 || !equalBytes(bytes.subarray(0, 4), MAGIC)) {
     throw new ChunkError(`${path} is not a chunk`);
   }
+
   const nonce = bytes.slice(4, 4 + NONCE_LENGTH);
   let plain: ArrayBuffer;
+
   try {
     plain = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: nonce, additionalData: chunkAad(vaultId, path) },
@@ -60,5 +64,6 @@ export async function openChunk<T = unknown>(
   } catch {
     throw new ChunkError(`${path} failed to decrypt`);
   }
+
   return JSON.parse(utf8.decode(await gunzip(new Uint8Array(plain)))) as T;
 }

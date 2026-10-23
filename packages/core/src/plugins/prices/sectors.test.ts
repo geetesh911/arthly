@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import { NSE_SECTORS, sectorOfIndustry } from './sectors.ts';
 
 describe('NSE sectors', () => {
   it('has NSE’s 22 sectors and 59 industries, each industry in one sector', () => {
     const industries = Object.values(NSE_SECTORS).flat();
+
     expect(Object.keys(NSE_SECTORS)).toHaveLength(22);
     expect(industries).toHaveLength(59);
-    for (const industry of industries)
+
+    for (const industry of industries) {
       expect(Object.values(NSE_SECTORS).filter((list) => list.includes(industry))).toHaveLength(1);
+    }
   });
 
   it('maps report industries whatever their case, spacing and punctuation', () => {

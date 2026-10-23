@@ -1,18 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import FileUp from '@lucide/svelte/icons/file-up';
-  import { FUND_SOURCES, type Analytics } from '@pv/core';
+  import { type Analytics, FUND_SOURCES } from '@pv/core';
+
   import { api } from '#lib/api.ts';
   import { ask } from '#lib/confirm.svelte.ts';
   import { readFile } from '#lib/files.ts';
   import { CLASS_NAMES, date, inr, pct } from '#lib/format.ts';
   import type { AnalyticsDto } from '#lib/worker/dto.ts';
-  import * as Card from './ui/card/index.ts';
-  import * as Table from './ui/table/index.ts';
+
   import { Badge } from './ui/badge/index.ts';
   import { Button, buttonVariants } from './ui/button/index.ts';
+  import * as Card from './ui/card/index.ts';
   import { Input } from './ui/input/index.ts';
   import { NativeSelect } from './ui/native-select/index.ts';
+  import * as Table from './ui/table/index.ts';
   import Stat from './Stat.svelte';
 
   let {
@@ -35,7 +37,9 @@
     Object.values(FUND_SOURCES).map((s) => s.label),
   );
   $effect(() => {
-    if (!data.funds.some((f) => f.key === selectedKey)) selectedKey = data.funds[0]?.key ?? '';
+    if (!data.funds.some((f) => f.key === selectedKey)) {
+      selectedKey = data.funds[0]?.key ?? '';
+    }
   });
   const selected = $derived(data.funds.find((f) => f.key === selectedKey));
   const filtered = $derived(
@@ -48,10 +52,16 @@
 
   async function addReport(input: HTMLInputElement) {
     const file = input.files?.[0];
+
     input.value = '';
-    if (!file) return;
+
+    if (!file) {
+      return;
+    }
+
     adding = true;
     addMessage = '';
+
     try {
       const result = await api().addFundReport(file.name, await readFile(file));
       const used = result.funds.length
@@ -60,6 +70,7 @@
       const skipped = result.skipped.length
         ? ` ${plural(result.skipped.length, 'scheme', 'schemes')} couldn’t be read (${result.skipped[0]}).`
         : '';
+
       addMessage = `Added ${plural(result.schemes, 'scheme', 'schemes')} as of ${date(result.asOf)}. ${used}${skipped}`;
       await onchange();
     } catch (e) {
@@ -76,7 +87,11 @@
       action: 'Remove',
       destructive: true,
     });
-    if (!ok) return;
+
+    if (!ok) {
+      return;
+    }
+
     await api().removeAddedFundReports();
     addMessage = 'Removed the reports you added.';
     await onchange();

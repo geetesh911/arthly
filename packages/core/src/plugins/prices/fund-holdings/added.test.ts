@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
+
 import { addFundReports, readFundReport, withAddedReports } from './added.ts';
 import type { FundPortfolio } from './types.ts';
 
@@ -15,9 +16,12 @@ const workbook = (title: string, date = 'September 30, 2026') => {
     ['Net Current Assets', '', '', '', 1, '1%'],
     ['GRAND TOTAL', '', '', '', 100, '100%'],
   ];
+
   XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows), 'EESMCF');
+
   return new Uint8Array(XLSX.write(book, { type: 'buffer', bookType: 'xlsx' }) as Buffer);
 };
+
 const report = (id: string, schemeName: string, asOf: string): FundPortfolio => ({
   id,
   schemeName,
@@ -37,6 +41,7 @@ describe('fund reports added by hand', () => {
       workbook('EXAMPLE MID CAP FUND'),
       '2026-10-23',
     );
+
     expect(skipped).toEqual([]);
     expect(portfolios).toMatchObject([
       {
@@ -50,8 +55,10 @@ describe('fund reports added by hand', () => {
 
   it('turns down files that aren’t portfolios, and reports dated after today', async () => {
     const book = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([['Scheme', 'Units']]), 'Sheet1');
     const other = new Uint8Array(XLSX.write(book, { type: 'buffer', bookType: 'xlsx' }) as Buffer);
+
     await expect(readFundReport('holdings.xlsx', other, '2026-10-23')).rejects.toThrow(
       'holdings.xlsx isn’t a monthly portfolio report the app can read',
     );
@@ -73,6 +80,7 @@ describe('fund reports added by hand', () => {
       report('file:a', 'A Fund', '2026-10-31'),
       report('file:a', 'A Fund', '2026-08-31'),
     ];
+
     expect(addFundReports(saved, next).map((p) => [p.id, p.asOf])).toEqual([
       ['file:a', '2026-10-31'],
       ['file:b', '2026-09-30'],
@@ -89,6 +97,7 @@ describe('fund reports added by hand', () => {
       report('file:b fund', 'B Fund', '2026-09-30'),
       report('file:c fund', 'C Fund', '2026-09-30'),
     ];
+
     expect(withAddedReports(fetched, added).map((p) => p.id)).toEqual([
       'ppfas:b fund',
       'file:a fund',

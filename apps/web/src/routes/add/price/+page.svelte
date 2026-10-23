@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { type Instrument, randomId } from '@pv/core';
+
   import { api, list } from '#lib/api.ts';
   import { attempt, changed, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -10,7 +12,6 @@
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { todayIso } from '#lib/forms.ts';
-  import { randomId, type Instrument } from '@pv/core';
 
   let instruments = $state<Instrument[]>([]);
   let instrumentId = $state('');
@@ -22,12 +23,16 @@
       (i) => !['fd', 'ppf', 'epf', 'eps', 'cash'].includes(i.kind),
     );
     const ref = new URLSearchParams(location.hash.split('?')[1] ?? '').get('ref');
-    if (ref) instrumentId = ref;
+
+    if (ref) {
+      instrumentId = ref;
+    }
   });
 
   async function save(event: Event) {
     event.preventDefault();
     const value = { id: randomId('mp'), instrumentId, date, price: Number(price) };
+
     if ((await attempt(() => api().save('manualPrice', value))) !== undefined) {
       say('Price saved');
       price = '';

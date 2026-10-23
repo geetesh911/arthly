@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { type Instrument, randomId, snapshotId } from '@pv/core';
+
   import { api, list } from '#lib/api.ts';
   import { app, attempt, changed, say } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -10,7 +12,6 @@
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { ensureAccount, money, newInstrument, todayIso } from '#lib/forms.ts';
-  import { randomId, snapshotId, type Instrument } from '@pv/core';
 
   let kind = $state<'ppf' | 'epf' | 'cash'>('ppf');
   let memberId = $state(app.filter.memberId ?? app.members[0]?.id ?? '');
@@ -36,7 +37,11 @@
       [...txns, ...snaps].filter((t) => t.accountId === accountId).map((t) => t.instrumentId),
     );
     const existing = instruments.find((i) => i.kind === kindNeeded && used.has(i.id));
-    if (existing) return existing.id;
+
+    if (existing) {
+      return existing.id;
+    }
+
     return newInstrument({
       kind: kindNeeded,
       name,
@@ -67,8 +72,10 @@
             ? `${institution} savings`
             : `${kind.toUpperCase()} (${institution})`,
       );
+
       if (kind === 'cash' || entry === 'balance') {
         const value = money(amount);
+
         await api().save('snapshot', {
           id: snapshotId({ accountId, instrumentId, asOf: date }),
           accountId,
@@ -91,8 +98,10 @@
           source: { kind: 'manual' },
         });
       }
+
       return `${accountId}|${instrumentId}`;
     });
+
     if (done) {
       say('Saved');
       amount = '';

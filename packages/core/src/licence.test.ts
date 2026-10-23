@@ -21,9 +21,16 @@ const MIT = /^(\/\/|<!--) SPDX-License-Identifier: MIT/;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
-    if (SKIP.has(name)) return [];
+    if (SKIP.has(name)) {
+      return [];
+    }
+
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return sourceFiles(path);
+
+    if (statSync(path).isDirectory()) {
+      return sourceFiles(path);
+    }
+
     return /\.(ts|js|svelte|css)$/.test(name) ? [path] : [];
   });
 }
@@ -31,10 +38,12 @@ function sourceFiles(dir: string): string[] {
 describe('source files', () => {
   it('all start with an SPDX header', () => {
     const files = ['packages', 'apps'].flatMap((d) => sourceFiles(join(root, d)));
+
     expect(files.length).toBeGreaterThan(50);
     const missing = files
       .map((f) => f.slice(root.length + 1))
       .filter((f) => !(VENDORED.test(f) ? MIT : HEADER).test(readFileSync(join(root, f), 'utf8')));
+
     expect(missing).toEqual([]);
   });
 });

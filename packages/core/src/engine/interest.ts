@@ -5,11 +5,12 @@ import {
   day,
   endOfMonth,
   fyOf,
+  type ISODate,
   makeDate,
   month,
   year,
-  type ISODate,
 } from '../util/dates.ts';
+
 import type { Entry } from './positions.ts';
 
 export interface InterestRule {
@@ -38,7 +39,11 @@ export interface InterestResult {
 /** The financial year an interest credit belongs to; early-April credits count for the year before. */
 export function creditFy(e: Entry): number {
   const fy = Number(e.meta?.fy);
-  if (Number.isInteger(fy) && fy > 1900) return fy;
+
+  if (Number.isInteger(fy) && fy > 1900) {
+    return fy;
+  }
+
   return month(e.date) === 4 && day(e.date) <= 15 ? fyOf(e.date) - 1 : fyOf(e.date);
 }
 
@@ -50,12 +55,14 @@ function signed(e: Entry): number {
     case 'contribution':
     case 'interest':
       return e.amount;
+
     case 'withdrawal':
     case 'sell':
     case 'switch-out':
     case 'tax':
     case 'charge':
       return -e.amount;
+
     default:
       return 0;
   }
@@ -68,24 +75,35 @@ export function simulateInterest(
 ): InterestResult {
   const result: InterestResult = { balance: 0, accrued: 0, months: [], credits: [], closed: false };
   const live = entries.filter((e) => e.date <= upTo);
-  if (live.length === 0) return result;
+
+  if (live.length === 0) {
+    return result;
+  }
+
   const realFys = new Set(live.filter((e) => e.type === 'interest' && !e.synthetic).map(creditFy));
   let balance = 0;
   let fyInterest = 0;
   let index = 0;
   let start = makeDate(year(live[0]!.date), month(live[0]!.date), 1);
+
   while (start <= upTo) {
     const end = endOfMonth(start);
     const before = balance;
     let lowest: number | null = null;
+
     while (index < live.length && live[index]!.date <= end) {
       const e = live[index]!;
-      if (day(e.date) > 5 && lowest === null) lowest = balance;
+
+      if (day(e.date) > 5 && lowest === null) {
+        lowest = balance;
+      }
+
       if (e.type === 'maturity') {
         balance = 0;
         result.closed = true;
       } else {
         balance += signed(e);
+
         if (e.type === 'interest' && !e.synthetic) {
           result.credits.push({
             fy: creditFy(e),
@@ -95,26 +113,41 @@ export function simulateInterest(
           });
         }
       }
-      if (day(e.date) > 5) lowest = Math.min(lowest!, balance);
+
+      if (day(e.date) > 5) {
+        lowest = Math.min(lowest!, balance);
+      }
+
       index += 1;
     }
-    if (end > upTo || result.closed) break;
+
+    if (end > upTo || result.closed) {
+      break;
+    }
+
     const base = rule.base === 'min-from-5th' ? Math.min(lowest ?? balance, balance) : before;
     const interest = (Math.max(0, base) * rule.ratePct(start)) / 1200;
+
     fyInterest += interest;
     result.months.push({ month: start, interest });
+
     if (month(end) === 3) {
       const fy = fyOf(end);
+
       if (!realFys.has(fy) && fyInterest > 0) {
         balance += fyInterest;
         result.credits.push({ fy, date: end, amount: fyInterest, estimated: true });
       }
+
       fyInterest = 0;
     }
+
     start = addMonths(start, 1);
   }
+
   result.balance = balance;
   result.accrued = result.closed ? 0 : fyInterest;
+
   return result;
 }
 

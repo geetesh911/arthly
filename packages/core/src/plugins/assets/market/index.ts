@@ -8,8 +8,11 @@ export const market: AssetType = {
   value(p, i, ctx) {
     const status = p.units > 1e-9 ? 'open' : 'closed';
     const price = ctx.prices.price(i, ctx.date);
-    if (price)
+
+    if (price) {
       return { value: p.units * price.price, priceDate: price.date, estimate: false, status };
+    }
+
     return { value: p.cost, estimate: true, status };
   },
   invested: (p) => p.cost,

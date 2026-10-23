@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The screens' handle on the data worker.
-import * as Comlink from 'comlink';
 import type { EntityMap, EntityName } from '@pv/core';
+import * as Comlink from 'comlink';
+
 import type { WorkerApi } from './worker/data.worker.ts';
 
 let remote: Comlink.Remote<WorkerApi> | undefined;
@@ -10,6 +11,7 @@ export function api(): Comlink.Remote<WorkerApi> {
   remote ??= Comlink.wrap<WorkerApi>(
     new Worker(new URL('./worker/data.worker.ts', import.meta.url), { type: 'module' }),
   );
+
   return remote;
 }
 

@@ -13,7 +13,11 @@ export function randomBytes(length: number): Bytes {
 
 export function toBase64(bytes: Uint8Array): string {
   let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
   return btoa(binary);
 }
 
@@ -24,10 +28,12 @@ export function fromBase64(text: string): Bytes {
 export function concatBytes(...parts: Uint8Array[]): Bytes {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let offset = 0;
+
   for (const part of parts) {
     out.set(part, offset);
     offset += part.length;
   }
+
   return out;
 }
 

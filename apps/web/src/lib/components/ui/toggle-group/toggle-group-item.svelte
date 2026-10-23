@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script lang="ts">
   import { ToggleGroup as ToggleGroupPrimitive } from 'bits-ui';
+
   import { type ToggleVariants, toggleVariants } from '#lib/components/ui/toggle/index.ts';
   import { cn } from '#lib/utils.ts';
+
   import { getToggleGroupCtx } from './toggle-group.svelte';
 
   let {

@@ -7,7 +7,7 @@ import { findDate, num } from '../../../import/sheet.ts';
 import type { ImportDraft, Importer, InputFile } from '../../../import/types.ts';
 import { mask } from '../../../model/ids.ts';
 import type { TransactionType } from '../../../model/types.ts';
-import { fyEnd, fyOf, maxDate, minDate, type ISODate } from '../../../util/dates.ts';
+import { fyEnd, fyOf, type ISODate, maxDate, minDate } from '../../../util/dates.ts';
 import { near, roundAmount } from '../../../util/numbers.ts';
 
 type Part = 'employee' | 'employer' | 'pension';
@@ -61,55 +61,85 @@ const sameShares = (a: Shares, b: Shares) => PARTS.every((p) => near(a[p], b[p],
 function split(line: string): { head: string; shares?: Shares } {
   const words = line.split(' ');
   let n = words.length;
-  while (n > 0 && AMOUNT.test(words[n - 1]!)) n--;
+
+  while (n > 0 && AMOUNT.test(words[n - 1]!)) {
+    n--;
+  }
+
   const head = words.slice(0, n).join(' ');
   const amounts = words.slice(n).map((w) => Math.abs(num(w) ?? 0));
-  if (amounts.length < 3) return { head };
+
+  if (amounts.length < 3) {
+    return { head };
+  }
+
   const [employee, employer, pension] = amounts.slice(-3) as [number, number, number];
+
   return { head, shares: { employee, employer, pension } };
 }
 
 function read(lines: string[]): Passbook {
   const book: Passbook = { rows: [], unread: 0, totals: {} };
+
   for (const line of lines) {
     let m = /\bOn\s*:\s*(\d{2}-\d{2}-\d{4})/i.exec(line);
-    if (m) book.printed = findDate(m[1]);
+
+    if (m) {
+      book.printed = findDate(m[1]);
+    }
+
     if ((m = /Establishment ID\/Name:?\s*[A-Z0-9]+\s*\/\s*(.+)$/i.exec(line))) {
       book.establishment = m[1]!.trim();
       continue;
     }
+
     if ((m = /Member ID\/Name:?\s*([A-Z0-9]+)/i.exec(line))) {
       book.memberId = m[1];
       continue;
     }
+
     if ((m = /Financial Year\s*-?\s*(\d{4})\s*-\s*\d{2,4}/i.exec(line))) {
       book.fy = Number(m[1]);
       continue;
     }
+
     const { head, shares } = split(line);
     const balance = shares && { date: findDate(head), shares };
+
     if ((m = ENTRY.exec(head))) {
       const date = findDate(m[1]);
-      if (!date || !shares) book.unread++;
-      else
+
+      if (!date || !shares) {
+        book.unread++;
+      } else {
         book.rows.push({
           date,
           credit: m[2] === 'CR',
           monthly: /^cont\b/i.test(m[3] ?? ''),
           shares,
         });
-    } else if (/^OB\b/i.test(head)) book.opening = balance;
-    else if (/^Total Contributions/i.test(head)) book.totals.contributions = shares;
-    else if (/^Total Transfer/i.test(head)) book.totals.transfers = shares;
-    else if (/^Total Withdrawals/i.test(head)) book.totals.withdrawals = shares;
-    else if (/^(Interest details|Int\.? Updated)/i.test(head)) book.interest = balance;
-    else if (/^Closing Balance/i.test(head)) book.closing = balance;
+      }
+    } else if (/^OB\b/i.test(head)) {
+      book.opening = balance;
+    } else if (/^Total Contributions/i.test(head)) {
+      book.totals.contributions = shares;
+    } else if (/^Total Transfer/i.test(head)) {
+      book.totals.transfers = shares;
+    } else if (/^Total Withdrawals/i.test(head)) {
+      book.totals.withdrawals = shares;
+    } else if (/^(Interest details|Int\.? Updated)/i.test(head)) {
+      book.interest = balance;
+    } else if (/^Closing Balance/i.test(head)) {
+      book.closing = balance;
+    }
   }
+
   return book;
 }
 
 async function passbook(file: InputFile): Promise<{ book: Passbook; known: boolean }> {
   const lines = (await file.pdfText()).flatMap((p) => p.lines);
+
   return {
     book: read(lines),
     known: lines.some((l) => /Member Passbook|EPF Passbook/i.test(l)),
@@ -118,7 +148,10 @@ async function passbook(file: InputFile): Promise<{ book: Passbook; known: boole
 
 /** "ACME SOFTWARE PRIVATE LIMITED" becomes "Acme Software Private Limited"; mixed case stays. */
 function titleCase(name: string): string {
-  if (name !== name.toUpperCase()) return name;
+  if (name !== name.toUpperCase()) {
+    return name;
+  }
+
   return name.toLowerCase().replace(/(^|[\s(&./-])(\p{L})/gu, (_, gap, c) => gap + c.toUpperCase());
 }
 
@@ -148,10 +181,13 @@ function check(book: Passbook): string[] {
       ) &&
       'withdrawals',
   ].filter(Boolean);
-  if (mismatched.length)
+
+  if (mismatched.length) {
     warnings.push(
       `The ${mismatched.join(' and ')} in the passbook don't add up to its totals for the year. Check the entries against your passbook.`,
     );
+  }
+
   if (book.opening && book.closing) {
     const expected = add(
       add(
@@ -164,15 +200,20 @@ function check(book: Passbook): string[] {
       ),
       book.interest?.shares ?? zero(),
     );
-    if (!sameShares(expected, book.closing.shares))
+
+    if (!sameShares(expected, book.closing.shares)) {
       warnings.push(
         "The passbook's entries don't add up to its closing balance. Check them against your passbook.",
       );
+    }
   }
-  if (book.unread)
+
+  if (book.unread) {
     warnings.push(
       `${book.unread} ${book.unread === 1 ? 'entry' : 'entries'} in the passbook couldn't be read. Check them against your passbook.`,
     );
+  }
+
   return warnings;
 }
 
@@ -184,19 +225,31 @@ export const epfoPassbook: Importer = {
 
   async detect(file) {
     const { book, known } = await passbook(file);
-    if (!book.memberId) return 0;
+
+    if (!book.memberId) {
+      return 0;
+    }
+
     return known ? 0.95 : 0.7;
   },
 
   async parse(file, ctx) {
     const { book } = await passbook(file);
-    if (!book.memberId) throw new Error('No member ID found in this passbook');
+
+    if (!book.memberId) {
+      throw new Error('No member ID found in this passbook');
+    }
+
     // The heading names the year; failing that, it follows the opening balance's 31 March.
     const fy =
       book.fy ??
       (book.opening?.date ? fyOf(book.opening.date) + 1 : undefined) ??
       (book.rows[0] ? fyOf(book.rows[0].date) : undefined);
-    if (fy === undefined) throw new Error('No financial year found in this passbook');
+
+    if (fy === undefined) {
+      throw new Error('No financial year found in this passbook');
+    }
+
     const draft: ImportDraft = {
       accounts: [],
       instruments: [],
@@ -209,6 +262,7 @@ export const epfoPassbook: Importer = {
     const institution = book.establishment ? titleCase(book.establishment) : 'EPFO';
     const suffix = ` ${maskedRef}`;
     const pension = [book.opening, book.closing, ...book.rows].some((b) => b && b.shares.pension);
+
     draft.accounts.push({
       ref: 'epf',
       institution,
@@ -217,7 +271,8 @@ export const epfoPassbook: Importer = {
       maskedRef,
       currency: 'INR',
     });
-    for (const kind of pension ? (['epf', 'eps'] as const) : (['epf'] as const))
+
+    for (const kind of pension ? (['epf', 'eps'] as const) : (['epf'] as const)) {
       draft.instruments.push({
         ref: kind,
         kind,
@@ -226,9 +281,13 @@ export const epfoPassbook: Importer = {
         assetClass: 'debt',
         ids: {},
       });
+    }
 
     const entry = (part: Part, date: ISODate, type: TransactionType, amount: number) => {
-      if (amount <= 0 || (part === 'pension' && !pension)) return;
+      if (amount <= 0 || (part === 'pension' && !pension)) {
+        return;
+      }
+
       draft.transactions.push({
         account: 'epf',
         instrument: part === 'pension' ? 'eps' : 'epf',
@@ -239,19 +298,28 @@ export const epfoPassbook: Importer = {
         meta: { part },
       });
     };
-    for (const row of book.rows)
-      for (const part of PARTS)
+
+    for (const row of book.rows) {
+      for (const part of PARTS) {
         entry(part, row.date, row.credit ? 'contribution' : 'withdrawal', row.shares[part]);
+      }
+    }
+
     // EPS earns no interest, so only the EPF shares are credited.
     const interestDate = book.interest?.date ?? fyEnd(fy);
-    for (const part of ['employee', 'employer'] as const)
+
+    for (const part of ['employee', 'employer'] as const) {
       entry(part, interestDate, 'interest', book.interest?.shares[part] ?? 0);
+    }
 
     const balances = (asOf: ISODate, shares: Shares, skipZero: boolean) => {
       const epf = roundAmount(shares.employee + shares.employer);
-      if (!skipZero || epf > 0)
+
+      if (!skipZero || epf > 0) {
         draft.snapshots.push({ account: 'epf', instrument: 'epf', asOf, units: epf, value: epf });
-      if (pension && (!skipZero || shares.pension > 0))
+      }
+
+      if (pension && (!skipZero || shares.pension > 0)) {
         draft.snapshots.push({
           account: 'epf',
           instrument: 'eps',
@@ -259,16 +327,22 @@ export const epfoPassbook: Importer = {
           units: shares.pension,
           value: shares.pension,
         });
+      }
     };
+
     const openedAt = book.opening?.date ?? fyEnd(fy - 1);
+
     if (book.opening) {
       balances(openedAt, book.opening.shares, true);
       const total = PARTS.reduce((s, p) => s + book.opening!.shares[p], 0);
-      if (total > 0)
+
+      if (total > 0) {
         draft.warnings.push(
           `The passbook starts with a balance of ${inr(total)} on ${openedAt}. Import older passbooks for the full history; until then it counts as one deposit.`,
         );
+      }
     }
+
     // A passbook for the current year gives its closing balance at the year's end, but it is
     // only known up to the day the passbook was printed.
     const latest = [openedAt, ...draft.transactions.map((t) => t.date)].reduce(maxDate);
@@ -276,8 +350,13 @@ export const epfoPassbook: Importer = {
       latest,
       minDate(book.closing?.date ?? fyEnd(fy), book.printed ?? ctx.today),
     );
+
     draft.asOf = asOf;
-    if (book.closing && asOf !== openedAt) balances(asOf, book.closing.shares, false);
+
+    if (book.closing && asOf !== openedAt) {
+      balances(asOf, book.closing.shares, false);
+    }
+
     return draft;
   },
 };

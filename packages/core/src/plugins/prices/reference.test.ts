@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
+
 import {
   fetchNseReference,
   NSE_LISTS,
@@ -9,6 +10,7 @@ import {
 
 const csv =
   '\uFEFFCompany Name,Industry,Symbol,Series,ISIN Code\r\n"One, Ltd",Financial Services,ONE,EQ,INE001\r\n';
+
 describe('NSE classification lists', () => {
   it('reads official headings, BOM and quoted company names', () => {
     expect(parseNseConstituents(csv, 'large')).toEqual([
@@ -25,12 +27,17 @@ describe('NSE classification lists', () => {
     const data = await fetchNseReference(
       async (url) => {
         requests.push(url);
-        if (url === NSE_LISTS.large) return csv;
+
+        if (url === NSE_LISTS.large) {
+          return csv;
+        }
+
         throw new Error('offline');
       },
       '2026-10-22',
       old,
     );
+
     expect(requests).toHaveLength(4);
     expect(data.rows.map((r) => r.symbol)).toEqual(['ONE', 'OLD']);
     expect(data.date).toBe('2026-10-20');
@@ -39,7 +46,9 @@ describe('NSE classification lists', () => {
   it('rejects list data with missing or odd fields', () => {
     const row = { symbol: 'ONE', isin: 'INE001', industry: 'IT', marketCap: 'large' };
     const valid = { date: '2026-10-22', rows: [row], stale: ['mid'] };
+
     expect(validateNseReference(valid)).toEqual(valid);
+
     for (const invalid of [
       null,
       { ...valid, date: '22/10/2026' },
@@ -50,7 +59,8 @@ describe('NSE classification lists', () => {
       { ...valid, rows: [{ ...row, industry: 3 }] },
       { ...valid, rows: [{ ...row, marketCap: 'huge' }] },
       { ...valid, rows: [null] },
-    ])
+    ]) {
       expect(() => validateNseReference(invalid)).toThrow();
+    }
   });
 });

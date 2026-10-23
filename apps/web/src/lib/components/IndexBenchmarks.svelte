@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import type { BenchmarkRow, Benchmarks, ReturnBasis } from '@pv/core';
+
   import { date, pct } from '#lib/format.ts';
+
   import { Badge } from './ui/badge/index.ts';
   import { Button } from './ui/button/index.ts';
   import * as Card from './ui/card/index.ts';
@@ -25,6 +27,7 @@
 
   const matches = $derived.by(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+
     return data.rows.filter((r) =>
       words.every((w) => `${r.name} ${r.provider}`.toLowerCase().includes(w)),
     );

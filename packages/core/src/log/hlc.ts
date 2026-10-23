@@ -15,7 +15,11 @@ export interface Clock {
 
 export function parseHlc(hlc: string): { ms: number; counter: number; deviceId: string } {
   const m = HLC.exec(hlc);
-  if (!m) throw new Error(`Not a clock value: ${hlc}`);
+
+  if (!m) {
+    throw new Error(`Not a clock value: ${hlc}`);
+  }
+
   return { ms: Number(m[1]), counter: Number(m[2]), deviceId: m[3]! };
 }
 
@@ -37,19 +41,23 @@ export function createClock(
 
   function observe(hlc: string): void {
     const seen = parseHlc(hlc);
+
     if (seen.ms > ms || (seen.ms === ms && seen.counter > counter)) {
       ms = seen.ms;
       counter = seen.counter;
     }
   }
 
-  if (options.last) observe(options.last);
+  if (options.last) {
+    observe(options.last);
+  }
 
   return {
     deviceId,
     observe,
     next() {
       const wall = now();
+
       if (wall > ms) {
         ms = wall;
         counter = 0;
@@ -59,6 +67,7 @@ export function createClock(
         ms += 1;
         counter = 0;
       }
+
       return formatHlc(ms, counter, deviceId);
     },
   };

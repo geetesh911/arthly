@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import FileQuestion from '@lucide/svelte/icons/file-question';
@@ -8,7 +9,7 @@
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import PiggyBank from '@lucide/svelte/icons/piggy-bank';
   import Tag from '@lucide/svelte/icons/tag';
-  import { onMount } from 'svelte';
+
   import { api } from '#lib/api.ts';
   import { app, attempt } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
@@ -39,51 +40,85 @@
   async function next() {
     plan = null;
     const file = queue[0];
-    if (!file) return;
+
+    if (!file) {
+      return;
+    }
+
     queue = queue.slice(1);
     busy = true;
     const result = await attempt(async () =>
       api().prepareImport(file.name, await readFile(file), memberId),
     );
+
     busy = false;
-    if (!result) return next();
-    if (result.kind === 'plan') plan = result.plan;
-    else unknown = { name: file.name, headings: result.headings };
+
+    if (!result) {
+      return next();
+    }
+
+    if (result.kind === 'plan') {
+      plan = result.plan;
+    } else {
+      unknown = { name: file.name, headings: result.headings };
+    }
   }
 
   async function add(files: Iterable<File> | null | undefined) {
     const list = [...(files ?? [])];
-    if (!list.length) return;
+
+    if (!list.length) {
+      return;
+    }
+
     unknown = null;
     const opened = await attempt(() => openZips(list));
-    if (!opened) return;
+
+    if (!opened) {
+      return;
+    }
+
     queue = [...queue, ...opened];
-    if (!plan && !busy) void next();
+
+    if (!plan && !busy) {
+      void next();
+    }
   }
 
   // Files shared from another app arrive through the service worker.
   onMount(async () => {
-    if (!location.hash.includes('shared=') || !('caches' in window)) return;
+    if (!location.hash.includes('shared=') || !('caches' in window)) {
+      return;
+    }
+
     const cache = await caches.open('shared-files');
     const files: File[] = [];
+
     for (const request of await cache.keys()) {
       const res = await cache.match(request);
-      if (res)
+
+      if (res) {
         files.push(
           new File(
             [await res.blob()],
             decodeURIComponent(res.headers.get('x-name') ?? 'shared.xlsx'),
           ),
         );
+      }
+
       await cache.delete(request);
     }
+
     await goto('#/add', { replaceState: true });
     await add(files);
   });
 
   async function template() {
     const file = await attempt(() => api().exportFile('template'));
-    if (file) saveFile(file);
+
+    if (file) {
+      saveFile(file);
+    }
   }
 </script>
 

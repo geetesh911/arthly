@@ -43,14 +43,25 @@ export const DEFAULT_RATES: RateTables = {
 /** The PPF rate for a date; before the table starts, its first rate. */
 export function ppfRate(tables: RateTables, date: ISODate): number {
   let rate = tables.ppf[0]?.ratePct ?? 7.1;
-  for (const row of tables.ppf) if (row.from <= date) rate = row.ratePct;
+
+  for (const row of tables.ppf) {
+    if (row.from <= date) {
+      rate = row.ratePct;
+    }
+  }
+
   return rate;
 }
 
 /** The EPF rate for a financial year; a year not declared yet uses the latest one. */
 export function epfRate(tables: RateTables, fy: number): { ratePct: number; declared: boolean } {
   const exact = tables.epf.find((r) => r.fy === fy);
-  if (exact) return { ratePct: exact.ratePct, declared: true };
+
+  if (exact) {
+    return { ratePct: exact.ratePct, declared: true };
+  }
+
   const earlier = tables.epf.filter((r) => r.fy < fy).sort((a, b) => a.fy - b.fy);
+
   return { ratePct: (earlier.at(-1) ?? tables.epf[0])?.ratePct ?? 8.25, declared: false };
 }

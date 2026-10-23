@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Things worth a look: stale prices or files, mismatches with holdings files, duplicates,
 // what's due soon, PPF limits and sync conflicts. Each can be dismissed by key.
+import { parseHlc } from '../log/hlc.ts';
 import { all, get, type State } from '../log/replay.ts';
 import type { Transaction } from '../model/types.ts';
-import { parseHlc } from '../log/hlc.ts';
 import {
   daysBetween,
   fromMs,
   fyEnd,
   fyOf,
   fyStart,
-  makeDate,
   type ISODate,
+  makeDate,
 } from '../util/dates.ts';
 import { near, valueTolerance } from '../util/numbers.ts';
-import { engineCache, evaluate, type EngineOptions } from './portfolio.ts';
+
+import { engineCache, type EngineOptions, evaluate } from './portfolio.ts';
 import { isBalanceKind, positions, unitsOn } from './positions.ts';
 import type { PriceBook } from './prices.ts';
 import { upcoming } from './upcoming.ts';
@@ -107,14 +108,26 @@ export function checks(
 
   // price.stale
   let needsFx = false;
+
   for (const h of open) {
     const kind = h.instrument.kind;
-    if (isBalanceKind(kind) || kind === 'cash') continue;
-    if (h.instrument.currency !== 'INR') needsFx = true;
-    if (kind === 'bond' || kind === 'sgb') {
-      if (!h.priceDate) continue;
+
+    if (isBalanceKind(kind) || kind === 'cash') {
+      continue;
     }
+
+    if (h.instrument.currency !== 'INR') {
+      needsFx = true;
+    }
+
+    if (kind === 'bond' || kind === 'sgb') {
+      if (!h.priceDate) {
+        continue;
+      }
+    }
+
     const age = h.priceDate ? daysBetween(h.priceDate, today) : Infinity;
+
     if (age > s.priceStaleDays) {
       out.push({
         key: `price.stale:${h.instrument.id}`,
@@ -128,8 +141,10 @@ export function checks(
       });
     }
   }
+
   if (needsFx) {
     const fx = book.fx('USD', today);
+
     if (!fx?.date || daysBetween(fx.date, today) > s.priceStaleDays) {
       out.push({
         key: 'price.stale:fx:USDINR',
@@ -142,10 +157,15 @@ export function checks(
 
   // file.stale and recon.missing, per member and holdings importer
   const latest = new Map<string, ReturnType<typeof state.batches.get> & object>();
+
   for (const b of state.batches.values()) {
-    if (b.reverted || !b.memberId || !s.holdingsImporters.includes(b.importer.id)) continue;
+    if (b.reverted || !b.memberId || !s.holdingsImporters.includes(b.importer.id)) {
+      continue;
+    }
+
     const key = `${b.memberId}|${b.importer.id}`;
     const current = latest.get(key);
+
     if (
       !current ||
       batchDate(b) > batchDate(current) ||
@@ -154,10 +174,12 @@ export function checks(
       latest.set(key, b);
     }
   }
+
   for (const [key, b] of latest) {
     const [memberId, importer] = key.split('|') as [string, string];
     const member = get(state, 'member', memberId)?.name ?? 'Someone';
     const age = daysBetween(batchDate(b), today);
+
     if (age > s.fileStaleDays) {
       out.push({
         key: `file.stale:${key}`,
@@ -167,6 +189,7 @@ export function checks(
         fix: { kind: 'import-file', ref: importer },
       });
     }
+
     const inFile = new Set(
       b.keys
         .filter((k) => k.startsWith('snapshot:'))
@@ -174,14 +197,25 @@ export function checks(
         .filter((x) => x !== undefined)
         .map((x) => `${x.accountId}|${x.instrumentId}`),
     );
+
     for (const h of open) {
-      if (h.memberId !== memberId || h.position.units <= 1e-9 || inFile.has(h.key)) continue;
+      if (h.memberId !== memberId || h.position.units <= 1e-9 || inFile.has(h.key)) {
+        continue;
+      }
+
       const snaps = cache.snapshots.get(h.key) ?? [];
       const first = snaps[0];
       const firstBatch =
         first?.source.kind === 'import' ? state.batches.get(first.source.batchId) : undefined;
-      if (firstBatch?.importer.id !== importer) continue;
-      if ((snaps.at(-1)?.asOf ?? '') >= batchDate(b)) continue;
+
+      if (firstBatch?.importer.id !== importer) {
+        continue;
+      }
+
+      if ((snaps.at(-1)?.asOf ?? '') >= batchDate(b)) {
+        continue;
+      }
+
       out.push({
         key: `recon.missing:${h.key}:${b.batchId}`,
         type: 'recon.missing',
@@ -196,7 +230,10 @@ export function checks(
 
   // recon.total and recon.unmatched, from the latest batch per importer and member
   for (const b of state.batches.values()) {
-    if (b.reverted) continue;
+    if (b.reverted) {
+      continue;
+    }
+
     const newer = [...state.batches.values()].some(
       (o) =>
         !o.reverted &&
@@ -204,7 +241,11 @@ export function checks(
         o.memberId === b.memberId &&
         o.hlc > b.hlc,
     );
-    if (newer) continue;
+
+    if (newer) {
+      continue;
+    }
+
     for (const [n, f] of b.findings.entries()) {
       out.push({
         key: `${f.key}:${b.batchId}:${n}`,
@@ -217,13 +258,17 @@ export function checks(
 
   // balance.stale
   for (const h of open) {
-    if (h.instrument.kind !== 'ppf' && h.instrument.kind !== 'epf') continue;
+    if (h.instrument.kind !== 'ppf' && h.instrument.kind !== 'epf') {
+      continue;
+    }
+
     const lastEntry = h.position.entries.at(-1)?.date;
     const lastSnap = cache.snapshots.get(h.key)?.at(-1)?.asOf;
     const last = [lastEntry, lastSnap]
       .filter((d) => d !== undefined)
       .sort()
       .at(-1);
+
     if (last && daysBetween(last, today) > s.balanceStaleDays) {
       out.push({
         key: `balance.stale:${h.key}`,
@@ -242,6 +287,7 @@ export function checks(
     .filter((d) => d !== undefined)
     .sort()
     .at(-1);
+
   if (holdings.length > 0 && (!lastSafe || daysBetween(lastSafe, today) > s.backupDays)) {
     out.push({
       key: 'backup.none',
@@ -260,15 +306,24 @@ export function checks(
       .get(p.key)
       ?.filter((x) => x.asOf <= today)
       .at(-1);
-    if (!snap || p.entries.every((e) => e.synthetic)) continue;
+
+    if (!snap || p.entries.every((e) => e.synthetic)) {
+      continue;
+    }
+
     const instrument = get(state, 'instrument', p.instrumentId);
-    if (!instrument) continue;
+
+    if (!instrument) {
+      continue;
+    }
+
     if (isBalanceKind(instrument.kind)) {
       const h = evaluate(state, book, snap.asOf, { ...options, cache, skipXirr: true }).find(
         (x) => x.key === p.key,
       );
       const expected = snap.value ?? snap.units;
       const shown = h && (h.balance ?? h.value);
+
       if (shown !== undefined && !near(shown, expected, valueTolerance(expected))) {
         out.push({
           key: `recon.units:${p.key}:${snap.asOf}`,
@@ -279,9 +334,12 @@ export function checks(
           instrumentId: p.instrumentId,
         });
       }
+
       continue;
     }
+
     const units = unitsOn(p.entries, snap.asOf);
+
     if (!near(units, snap.units, 0.001)) {
       out.push({
         key: `recon.units:${p.key}:${snap.asOf}`,
@@ -296,23 +354,36 @@ export function checks(
 
   // dup.txn
   const groups = new Map<string, Transaction[]>();
+
   for (const t of all(state, 'transaction')) {
     const key = `${t.accountId}|${t.instrumentId}|${t.date}|${t.type}`;
+
     (groups.get(key) ?? groups.set(key, []).get(key)!).push(t);
   }
+
   const sourceOf = (t: Transaction) => (t.source.kind === 'import' ? t.source.batchId : 'manual');
+
   for (const list of groups.values()) {
     for (let a = 0; a < list.length; a++) {
       for (let b = a + 1; b < list.length; b++) {
         const x = list[a]!;
         const y = list[b]!;
-        if (sourceOf(x) === sourceOf(y)) continue;
+
+        if (sourceOf(x) === sourceOf(y)) {
+          continue;
+        }
+
         const unitsClose =
           x.units === undefined || y.units === undefined
             ? x.units === y.units
             : Math.abs(x.units - y.units) <= 0.001 * Math.max(Math.abs(x.units), Math.abs(y.units));
-        if (!unitsClose || !near(x.amount, y.amount, 1)) continue;
+
+        if (!unitsClose || !near(x.amount, y.amount, 1)) {
+          continue;
+        }
+
         const [first, second] = [x.id, y.id].sort();
+
         out.push({
           key: `dup.txn:${first}:${second}`,
           type: 'dup.txn',
@@ -339,9 +410,14 @@ export function checks(
       });
     }
   }
+
   for (const u of upcoming(state, book, today, s.soonDays, { ...options, cache })) {
-    if (u.kind === 'credit' || u.kind === 'ppf-deadline') continue;
+    if (u.kind === 'credit' || u.kind === 'ppf-deadline') {
+      continue;
+    }
+
     const type = u.kind === 'maturity' ? 'soon.maturity' : 'soon.payout';
+
     out.push({
       key: `${type}:${u.accountId}|${u.instrumentId}:${u.date}`,
       type,
@@ -355,15 +431,21 @@ export function checks(
   // ppf.minimum and ppf.limit
   const fy = fyOf(today);
   const perMember = new Map<string, number>();
+
   for (const h of open) {
-    if (h.instrument.kind !== 'ppf') continue;
+    if (h.instrument.kind !== 'ppf') {
+      continue;
+    }
+
     const deposited = h.position.entries
       .filter(
         (e) =>
           e.type === 'contribution' && !e.synthetic && e.date >= fyStart(fy) && e.date <= fyEnd(fy),
       )
       .reduce((sum, e) => sum + e.amount, 0);
+
     perMember.set(h.memberId, (perMember.get(h.memberId) ?? 0) + deposited);
+
     if (today >= makeDate(fy + 1, 3, 1) && deposited < 500) {
       out.push({
         key: `ppf.minimum:${h.key}:${fy}`,
@@ -375,6 +457,7 @@ export function checks(
       });
     }
   }
+
   for (const [memberId, deposited] of perMember) {
     if (deposited > 150_000) {
       out.push({
@@ -398,5 +481,6 @@ export function checks(
   }
 
   const dismissed = new Set(all(state, 'dismissal').map((d) => d.checkKey));
+
   return out.filter((c) => !dismissed.has(c.key));
 }

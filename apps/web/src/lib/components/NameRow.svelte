@@ -4,6 +4,7 @@
   import Pencil from '@lucide/svelte/icons/pencil';
   import Trash from '@lucide/svelte/icons/trash';
   import X from '@lucide/svelte/icons/x';
+
   import { Button } from '#lib/components/ui/button/index.ts';
   import { Input } from '#lib/components/ui/input/index.ts';
 
@@ -25,12 +26,17 @@
   let input = $state<HTMLInputElement | null>(null);
 
   $effect(() => {
-    if (editing) input?.select();
+    if (editing) {
+      input?.select();
+    }
   });
 
   async function submit(event: Event) {
     event.preventDefault();
-    if (draft.trim() === name || (await onRename(draft))) editing = false;
+
+    if (draft.trim() === name || (await onRename(draft))) {
+      editing = false;
+    }
   }
 </script>
 

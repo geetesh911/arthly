@@ -9,6 +9,7 @@ export function ask(question: Ask): Promise<boolean> {
   resolve?.(false);
   dialog.ask = question;
   dialog.open = true;
+
   return new Promise((r) => (resolve = r));
 }
 
