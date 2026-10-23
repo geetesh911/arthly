@@ -2,7 +2,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/state';
   import { type Account, type Instrument, randomId, type TransactionType } from '@pv/core';
 
   import { api, list } from '#lib/api.ts';
@@ -13,7 +12,7 @@
   import * as Card from '#lib/components/ui/card/index.ts';
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
-  import { money, todayIso } from '#lib/forms.ts';
+  import { holdingRef, money, todayIso } from '#lib/forms.ts';
 
   let accounts = $state<Account[]>([]);
   let instruments = $state<Instrument[]>([]);
@@ -46,12 +45,10 @@
 
   onMount(async () => {
     [accounts, instruments] = await Promise.all([list('account'), list('instrument')]);
-    const ref =
-      new URLSearchParams(page.url.search).get('ref') ??
-      new URLSearchParams(location.hash.split('?')[1] ?? '').get('ref');
+    const ref = holdingRef();
 
-    if (ref?.includes('|')) {
-      [accountId, instrumentId] = ref.split('|') as [string, string];
+    if (ref) {
+      [accountId, instrumentId] = ref;
 
       if (location.hash.includes('record-')) {
         type = 'sell';

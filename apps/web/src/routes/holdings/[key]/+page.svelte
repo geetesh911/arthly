@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { page } from '$app/state';
+  import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash from '@lucide/svelte/icons/trash';
   import type { AssetClass, Group, Instrument } from '@pv/core';
@@ -20,6 +21,7 @@
   import ValueChart from '#lib/components/ValueChart.svelte';
   import { ask } from '#lib/confirm.svelte.ts';
   import { CLASS_NAMES, date, inr, inrExact, inrSigned, pct, units } from '#lib/format.ts';
+  import { updatesByBalance } from '#lib/forms.ts';
   import type { HoldingDetailDto } from '#lib/worker/dto.ts';
 
   const key = $derived(decodeURIComponent(page.params.key ?? ''));
@@ -113,15 +115,27 @@
   <p class="text-muted-foreground text-sm">This holding no longer exists.</p>
 {:else}
   {@const h = detail.holding}
+  {@const byBalance =
+    instrument &&
+    updatesByBalance(
+      instrument.kind,
+      detail.entries.some((e) => !e.synthetic),
+    )}
+  {#snippet updateBalance()}
+    <Button size="sm" href={`#/add/balance?ref=${encodeURIComponent(h.key)}`}
+      ><Pencil />Update balance</Button
+    >
+  {/snippet}
   <PageHeader
     title={h.name}
     back={{ href: '#/holdings', label: 'Holdings' }}
     description={`${h.memberName} · ${h.accountLabel} · ${CLASS_NAMES[h.assetClass]}${h.status !== 'open' ? ` · ${h.status}` : ''}`}
+    actions={byBalance ? updateBalance : undefined}
   />
 
   <Card.Root>
     <Card.Content class="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-6">
-      <Stat label="Value" value={inr(h.value)} />
+      <Stat label="Value" value={inr(h.value)} testid="holding-value" />
       <Stat label="Invested" value={inr(h.invested)} />
       <Stat
         label="Gain"

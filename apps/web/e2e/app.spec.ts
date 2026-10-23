@@ -382,6 +382,37 @@ test('import a PPF statement once', async ({ page }) => {
   await expect(page.getByText('PPF (Bank of Baroda ••••2345)')).toBeVisible();
 });
 
+test('update a bank balance from its holding, typing only the date and amount', async ({
+  page,
+}) => {
+  await createVault(page);
+  await page.getByRole('link', { name: 'PPF, EPF or cash' }).click();
+  await page.getByLabel('Account type').selectOption('cash');
+  await page.getByLabel('Bank', { exact: true }).fill('Example Bank');
+  await page.getByLabel('Account number').fill('000123456789');
+  await page.getByLabel('Balance (₹)').fill('50,000');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('link', { name: 'Holdings' }).click();
+  await page.getByRole('link', { name: /Example Bank savings/ }).click();
+  await page.getByRole('link', { name: 'Update balance' }).click();
+  await expect(page.getByTestId('balance-holding')).toContainText('Example Bank savings ••••6789');
+  await expect(page.getByLabel('Bank', { exact: true })).toBeHidden();
+  await page.getByLabel('Balance (₹)').fill('62,500');
+  await page.getByRole('button', { name: 'Save' }).click();
+  // Back on the holding, valued at the new balance.
+  await expect(page.getByRole('heading', { name: 'Example Bank savings' })).toBeVisible();
+  await expect(page.getByTestId('holding-value')).toHaveText('₹62,500');
+
+  // A PPF with recorded deposits and interest is valued from those, so it has no such button.
+  await page.locator('a[href="#/add"]:visible').click();
+  await page.getByTestId('import-input').setInputFiles(PPF);
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.getByRole('link', { name: 'Holdings' }).click();
+  await page.getByRole('link', { name: /PPF \(Bank of Baroda/ }).click();
+  await expect(page.getByRole('heading', { name: /PPF \(Bank of Baroda/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Update balance' })).toBeHidden();
+});
+
 test('import an EPF passbook PDF', async ({ page }) => {
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(EPF);

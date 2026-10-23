@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Helpers for the hand-entry forms.
+import { page } from '$app/state';
 import {
   type Account,
   accountId,
   defaultAssetClass,
   type Instrument,
+  type InstrumentKind,
   randomId,
   roundAmount,
 } from '@pv/core';
@@ -49,3 +51,21 @@ export const todayIso = () => {
 
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+
+const BALANCE_KINDS: readonly InstrumentKind[] = ['cash', 'ppf', 'epf', 'eps'];
+
+/**
+ * Whether a new balance sets a holding's value, so its page can offer to update it: always for
+ * bank cash, but for PPF and EPF only until deposits or interest are recorded, which then set it.
+ */
+export const updatesByBalance = (kind: InstrumentKind, recorded: boolean) =>
+  kind === 'cash' || (!recorded && BALANCE_KINDS.includes(kind));
+
+/** The holding a form was opened for, from `?ref=accountId|instrumentId` in the address. */
+export function holdingRef(): [accountId: string, instrumentId: string] | null {
+  const ref =
+    new URLSearchParams(page.url.search).get('ref') ??
+    new URLSearchParams(location.hash.split('?')[1] ?? '').get('ref');
+
+  return ref?.includes('|') ? (ref.split('|') as [string, string]) : null;
+}
