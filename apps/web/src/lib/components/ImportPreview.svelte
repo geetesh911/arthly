@@ -15,7 +15,8 @@
   import { date, inr } from '#lib/format.ts';
   import type { PlanDto } from '#lib/worker/dto.ts';
 
-  let { plan, onDone }: { plan: PlanDto; onDone: () => void } = $props();
+  /** `onDone` says whether anything was written. */
+  let { plan, onDone }: { plan: PlanDto; onDone: (imported: boolean) => void } = $props();
 
   // The preview starts from the plan it was given; later changes come from replanning here.
   let current = $state(untrack(() => plan));
@@ -63,7 +64,7 @@
 
     say(result.written ? `Imported ${current.fileName}` : 'Already up to date');
     await changed();
-    onDone();
+    onDone(result.written > 0);
   }
 </script>
 
@@ -79,7 +80,7 @@
       <p class="flex items-center gap-2 text-sm">
         <CircleCheck class="text-gain size-4" />Already up to date. Nothing new in this file.
       </p>
-      <Button class="justify-self-start" onclick={onDone}>Done</Button>
+      <Button class="justify-self-start" onclick={() => onDone(false)}>Done</Button>
     {:else}
       <div class="grid gap-2">
         <div class="flex flex-wrap gap-2">
@@ -173,7 +174,7 @@
 
       <div class="flex gap-2">
         <Button disabled={busy} onclick={confirm}>{busy ? 'Importing…' : 'Import'}</Button>
-        <Button variant="ghost" onclick={onDone}>Cancel</Button>
+        <Button variant="ghost" onclick={() => onDone(false)}>Cancel</Button>
       </div>
     {/if}
   </Card.Content>

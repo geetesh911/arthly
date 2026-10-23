@@ -82,6 +82,7 @@
 
     if (done) {
       say('Saved');
+      on = todayIso();
       await changed();
     }
   }

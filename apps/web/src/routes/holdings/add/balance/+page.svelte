@@ -144,12 +144,8 @@
 
     if (done) {
       say('Saved');
-      amount = '';
       await changed();
-
-      if (fixed) {
-        await goto(`#/holdings/${encodeURIComponent(done)}`);
-      }
+      await goto(`#/holdings/${encodeURIComponent(done)}`);
     }
   }
 </script>

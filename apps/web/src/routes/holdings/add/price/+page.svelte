@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { type Instrument, randomId } from '@pv/core';
 
   import { api, list } from '#lib/api.ts';
@@ -37,8 +38,13 @@
 
     if ((await attempt(() => api().save('manualPrice', value))) !== undefined) {
       say('Price saved');
-      price = '';
       await changed();
+      // Its holding, or Holdings when it's held in more than one account.
+      const held = (await api().holdings()).filter((h) => h.instrumentId === instrumentId);
+
+      await goto(
+        held.length === 1 ? `#/holdings/${encodeURIComponent(held[0]!.key)}` : '#/holdings',
+      );
     }
   }
 </script>

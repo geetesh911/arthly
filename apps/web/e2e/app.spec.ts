@@ -63,6 +63,11 @@ async function openAdd(page: Page, name: string) {
     .click();
 }
 
+// An import ends on Holdings, to show what came in.
+async function landsOnHoldings(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Holdings', exact: true })).toBeVisible();
+}
+
 // Desktop has Settings in the sidebar; phones reach it through More.
 async function openSettings(page: Page) {
   const direct = page.getByRole('navigation', { name: 'Sections' }).getByRole('link', {
@@ -93,8 +98,11 @@ test('create a vault, import the Groww files and see the totals', async ({ page 
   await page.getByTestId('import-input').setInputFiles(MF);
   await expect(page.getByText('The file’s totals match its lines')).toBeVisible();
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
+  await openAdd(page, 'Import files');
   await page.getByTestId('import-input').setInputFiles(STOCKS);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   expect(await netWorth(page)).toBe('₹12,91,439');
   await page.getByRole('link', { name: 'Holdings' }).click();
   await expect(page.getByText('Parag Parikh ELSS Tax Saver Fund Direct Growth')).toBeVisible();
@@ -144,7 +152,7 @@ test('refresh prices through the relay', async ({ page }) => {
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(STOCKS);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
-  await page.getByRole('link', { name: 'Holdings' }).click();
+  await landsOnHoldings(page);
   await page.getByRole('button', { name: 'Refresh prices' }).click();
   await expect(page.getByText('Prices updated')).toBeVisible();
   await expect(page.getByText('Prices: stocks 21 Oct')).toBeVisible();
@@ -234,6 +242,7 @@ test('fund disclosures update stock exposure and show searchable underlying weig
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(MF);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await page.getByRole('link', { name: 'Explore analytics' }).click();
   await page.getByRole('button', { name: 'Refresh data' }).click();
@@ -346,6 +355,7 @@ test('a fund report added by hand fills in for one the relay can’t fetch', asy
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(MF);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await page.getByRole('link', { name: 'Explore analytics' }).click();
   const fundCard = page
@@ -396,8 +406,13 @@ test('import a PPF statement once', async ({ page }) => {
   // An account, the PPF, 9 entries and the closing balance.
   await expect(page.getByText('12 new, 0 changed.')).toBeVisible();
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
+  await openAdd(page, 'Import files');
   await page.getByTestId('import-input').setInputFiles(PPF);
   await expect(page.getByText('Already up to date')).toBeVisible();
+  // Nothing new came in, so it stays on Import.
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Holdings' }).click();
   await expect(page.getByText('PPF (Bank of Baroda ••••2345)')).toBeVisible();
 });
@@ -412,8 +427,7 @@ test('update a bank balance from its holding, typing only the date and amount', 
   await page.getByLabel('Account number').fill('000123456789');
   await page.getByLabel('Balance (₹)').fill('50,000');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('link', { name: 'Holdings' }).click();
-  await page.getByRole('link', { name: /Example Bank savings/ }).click();
+  await expect(page.getByRole('heading', { name: 'Example Bank savings' })).toBeVisible();
   await page.getByRole('link', { name: 'Update balance' }).click();
   await expect(page.getByTestId('balance-holding')).toContainText('Example Bank savings ••••6789');
   await expect(page.getByLabel('Bank', { exact: true })).toBeHidden();
@@ -427,10 +441,22 @@ test('update a bank balance from its holding, typing only the date and amount', 
   await openAdd(page, 'Import files');
   await page.getByTestId('import-input').setInputFiles(PPF);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
-  await page.getByRole('link', { name: 'Holdings' }).click();
+  await landsOnHoldings(page);
   await page.getByRole('link', { name: /PPF \(Bank of Baroda/ }).click();
   await expect(page.getByRole('heading', { name: /PPF \(Bank of Baroda/ })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Update balance' })).toBeHidden();
+});
+
+test('set a price, and land on its holding', async ({ page }) => {
+  await createVault(page);
+  await page.getByTestId('import-input').setInputFiles(STOCKS);
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
+  await openAdd(page, 'Price');
+  await page.getByLabel('Holding').selectOption({ label: '2.50%GOLDBONDS2032SR-IV' });
+  await page.getByLabel('Price per unit').fill('9000');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: '2.50%GOLDBONDS2032SR-IV' })).toBeVisible();
 });
 
 test('import an EPF passbook PDF', async ({ page }) => {
@@ -439,7 +465,7 @@ test('import an EPF passbook PDF', async ({ page }) => {
   // The account, EPF and EPS, 38 entries and the opening and closing balances of each.
   await expect(page.getByText('45 new, 0 changed.')).toBeVisible();
   await page.getByRole('button', { name: 'Import', exact: true }).click();
-  await page.getByRole('link', { name: 'Holdings' }).click();
+  await landsOnHoldings(page);
   await expect(page.getByText('EPF (Acme Software Private Limited ••••8765)')).toBeVisible();
   await expect(page.getByText('EPS (Acme Software Private Limited ••••8765)')).toBeVisible();
 });
@@ -453,6 +479,7 @@ test('import a zip of statements', async ({ page }) => {
     await page.getByRole('button', { name: 'Import', exact: true }).click();
   }
 
+  await landsOnHoldings(page);
   expect(await netWorth(page)).toBe('₹12,91,439');
 });
 
@@ -581,6 +608,7 @@ test('rename and remove members and accounts', async ({ page }) => {
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(STOCKS);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   await openSettings(page);
 
   const members = page.getByRole('list', { name: 'Members' });
@@ -660,6 +688,7 @@ test('export to Excel and re-import into another portfolio', async ({ page }) =>
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(MF);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   const before = await netWorth(page);
 
   await openSettings(page);
@@ -679,6 +708,7 @@ test('export to Excel and re-import into another portfolio', async ({ page }) =>
     buffer: bytes,
   });
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   expect(await netWorth(page)).toBe(before);
 });
 
@@ -686,6 +716,7 @@ test('restore a backup file', async ({ page }) => {
   await createVault(page);
   await page.getByTestId('import-input').setInputFiles(STOCKS);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await landsOnHoldings(page);
   const before = await netWorth(page);
 
   await openSettings(page);

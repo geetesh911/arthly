@@ -52,6 +52,7 @@
     if (done) {
       say('Saved');
       amount = '';
+      on = todayIso();
       await changed();
     }
   }

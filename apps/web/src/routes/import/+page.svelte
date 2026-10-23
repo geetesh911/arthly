@@ -25,12 +25,20 @@
   let unknown = $state<{ name: string; headings: string[] } | null>(null);
   let dragging = $state(false);
   let busy = $state(false);
+  // Once the last file is through, Holdings shows what came in, if anything did.
+  let imported = false;
 
-  async function next() {
+  async function next(done = false) {
     plan = null;
+    imported ||= done;
     const file = queue[0];
 
     if (!file) {
+      if (imported) {
+        imported = false;
+        await goto('#/holdings');
+      }
+
       return;
     }
 
