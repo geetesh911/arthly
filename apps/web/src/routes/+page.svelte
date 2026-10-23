@@ -104,8 +104,9 @@
           </Tabs.Root>
         </Card.Action>
       </Card.Header>
-      <Card.Content class="grid gap-2">
-        <ValueChart points={data.history} />
+      <!-- On wide screens the chart grows to the height of the allocation card beside it. -->
+      <Card.Content class="flex flex-1 flex-col gap-2">
+        <ValueChart points={data.history} class="lg:h-auto lg:min-h-52 lg:flex-1" />
         {#if data.history.some((p) => p.costOnly)}
           <p class="text-muted-foreground text-xs">
             Some early values use cost, because no price was known yet.

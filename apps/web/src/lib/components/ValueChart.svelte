@@ -5,9 +5,10 @@
 
   import * as Chart from '#lib/components/ui/chart/index.ts';
   import { date, inr, inrShort } from '#lib/format.ts';
+  import { cn } from '#lib/utils.ts';
   import type { Point } from '#lib/worker/dto.ts';
 
-  let { points }: { points: Point[] } = $props();
+  let { points, class: className }: { points: Point[]; class?: string } = $props();
 
   const data = $derived(
     points.map((p) => ({
@@ -39,7 +40,7 @@
     The chart appears once there's more than a day of history.
   </p>
 {:else}
-  <Chart.Container {config} class="aspect-auto h-52 w-full">
+  <Chart.Container {config} class={cn('aspect-auto h-52 w-full', className)}>
     <AreaChart
       {data}
       x="date"

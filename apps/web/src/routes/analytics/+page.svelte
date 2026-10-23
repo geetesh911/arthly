@@ -121,7 +121,7 @@
     </Card.Content>
   </Card.Root>
 
-  <div class="grid items-start gap-4 lg:grid-cols-2">
+  <div class="grid gap-4 lg:grid-cols-2">
     <BreakdownCard
       title="Asset split"
       description="All holdings · share of total portfolio value"
@@ -130,9 +130,24 @@
       note="Hybrid funds remain a separate asset class. Fund holdings are not decomposed into equity, debt or cash."
     />
     <BreakdownCard
+      title="Underlying asset split"
+      description="Includes reported fund cash, debt and commodities"
+      data={data.lookthrough.assetSplit}
+      labels={CLASS_NAMES}
+      estimated={data.lookthrough.byFundType}
+      note={`Positive asset values shown. A fund without a holdings report counts under its own type, such as a gold ETF under Gold, including any cash it keeps.${data.lookthrough.adjustments < 0 ? ` Net liability adjustments of ${inr(data.lookthrough.adjustments)} are excluded from this chart.` : ''} The allocation planner uses the instrument-level Asset split.`}
+    />
+    <BreakdownCard
       title="Investment vehicles"
       description="All holdings · how your portfolio is held"
       data={data.instrumentSplit}
+    />
+    <BreakdownCard
+      title="Active / passive split"
+      description="Mutual funds and ETFs only · eligible fund value"
+      data={data.strategy}
+      coverage
+      note="Index funds and ETFs are passive; recognised managed fund categories are active. Direct stocks are excluded. Funds of funds and ambiguous schemes remain unclassified. Direct and regular refer to distribution plans, not investment strategy."
     />
     <BreakdownCard
       title="Sector allocation"
@@ -151,28 +166,36 @@
         : 'Cap sizes come from AMFI’s official list, which hasn’t loaded yet. Refresh data to load it.'}
     />
     <BreakdownCard
-      title="Active / passive split"
-      description="Mutual funds and ETFs only · eligible fund value"
-      data={data.strategy}
-      coverage
-      note="Index funds and ETFs are passive; recognised managed fund categories are active. Direct stocks are excluded. Funds of funds and ambiguous schemes remain unclassified. Direct and regular refer to distribution plans, not investment strategy."
+      title="Access to your money"
+      description="All holdings · plan near-term spending separately"
+      data={data.liquidity}
+      note="Only bank / cash is counted as immediately available here. Market holdings can fall in value or have redemption restrictions. Retirement assets, deposits and bonds have their own withdrawal conditions."
     />
     <BreakdownCard
-      title="Underlying asset split"
-      description="Includes reported fund cash, debt and commodities"
-      data={data.lookthrough.assetSplit}
-      labels={CLASS_NAMES}
-      estimated={data.lookthrough.byFundType}
-      note={`Positive asset values shown. A fund without a holdings report counts under its own type, such as a gold ETF under Gold, including any cash it keeps.${data.lookthrough.adjustments < 0 ? ` Net liability adjustments of ${inr(data.lookthrough.adjustments)} are excluded from this chart.` : ''} The allocation planner uses the instrument-level Asset split.`}
+      title="Maturity ladder"
+      description="FDs, bonds and SGBs · current value by maturity date"
+      data={data.maturities}
+      coverage
+      note="These are current holding values, not projected maturity payouts. Provident funds and unscheduled assets are excluded. Confirm renewal and redemption dates before planning spending."
     />
     <BreakdownCard
       title="Currency exposure"
       description="All holdings · currency denomination"
       data={data.currency}
+      wide
       note="Values are converted to INR. An INR-denominated international fund remains INR here; this view does not measure its underlying foreign-currency exposure."
     />
   </div>
 
+  <Card.Root>
+    <Card.Header
+      ><Card.Title class="text-lg font-semibold">Largest portfolio positions</Card.Title
+      ><Card.Description
+        >All asset types · see which holdings drive your overall exposure and unrealised gain.</Card.Description
+      ></Card.Header
+    >
+    <Card.Content class="px-3 sm:px-6"><ExposureTable data={data.holdings} /></Card.Content>
+  </Card.Root>
   <Card.Root>
     <Card.Header
       ><Card.Title class="text-lg font-semibold">Stock concentration</Card.Title><Card.Description
@@ -191,31 +214,6 @@
     >
   </Card.Root>
   <FundHoldings data={data.lookthrough} added={data.reference.addedReports} onchange={reload} />
-  <Card.Root>
-    <Card.Header
-      ><Card.Title class="text-lg font-semibold">Largest portfolio positions</Card.Title
-      ><Card.Description
-        >All asset types · see which holdings drive your overall exposure and unrealised gain.</Card.Description
-      ></Card.Header
-    >
-    <Card.Content class="px-3 sm:px-6"><ExposureTable data={data.holdings} /></Card.Content>
-  </Card.Root>
-
-  <div class="grid items-start gap-4 lg:grid-cols-2">
-    <BreakdownCard
-      title="Access to your money"
-      description="All holdings · plan near-term spending separately"
-      data={data.liquidity}
-      note="Only bank / cash is counted as immediately available here. Market holdings can fall in value or have redemption restrictions. Retirement assets, deposits and bonds have their own withdrawal conditions."
-    />
-    <BreakdownCard
-      title="Maturity ladder"
-      description="FDs, bonds and SGBs · current value by maturity date"
-      data={data.maturities}
-      coverage
-      note="These are current holding values, not projected maturity payouts. Provident funds and unscheduled assets are excluded. Confirm renewal and redemption dates before planning spending."
-    />
-  </div>
 
   <AllocationPlanner
     current={data.assetValues}
