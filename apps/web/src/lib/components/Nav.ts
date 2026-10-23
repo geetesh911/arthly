@@ -1,15 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The app's sections: the phone tab bar and the desktop sidebar each show their own subset.
+// Add isn't one: it's a button on both that opens the list of forms below.
+import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
 import ChartPie from '@lucide/svelte/icons/chart-pie';
-import CirclePlus from '@lucide/svelte/icons/circle-plus';
 import CreditCard from '@lucide/svelte/icons/credit-card';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
+import FileUp from '@lucide/svelte/icons/file-up';
 import HandCoins from '@lucide/svelte/icons/hand-coins';
 import House from '@lucide/svelte/icons/house';
 import IndianRupee from '@lucide/svelte/icons/indian-rupee';
+import Landmark from '@lucide/svelte/icons/landmark';
+import PiggyBank from '@lucide/svelte/icons/piggy-bank';
+import ReceiptText from '@lucide/svelte/icons/receipt-text';
 import Settings from '@lucide/svelte/icons/settings';
 import ShieldCheck from '@lucide/svelte/icons/shield-check';
+import Tag from '@lucide/svelte/icons/tag';
 
 export type Section = {
   href: string;
@@ -60,14 +66,6 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
-    href: '#/add',
-    label: 'Add',
-    icon: CirclePlus,
-    match: starts('/add'),
-    phone: true,
-    desktop: true,
-  },
-  {
     href: '#/checks',
     label: 'Checks',
     icon: ShieldCheck,
@@ -98,5 +96,35 @@ export const sections: Section[] = [
     match: starts('/settings', '/more'),
     phone: false,
     desktop: true,
+  },
+];
+
+export type AddLink = { href: string; label: string; icon: typeof House };
+
+export type AddGroup = { label?: string; links: AddLink[] };
+
+export const importFiles: AddLink = { href: '#/import', label: 'Import files', icon: FileUp };
+
+export const addInvestment: AddGroup = {
+  label: 'Investments',
+  links: [
+    { href: '#/holdings/add/transaction', label: 'Transaction', icon: ArrowLeftRight },
+    { href: '#/holdings/add/fd', label: 'FD, bond or SGB', icon: Landmark },
+    { href: '#/holdings/add/balance', label: 'PPF, EPF or cash', icon: PiggyBank },
+    { href: '#/holdings/add/price', label: 'Price', icon: Tag },
+  ],
+};
+
+/** What the Add button offers: files first, then each area's own forms. */
+export const addGroups: AddGroup[] = [
+  { links: [importFiles] },
+  addInvestment,
+  { label: 'Loans', links: [{ href: '#/loans/new', label: 'Loan', icon: HandCoins }] },
+  {
+    label: 'Cards',
+    links: [
+      { href: '#/cards/new', label: 'Card', icon: CreditCard },
+      { href: '#/cards/bill', label: 'Card bill', icon: ReceiptText },
+    ],
   },
 ];

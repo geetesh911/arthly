@@ -5,6 +5,7 @@
 
   import { api, list } from '#lib/api.ts';
   import { attempt, changed, say } from '#lib/app.svelte.ts';
+  import { backLink } from '#lib/back.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -13,6 +14,7 @@
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { todayIso } from '#lib/forms.ts';
 
+  const back = backLink({ href: '#/holdings', label: 'Holdings' });
   let instruments = $state<Instrument[]>([]);
   let instrumentId = $state('');
   let date = $state(todayIso());
@@ -43,7 +45,7 @@
 
 <PageHeader
   title="Set a price"
-  back={{ href: '#/add', label: 'Add' }}
+  back={back.current}
   description="For US stocks, unlisted bonds, or anything the price feed doesn't cover. A price you set wins until the feed has a newer one. US prices are in USD."
 />
 <Card.Root class="max-w-2xl">

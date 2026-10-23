@@ -117,7 +117,7 @@
       ><Empty.Title>Your portfolio analysis starts here</Empty.Title><Empty.Description
         >Add holdings to see allocation, concentration and planning insights.</Empty.Description
       ></Empty.Header
-    ><Empty.Content><Button href="#/add">Add holdings</Button></Empty.Content></Empty.Root
+    ><Empty.Content><Button href="#/import">Import files</Button></Empty.Content></Empty.Root
   >
   <IndexBenchmarks data={data.indices} />
 {:else}

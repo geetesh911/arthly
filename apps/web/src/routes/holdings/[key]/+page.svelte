@@ -122,7 +122,7 @@
       detail.entries.some((e) => !e.synthetic),
     )}
   {#snippet updateBalance()}
-    <Button size="sm" href={`#/add/balance?ref=${encodeURIComponent(h.key)}`}
+    <Button size="sm" href={`#/holdings/add/balance?ref=${encodeURIComponent(h.key)}`}
       ><Pencil />Update balance</Button
     >
   {/snippet}
@@ -179,7 +179,7 @@
         <Button
           variant="outline"
           size="sm"
-          href={`#/add/transaction?ref=${encodeURIComponent(h.key)}`}><Plus />Add</Button
+          href={`#/holdings/add/transaction?ref=${encodeURIComponent(h.key)}`}><Plus />Add</Button
         >
       </Card.Action>
     </Card.Header>

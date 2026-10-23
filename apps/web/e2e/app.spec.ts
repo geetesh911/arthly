@@ -43,9 +43,24 @@ async function createVault(page: Page, name = 'Family') {
   const later = page.getByRole('button', { name: /Not now|Continue/ });
 
   await later.click();
-  await expect(page.getByRole('heading', { name: 'Add', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
 
   return code;
+}
+
+// Add opens a menu from the sidebar on desktop, and a panel from the tab bar on phones.
+async function openAdd(page: Page, name: string) {
+  const sidebar = page.getByRole('complementary').getByRole('button', { name: 'Add' });
+  const tab = page.getByRole('navigation', { name: 'Screens' }).getByRole('button', {
+    name: 'Add',
+  });
+
+  await expect(sidebar.or(tab)).toBeVisible();
+  await ((await sidebar.isVisible()) ? sidebar : tab).click();
+  await page
+    .getByRole('menuitem', { name, exact: true })
+    .or(page.getByRole('dialog').getByRole('link', { name, exact: true }))
+    .click();
 }
 
 // Desktop has Settings in the sidebar; phones reach it through More.
@@ -391,7 +406,7 @@ test('update a bank balance from its holding, typing only the date and amount', 
   page,
 }) => {
   await createVault(page);
-  await page.getByRole('link', { name: 'PPF, EPF or cash' }).click();
+  await openAdd(page, 'PPF, EPF or cash');
   await page.getByLabel('Account type').selectOption('cash');
   await page.getByLabel('Bank', { exact: true }).fill('Example Bank');
   await page.getByLabel('Account number').fill('000123456789');
@@ -409,7 +424,7 @@ test('update a bank balance from its holding, typing only the date and amount', 
   await expect(page.getByTestId('holding-value')).toHaveText('₹62,500');
 
   // A PPF with recorded deposits and interest is valued from those, so it has no such button.
-  await page.locator('a[href="#/add"]:visible').click();
+  await openAdd(page, 'Import files');
   await page.getByTestId('import-input').setInputFiles(PPF);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await page.getByRole('link', { name: 'Holdings' }).click();

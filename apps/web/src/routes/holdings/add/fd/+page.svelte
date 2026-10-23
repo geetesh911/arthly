@@ -5,6 +5,7 @@
 
   import { api } from '#lib/api.ts';
   import { app, attempt, changed, say } from '#lib/app.svelte.ts';
+  import { backLink } from '#lib/back.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -13,6 +14,7 @@
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { ensureAccount, money, newInstrument, todayIso } from '#lib/forms.ts';
 
+  const back = backLink({ href: '#/holdings', label: 'Holdings' });
   let kind = $state<'fd' | 'bond' | 'sgb'>('fd');
   let memberId = $state(app.filter.memberId ?? app.members[0]?.id ?? '');
   let institution = $state('');
@@ -110,7 +112,7 @@
   }
 </script>
 
-<PageHeader title="Add an FD, bond or SGB" back={{ href: '#/add', label: 'Add' }} />
+<PageHeader title="Add an FD, bond or SGB" back={back.current} />
 <Card.Root class="max-w-2xl">
   <Card.Content>
     <form class="grid gap-4" onsubmit={save}>

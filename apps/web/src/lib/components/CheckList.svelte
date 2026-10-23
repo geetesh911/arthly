@@ -14,10 +14,10 @@
   const shown = $derived(limit ? checks.slice(0, limit) : checks);
 
   const fixLink: Record<string, string> = {
-    'record-sell': '#/add/transaction',
-    'record-maturity': '#/add/transaction',
-    'import-file': '#/add',
-    'add-price': '#/add/price',
+    'record-sell': '#/holdings/add/transaction',
+    'record-maturity': '#/holdings/add/transaction',
+    'import-file': '#/import',
+    'add-price': '#/holdings/add/price',
     backup: '#/settings',
   };
 

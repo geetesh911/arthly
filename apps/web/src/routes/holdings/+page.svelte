@@ -5,6 +5,8 @@
 
   import { api } from '#lib/api.ts';
   import { app, attempt, say } from '#lib/app.svelte.ts';
+  import AddMenu from '#lib/components/AddMenu.svelte';
+  import { addInvestment, importFiles } from '#lib/components/Nav.ts';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Badge } from '#lib/components/ui/badge/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -124,6 +126,7 @@
         onclick={refresh}><RefreshCw class={cn(refreshing && 'animate-spin')} /></Button
       >
     {/if}
+    <AddMenu groups={[{ links: [importFiles] }, addInvestment]} size="sm" align="end" />
   {/snippet}
 </PageHeader>
 
@@ -139,7 +142,7 @@
       <Empty.Title>No holdings yet</Empty.Title>
       <Empty.Description>Import a file or add an FD, PPF or EPF by hand.</Empty.Description>
     </Empty.Header>
-    <Empty.Content><Button href="#/add">Add some</Button></Empty.Content>
+    <Empty.Content><Button href="#/import">Import files</Button></Empty.Content>
   </Empty.Root>
 {:else}
   <Card.Root size="sm">

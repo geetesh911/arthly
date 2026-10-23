@@ -73,7 +73,7 @@
   async function finish() {
     code = '';
     await opened();
-    await goto('#/add');
+    await goto('#/import');
   }
 </script>
 

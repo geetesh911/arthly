@@ -6,6 +6,7 @@
 
   import { api, list } from '#lib/api.ts';
   import { app, attempt, changed, say } from '#lib/app.svelte.ts';
+  import { backLink } from '#lib/back.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -21,6 +22,7 @@
     updatesByBalance,
   } from '#lib/forms.ts';
 
+  const back = backLink({ href: '#/holdings', label: 'Holdings' });
   let kind = $state<'ppf' | 'epf' | 'cash'>('ppf');
   let memberId = $state(app.filter.memberId ?? app.members[0]?.id ?? '');
   let institution = $state('');
@@ -158,7 +160,7 @@
     back={{ href: `#/holdings/${encodeURIComponent(fixed.key)}`, label: 'Back' }}
   />
 {:else}
-  <PageHeader title="Add a PPF, EPF or cash entry" back={{ href: '#/add', label: 'Add' }} />
+  <PageHeader title="Add a PPF, EPF or cash entry" back={back.current} />
 {/if}
 <Card.Root class="max-w-2xl">
   <Card.Content>

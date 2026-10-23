@@ -42,7 +42,7 @@ test('each main screen fits the width, with the right navigation', async ({ page
 
   const nav = phone ? tabs : sidebar;
 
-  for (const name of ['Home', 'Holdings', 'Add', 'Checks', phone ? 'More' : 'Settings']) {
+  for (const name of ['Home', 'Holdings', 'Checks', phone ? 'More' : 'Settings']) {
     await nav.getByRole('link', { name, exact: true }).click();
     await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute(
       'aria-current',
@@ -51,7 +51,40 @@ test('each main screen fits the width, with the right navigation', async ({ page
     await fitsWidth(page);
   }
 
+  // Add isn't a screen: it opens a list of every form, in a panel on phones and a menu on desktop.
+  if (phone) {
+    await tabs.getByRole('button', { name: 'Add', exact: true }).click();
+    const panel = page.getByRole('dialog', { name: 'Add' });
+
+    for (const name of ['Import files', 'Transaction', 'Loan', 'Card bill']) {
+      await expect(panel.getByRole('link', { name, exact: true })).toBeVisible();
+    }
+
+    await fitsWidth(page);
+    await panel.getByRole('link', { name: 'Import files' }).click();
+    await expect(panel).toBeHidden();
+  } else {
+    await page.getByRole('complementary').getByRole('button', { name: 'Add' }).click();
+
+    for (const name of ['Import files', 'Transaction', 'Loan', 'Card bill']) {
+      await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible();
+    }
+
+    await page.getByRole('menuitem', { name: 'Import files' }).click();
+  }
+
+  await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
+  await fitsWidth(page);
+
+  // Holdings has its own Add, and a form's back link returns to where it was opened from.
   await nav.getByRole('link', { name: 'Holdings', exact: true }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Transaction' }).click();
+  await expect(page.getByRole('heading', { name: 'Add a transaction' })).toBeVisible();
+  await fitsWidth(page);
+  await page.getByRole('link', { name: 'Back' }).click();
+  await expect(page.getByRole('heading', { name: 'Holdings', exact: true })).toBeVisible();
+
   await page.getByRole('link', { name: /Flexi Cap/ }).click();
   await expect(page.getByRole('heading', { name: /Flexi Cap/ })).toBeVisible();
   await fitsWidth(page);

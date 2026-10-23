@@ -63,11 +63,11 @@
       <Empty.Media variant="icon"><Wallet /></Empty.Media>
       <Empty.Title>Welcome</Empty.Title>
       <Empty.Description>
-        Add your first holdings: import a Groww holdings file or a PPF statement, or add an FD, PPF
-        or EPF by hand.
+        Start by importing a Groww holdings file or a PPF or EPF statement. For an FD, a loan or a
+        card, use Add.
       </Empty.Description>
     </Empty.Header>
-    <Empty.Content><Button href="#/add">Add holdings</Button></Empty.Content>
+    <Empty.Content><Button href="#/import">Import files</Button></Empty.Content>
   </Empty.Root>
 {:else}
   <div class="grid gap-4 lg:grid-cols-3">

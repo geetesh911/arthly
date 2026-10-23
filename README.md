@@ -36,7 +36,7 @@ See [SECURITY.md](SECURITY.md) for the details and the limits.
 
 Open the hosted site, choose **New portfolio**, set a passphrase and write down the recovery code. On iPhone, add the app to your Home Screen first, because Safari may clear data for sites that aren't added.
 
-Each month, download your Groww holdings files and drop them on the **Add** screen. On Android you can share the files straight to the app.
+Each month, download your Groww holdings files and drop them on the **Import** screen (**Add** → **Import files**). On Android you can share the files straight to the app.
 
 ## Host it yourself
 

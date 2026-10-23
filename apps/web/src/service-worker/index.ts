@@ -60,7 +60,7 @@ async function receiveShare(request: Request): Promise<Response> {
     );
   }
 
-  return Response.redirect(`${scope}#/add?shared=${n}`, 303);
+  return Response.redirect(`${scope}#/import?shared=${n}`, 303);
 }
 
 sw.addEventListener('fetch', (event) => {

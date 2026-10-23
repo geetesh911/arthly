@@ -30,7 +30,22 @@ async function createVault(page: Page) {
   await page.getByLabel(/Type the code/).fill(code);
   await page.getByRole('button', { name: "I've saved it" }).click();
   await page.getByRole('button', { name: /Not now|Continue/ }).click();
-  await expect(page.getByRole('heading', { name: 'Add', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
+}
+
+// Add opens a menu from the sidebar on desktop, and a panel from the tab bar on phones.
+async function openAdd(page: Page, name: string) {
+  const sidebar = page.getByRole('complementary').getByRole('button', { name: 'Add' });
+  const tab = page.getByRole('navigation', { name: 'Screens' }).getByRole('button', {
+    name: 'Add',
+  });
+
+  await expect(sidebar.or(tab)).toBeVisible();
+  await ((await sidebar.isVisible()) ? sidebar : tab).click();
+  await page
+    .getByRole('menuitem', { name, exact: true })
+    .or(page.getByRole('dialog').getByRole('link', { name, exact: true }))
+    .click();
 }
 
 // Desktop has Cards in the sidebar; phones reach it through More.
@@ -80,7 +95,7 @@ test('add a card and its bill, pay the minimum, then the next bill in full, and 
   await createVault(page);
 
   // Add → Card bill asks for the card first.
-  await page.getByRole('link', { name: 'Card bill', exact: true }).click();
+  await openAdd(page, 'Card bill');
   await expect(page.getByRole('heading', { name: 'Add a bill' })).toBeVisible();
   await page.getByRole('link', { name: 'Add a card' }).click();
   await expect(page.getByRole('heading', { name: 'Add a card' })).toBeVisible();

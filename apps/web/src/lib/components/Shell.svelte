@@ -3,11 +3,14 @@
   import type { Snippet } from 'svelte';
   import { on } from 'svelte/events';
   import { page } from '$app/state';
+  import CirclePlus from '@lucide/svelte/icons/circle-plus';
   import LockIcon from '@lucide/svelte/icons/lock';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 
   import { app, lock } from '#lib/app.svelte.ts';
+  import AddMenu from '#lib/components/AddMenu.svelte';
+  import AddSheet from '#lib/components/AddSheet.svelte';
   import Logo from '#lib/components/Logo.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -15,7 +18,7 @@
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { cn } from '#lib/utils.ts';
 
-  import { sections } from './Nav.ts';
+  import { addGroups, sections } from './Nav.ts';
 
   let { children }: { children: Snippet } = $props();
   let waiting = $state<ServiceWorker | null>(null);
@@ -54,7 +57,23 @@
   });
 
   const route = $derived(page.route.id ?? '/');
+  const tabs = sections.filter((s) => s.phone);
+  const tabClass = (active: boolean) =>
+    cn(
+      'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs transition-colors',
+      active ? 'text-foreground font-medium' : 'text-muted-foreground',
+    );
 </script>
+
+{#snippet tab(Icon: typeof CirclePlus, label: string, active: boolean)}
+  <span
+    class={cn(
+      'grid h-7 w-12 place-items-center rounded-full transition-colors',
+      active && 'bg-primary text-primary-foreground',
+    )}><Icon class="size-5" /></span
+  >
+  {label}
+{/snippet}
 
 {#snippet member(size: 'sm' | 'default', className: string)}
   {#if app.members.length > 1}
@@ -78,6 +97,7 @@
         {#if app.vault?.demo}<Badge variant="secondary">Sample data</Badge>{/if}
       </div>
     </div>
+    <AddMenu groups={addGroups} class="w-full justify-start" />
     <nav aria-label="Sections" class="flex flex-col gap-1">
       {#each sections.filter((s) => s.desktop) as s (s.href)}
         {@const active = s.match(route)}
@@ -146,23 +166,15 @@
     aria-label="Screens"
     class="bg-background/90 fixed inset-x-0 bottom-0 z-20 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
   >
-    {#each sections.filter((s) => s.phone) as s (s.href)}
+    {#each tabs as s, i (s.href)}
+      <!-- Add sits in the middle, and lights up on the import screen it leads to. -->
+      {#if i === 2}
+        {@const importing = route.startsWith('/import')}
+        <AddSheet class={tabClass(importing)}>{@render tab(CirclePlus, 'Add', importing)}</AddSheet>
+      {/if}
       {@const active = s.match(route)}
-      <a
-        href={s.href}
-        aria-current={active ? 'page' : undefined}
-        class={cn(
-          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-          active ? 'text-foreground font-medium' : 'text-muted-foreground',
-        )}
-      >
-        <span
-          class={cn(
-            'grid h-7 w-12 place-items-center rounded-full transition-colors',
-            active && 'bg-primary text-primary-foreground',
-          )}><s.icon class="size-5" /></span
-        >
-        {s.label}
+      <a href={s.href} aria-current={active ? 'page' : undefined} class={tabClass(active)}>
+        {@render tab(s.icon, s.label, active)}
       </a>
     {/each}
   </nav>

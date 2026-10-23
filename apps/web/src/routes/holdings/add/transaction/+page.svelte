@@ -6,6 +6,7 @@
 
   import { api, list } from '#lib/api.ts';
   import { attempt, changed, say } from '#lib/app.svelte.ts';
+  import { backLink } from '#lib/back.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -14,6 +15,7 @@
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { holdingRef, money, todayIso } from '#lib/forms.ts';
 
+  const back = backLink({ href: '#/holdings', label: 'Holdings' });
   let accounts = $state<Account[]>([]);
   let instruments = $state<Instrument[]>([]);
   let accountId = $state('');
@@ -78,7 +80,7 @@
   }
 </script>
 
-<PageHeader title="Add a transaction" back={{ href: '#/add', label: 'Add' }} />
+<PageHeader title="Add a transaction" back={back.current} />
 <Card.Root class="max-w-2xl">
   <Card.Content>
     <form class="grid gap-4" onsubmit={save}>
