@@ -5,10 +5,10 @@
   import { page } from '$app/state';
   import LockIcon from '@lucide/svelte/icons/lock';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-  import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 
   import { app, lock } from '#lib/app.svelte.ts';
+  import Logo from '#lib/components/Logo.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Badge } from '#lib/components/ui/badge/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -72,11 +72,7 @@
     class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-20 hidden w-64 flex-col gap-6 border-r p-4 lg:flex"
   >
     <div class="flex items-center gap-3 px-2 pt-2">
-      <span
-        class="bg-primary text-primary-foreground grid size-9 shrink-0 place-items-center rounded-2xl"
-      >
-        <ShieldCheck class="size-5" />
-      </span>
+      <Logo class="text-brand size-9 shrink-0" />
       <div class="min-w-0">
         <p class="truncate font-semibold">{app.vault?.name}</p>
         {#if app.vault?.demo}<Badge variant="secondary">Sample data</Badge>{/if}
@@ -110,6 +106,7 @@
     class="bg-background/85 sticky top-0 z-20 border-b pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden"
   >
     <div class="flex h-14 items-center gap-2 px-4">
+      <Logo class="text-brand size-7 shrink-0" />
       <p class="min-w-0 flex-1 truncate font-semibold">{app.vault?.name}</p>
       {#if app.vault?.demo}<Badge variant="secondary" class="hidden sm:inline-flex"
           >Sample data</Badge

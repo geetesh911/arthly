@@ -3,7 +3,6 @@
   import { onMount } from 'svelte';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
   import Plus from '@lucide/svelte/icons/plus';
-  import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import Smartphone from '@lucide/svelte/icons/smartphone';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Upload from '@lucide/svelte/icons/upload';
@@ -11,6 +10,7 @@
   import { api } from '#lib/api.ts';
   import { attempt, opened } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
+  import Logo from '#lib/components/Logo.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import * as Card from '#lib/components/ui/card/index.ts';
@@ -134,11 +134,7 @@
 <div class="grid min-h-dvh place-items-center px-4 py-10">
   <div class="w-full max-w-sm space-y-6">
     <div class="flex flex-col items-center gap-3 text-center">
-      <span
-        class="bg-primary text-primary-foreground grid size-12 place-items-center rounded-3xl shadow-md"
-      >
-        <ShieldCheck class="size-6" />
-      </span>
+      <Logo class="text-brand size-16" />
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Arthly</h1>
         <p class="text-muted-foreground text-sm">
