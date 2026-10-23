@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Plain data the worker sends to the screens.
 import type {
+  AllocationPlanSettings,
   AllocationTargets,
   Analytics,
   AssetClass,
@@ -9,6 +10,7 @@ import type {
   CardBill,
   CardPayment,
   Check,
+  EmergencySettings,
   EntityMap,
   EntityName,
   Entry,
@@ -17,10 +19,10 @@ import type {
   LoanDirection,
   LoanEntry,
   Lot,
+  Planning,
 } from '@pv/core';
 
 export interface AnalyticsDto extends Analytics {
-  targets: AllocationTargets | null;
   /** NSE and BSE index levels; they don't depend on the filter. */
   indices: Benchmarks;
   reference: {
@@ -38,6 +40,18 @@ export interface AnalyticsDto extends Analytics {
     /** Why the latest fund report refresh fell short, per AMC (`label` is its name). */
     fundFailures: { source: string; label: string; message: string }[];
   };
+}
+
+/** The Plan screen: what the holdings give, and what's saved for this selection. */
+export interface PlanningDto extends Planning {
+  /** Target % per asset class; null until saved. */
+  targets: AllocationTargets | null;
+  allocation: AllocationPlanSettings | null;
+  emergencyFund: EmergencySettings | null;
+  /** Open loan balances. The planner leaves them out. */
+  loans: { owedToYou: number; youOwe: number };
+  /** What's left to pay on cards. Not taken off emergency money. */
+  cardDues: number;
 }
 
 /** What adding a fund report by hand brought. */

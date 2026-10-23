@@ -11,6 +11,8 @@ import { daysBetween, isISODate } from '../util/dates.ts';
 import { breakdown, type ExposureRow, finishConcentration } from './analytics-common.ts';
 import type { Holding } from './portfolio.ts';
 
+/** The leaf that keeps a fund's value whole when its report's weights don't add up to 100%. */
+export const ROUNDING_GAP = 'Unallocated / rounding';
 export interface FundConstituentExposure extends FundConstituent {
   value: number;
   unresolved?: boolean;
@@ -313,7 +315,7 @@ export function fundExposure(
         const gap = multiplier * (1 - sum);
 
         leaves.push({
-          name: 'Unallocated / rounding',
+          name: ROUNDING_GAP,
           weight: gap,
           value: gap * value,
           kind: 'other',

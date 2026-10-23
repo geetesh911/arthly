@@ -10,6 +10,7 @@ export * from './engine/fund-exposure.ts';
 export * from './engine/income.ts';
 export * from './engine/interest.ts';
 export * from './engine/loans.ts';
+export * from './engine/plan.ts';
 export * from './engine/portfolio.ts';
 export * from './engine/positions.ts';
 export * from './engine/prices.ts';

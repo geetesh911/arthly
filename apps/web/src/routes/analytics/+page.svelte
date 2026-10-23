@@ -4,7 +4,6 @@
 
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
-  import AllocationPlanner from '#lib/components/AllocationPlanner.svelte';
   import BreakdownCard from '#lib/components/BreakdownCard.svelte';
   import ExposureTable from '#lib/components/ExposureTable.svelte';
   import FundHoldings from '#lib/components/FundHoldings.svelte';
@@ -100,7 +99,10 @@
     >{/snippet}
 </PageHeader>
 <p class="text-muted-foreground text-sm">
-  Understand your exposures and plan your next contribution.
+  Understand your exposures. Targets and your emergency fund are on <a
+    href="#/plan"
+    class="text-foreground underline underline-offset-4">Plan</a
+  >.
 </p>
 {#if refreshMessage}<p class="text-muted-foreground text-sm" role="status">{refreshMessage}</p>{/if}
 {#if error}
@@ -115,7 +117,7 @@
   <Empty.Root
     ><Empty.Header
       ><Empty.Title>Your portfolio analysis starts here</Empty.Title><Empty.Description
-        >Add holdings to see allocation, concentration and planning insights.</Empty.Description
+        >Add holdings to see allocation, concentration and fund holdings.</Empty.Description
       ></Empty.Header
     ><Empty.Content><Button href="#/import">Import files</Button></Empty.Content></Empty.Root
   >
@@ -129,7 +131,8 @@
       <Stat
         label="Bank / cash"
         value={pct(
-          (data.liquidity.slices.find((s) => s.label === 'Bank / cash')?.value ?? 0) / data.total,
+          (data.instrumentSplit.slices.find((s) => s.label === 'Bank / cash')?.value ?? 0) /
+            data.total,
           1,
         )}
       />
@@ -144,7 +147,7 @@
         : 'All holdings · share of total portfolio value'}
       data={data.assetSplit}
       labels={CLASS_NAMES}
-      note={`Hybrid funds remain a separate asset class. Fund holdings are not decomposed into equity, debt or cash.${loansNote}`}
+      note={`Hybrid funds remain a separate asset class here. Fund holdings are not decomposed into equity, debt or cash; the planner on Plan splits hybrid funds.${loansNote}`}
     />
     <BreakdownCard
       title="Underlying asset split"
@@ -152,7 +155,7 @@
       data={data.lookthrough.assetSplit}
       labels={CLASS_NAMES}
       estimated={data.lookthrough.byFundType}
-      note={`Positive asset values shown. A fund without a holdings report counts under its own type, such as a gold ETF under Gold, including any cash it keeps.${data.lookthrough.adjustments < 0 ? ` Net liability adjustments of ${inr(data.lookthrough.adjustments)} are excluded from this chart.` : ''} The allocation planner uses the instrument-level Asset split.`}
+      note={`Positive asset values shown. A fund without a holdings report counts under its own type, such as a gold ETF under Gold, including any cash it keeps.${data.lookthrough.adjustments < 0 ? ` Net liability adjustments of ${inr(data.lookthrough.adjustments)} are excluded from this chart.` : ''} The allocation planner on Plan splits hybrid funds this way, and counts arbitrage funds as Debt.`}
     />
     <BreakdownCard
       title="Investment vehicles"
@@ -181,19 +184,6 @@
       note={data.reference.caps
         ? `Cap sizes come from AMFI’s official list for the six months to ${date(data.reference.caps.asOf)}: the 100 largest companies by average market value are large caps, the next 150 mid caps and the rest small caps. Funds without a report and stocks not on the list, such as recent listings, remain unclassified.`
         : 'Cap sizes come from AMFI’s official list, which hasn’t loaded yet. Refresh data to load it.'}
-    />
-    <BreakdownCard
-      title="Access to your money"
-      description="All holdings · plan near-term spending separately"
-      data={data.liquidity}
-      note={`Only bank / cash is counted as immediately available here. Market holdings can fall in value or have redemption restrictions. Retirement assets, deposits and bonds have their own withdrawal conditions.${data.loans.owedToYou > 0 ? ' Money owed to you comes back only when it’s repaid.' : ''}${cardsNote}`}
-    />
-    <BreakdownCard
-      title="Maturity ladder"
-      description="FDs, bonds and SGBs · current value by maturity date"
-      data={data.maturities}
-      coverage
-      note="These are current holding values, not projected maturity payouts. Provident funds and unscheduled assets are excluded. Confirm renewal and redemption dates before planning spending."
     />
     <BreakdownCard
       title="Currency exposure"
@@ -231,12 +221,6 @@
     >
   </Card.Root>
   <FundHoldings data={data.lookthrough} added={data.reference.addedReports} onchange={reload} />
-
-  <AllocationPlanner
-    current={data.assetValues}
-    saved={data.targets}
-    memberId={app.filter.memberId}
-  />
 
   <IndexBenchmarks data={data.indices} />
 

@@ -321,7 +321,7 @@ describe('data service', () => {
     expect(await storage.vaults()).toEqual([]);
   });
 
-  it('scopes analytics and saved allocation targets to the selected member', async () => {
+  it('scopes analytics and the plan to the selected member', async () => {
     const s = service();
 
     await s.demo();
@@ -330,11 +330,76 @@ describe('data service', () => {
     const ravi = s.analytics({ memberId: 'mem_demo2' });
 
     expect(asha.total + ravi.total).toBeCloseTo(everyone.total, 2);
-    expect(asha.assetValues.debt).toBeUndefined();
-    await s.saveAllocationTargets({ equity: 70, cash: 30 }, 'mem_demo1');
-    expect(s.analytics({ memberId: 'mem_demo1' }).targets).toEqual({ equity: 70, cash: 30 });
-    expect(s.analytics().targets).toBeNull();
-    await expect(s.saveAllocationTargets({ equity: 110, cash: -10 })).rejects.toThrow('100%');
+    expect(s.plan().total).toBeCloseTo(everyone.total, 2);
+    expect(s.plan({ memberId: 'mem_demo1' }).assetValues.debt).toBeUndefined();
+  });
+
+  it('splits hybrid funds into the classes they hold in the plan', async () => {
+    const s = service();
+
+    await s.demo();
+    const before = s.plan().assetValues;
+
+    await s.save('instrument', {
+      id: 'ins_baf',
+      kind: 'mf',
+      name: 'Example Balanced Advantage Fund Direct Growth',
+      currency: 'INR',
+      assetClass: 'hybrid',
+      ids: {},
+    });
+    await s.save('snapshot', {
+      id: 'snp_baf',
+      accountId: 'acc_demo_mf',
+      instrumentId: 'ins_baf',
+      asOf: '2026-10-22',
+      units: 1,
+      value: 100_000,
+      invested: 100_000,
+      source: { kind: 'manual' },
+    });
+    const p = s.plan();
+
+    // No fund reports are loaded, so it's split as a typical balanced advantage fund.
+    expect(p.hybrid).toMatchObject([
+      { id: 'ins_baf', method: 'type', type: 'Balanced advantage', value: 100_000 },
+    ]);
+    expect(p.assetValues.hybrid).toBeUndefined();
+    expect(p.assetValues.equity).toBeCloseTo((before.equity ?? 0) + 50_000, 2);
+    expect(p.assetValues.debt).toBeCloseTo((before.debt ?? 0) + 50_000, 2);
+  });
+
+  it('saves the allocation plan and emergency fund for each selection', async () => {
+    const s = service();
+
+    await s.demo();
+    expect(s.plan()).toMatchObject({ targets: null, allocation: null, emergencyFund: null });
+    await s.saveAllocationPlan(
+      { targets: { equity: 70, cash: 30 }, mode: 'new-money', band: 5, amount: 25_000 },
+      'mem_demo1',
+    );
+    await s.saveEmergencyFund({ monthlyExpenses: 50_000, months: 6 }, 'mem_demo1');
+    expect(s.plan({ memberId: 'mem_demo1' })).toMatchObject({
+      targets: { equity: 70, cash: 30 },
+      allocation: { mode: 'new-money', band: 5, amount: 25_000 },
+      emergencyFund: { monthlyExpenses: 50_000, months: 6 },
+    });
+    expect(s.plan()).toMatchObject({ targets: null, allocation: null, emergencyFund: null });
+    // The demo's FD is its only emergency money; its funds are equity and gold.
+    expect(s.plan().emergency).toMatchObject({ cash: 0, cashFunds: 0 });
+    expect(s.plan().emergency.deposits).toBeGreaterThan(0);
+
+    const plan = { mode: 'new-money', band: 5, amount: 0 } as const;
+
+    await expect(
+      s.saveAllocationPlan({ ...plan, targets: { equity: 110, cash: -10 } }),
+    ).rejects.toThrow('100%');
+    await expect(
+      s.saveAllocationPlan({ ...plan, band: 60, targets: { equity: 100 } }),
+    ).rejects.toThrow('drift band');
+    await expect(s.saveEmergencyFund({ monthlyExpenses: 0, months: 6 })).rejects.toThrow(
+      'monthly expenses',
+    );
   });
 
   it('retains NSE classifications and AMFI’s cap list across failed refreshes and reloads', async () => {

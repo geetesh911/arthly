@@ -16,6 +16,7 @@ import ReceiptText from '@lucide/svelte/icons/receipt-text';
 import Settings from '@lucide/svelte/icons/settings';
 import ShieldCheck from '@lucide/svelte/icons/shield-check';
 import Tag from '@lucide/svelte/icons/tag';
+import Target from '@lucide/svelte/icons/target';
 
 export type Section = {
   href: string;
@@ -66,6 +67,14 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
+    href: '#/plan',
+    label: 'Plan',
+    icon: Target,
+    match: starts('/plan'),
+    phone: false,
+    desktop: true,
+  },
+  {
     href: '#/checks',
     label: 'Checks',
     icon: ShieldCheck,
@@ -85,7 +94,7 @@ export const sections: Section[] = [
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts('/more', '/income', '/settings', '/analytics', '/loans', '/cards'),
+    match: starts('/more', '/income', '/settings', '/analytics', '/plan', '/loans', '/cards'),
     phone: true,
     desktop: false,
   },

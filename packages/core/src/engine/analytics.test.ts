@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
 
-import { portfolioAnalytics, rebalancePlan } from './analytics.ts';
+import { portfolioAnalytics } from './analytics.ts';
 import { summary } from './portfolio.ts';
 import { PriceBook } from './prices.ts';
 import { Ledger } from './testkit.ts';
@@ -129,30 +129,5 @@ describe('portfolio analytics', () => {
 
     expect(a.sectors.classified).toBe(0);
     expect(a.marketCap.slices.find((s) => s.label === 'Unclassified')?.value).toBe(700);
-  });
-});
-
-describe('rebalance scenarios', () => {
-  it('computes signed INR gaps and includes extra contributions', () => {
-    const p = rebalancePlan({ equity: 700, cash: 300 }, { equity: 60, cash: 40 }, 200);
-
-    expect(p.valid).toBe(true);
-    expect(p.rows.find((r) => r.assetClass === 'equity')).toMatchObject({
-      targetValue: 720,
-      change: 20,
-    });
-    expect(p.rows.find((r) => r.assetClass === 'cash')?.change).toBe(180);
-  });
-  it('rejects incomplete, negative, nonfinite and over-100 targets', () => {
-    for (const targets of [
-      { equity: 90 },
-      { equity: -10, cash: 110 },
-      { equity: NaN },
-      { equity: 101 },
-    ]) {
-      expect(rebalancePlan({ equity: 100 }, targets).valid).toBe(false);
-    }
-
-    expect(rebalancePlan({ equity: 100 }, { equity: 100 }, -1).valid).toBe(false);
   });
 });

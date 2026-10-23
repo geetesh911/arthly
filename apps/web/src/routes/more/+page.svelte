@@ -6,6 +6,7 @@
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
   import Settings from '@lucide/svelte/icons/settings';
+  import Target from '@lucide/svelte/icons/target';
 
   import PageHeader from '#lib/components/PageHeader.svelte';
   import * as Card from '#lib/components/ui/card/index.ts';
@@ -26,8 +27,14 @@
     {
       href: '#/analytics',
       label: 'Portfolio analytics',
-      hint: 'Allocation, concentration and investment planning',
+      hint: 'Allocation, concentration and fund holdings',
       icon: ChartNoAxesCombined,
+    },
+    {
+      href: '#/plan',
+      label: 'Plan',
+      hint: 'Targets, new money and your emergency fund',
+      icon: Target,
     },
     {
       href: '#/income',

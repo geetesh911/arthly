@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { AmfiScheme } from '../import/types.ts';
-import type { AssetClass, BondTerms, DepositTerms, Instrument } from '../model/types.ts';
+import type { Instrument } from '../model/types.ts';
 import type { StockReference } from '../plugins/prices/reference.ts';
 import { daysBetween } from '../util/dates.ts';
 
@@ -10,23 +10,12 @@ import {
   type Concentration,
   type ExposureRow,
   finishConcentration,
-  shareOf as share,
 } from './analytics-common.ts';
 import { fundExposure, type FundExposureReference } from './fund-exposure.ts';
 import type { LoanTotals } from './loans.ts';
 import type { Holding } from './portfolio.ts';
 export type { Breakdown, Concentration, ExposureRow, Slice } from './analytics-common.ts';
 
-export const ASSET_CLASSES: AssetClass[] = [
-  'equity',
-  'debt',
-  'hybrid',
-  'gold',
-  'silver',
-  'cash',
-  'other',
-];
-export type AllocationTargets = Partial<Record<AssetClass, number>>;
 /** The slice for money lent, where a chart counts it. What you owe is never a slice. */
 export const OWED_TO_YOU = 'Owed to you';
 export interface Analytics {
@@ -39,11 +28,8 @@ export interface Analytics {
   marketCap: Breakdown;
   strategy: Breakdown;
   currency: Breakdown;
-  liquidity: Breakdown;
-  maturities: Breakdown;
   stocks: Concentration;
   holdings: Concentration;
-  assetValues: AllocationTargets;
   valuation: { total: number; stale: number; estimated: number };
   /** Open loan balances. Only what you're owed is charted. */
   loans: Pick<LoanTotals, 'owedToYou' | 'youOwe'>;
@@ -155,14 +141,7 @@ export function portfolioAnalytics(
       ...list.map((h) => ({ label: label(h), value: h.value })),
       { label: OWED_TO_YOU, value: owed },
     ]);
-  const assetValues: AllocationTargets = {};
-
-  for (const h of held) {
-    assetValues[h.instrument.assetClass] = (assetValues[h.instrument.assetClass] ?? 0) + h.value;
-  }
-
   const underlying = fundExposure(held, date, reference);
-  const termHoldings = held.filter((h) => ['fd', 'bond', 'sgb'].includes(h.instrument.kind));
   const marketHoldings = held.filter((h) =>
     ['stock', 'us-stock', 'mf', 'etf'].includes(h.instrument.kind),
   );
@@ -171,7 +150,6 @@ export function portfolioAnalytics(
     date,
     total,
     count: held.length,
-    assetValues,
     loans: { owedToYou: loans.owedToYou, youOwe: loans.youOwe },
     cardDues,
     assetSplit: split(held, (h) => h.instrument.assetClass, loans.owedToYou),
@@ -205,37 +183,6 @@ export function portfolioAnalytics(
       return 'Unclassified';
     }),
     currency: split(held, (h) => h.instrument.currency),
-    liquidity: split(
-      held,
-      (h) =>
-        h.instrument.kind === 'cash'
-          ? 'Bank / cash'
-          : ['ppf', 'epf', 'eps'].includes(h.instrument.kind)
-            ? 'Retirement / provident funds'
-            : ['fd', 'bond', 'sgb'].includes(h.instrument.kind)
-              ? 'Term deposits / bonds'
-              : ['stock', 'us-stock', 'mf', 'etf'].includes(h.instrument.kind)
-                ? 'Market-linked holdings'
-                : 'Other',
-      loans.owedToYou,
-    ),
-    maturities: split(termHoldings, (h) => {
-      const maturity = (h.instrument.terms as DepositTerms | BondTerms | undefined)?.maturity;
-
-      if (!maturity) {
-        return 'Unclassified';
-      }
-
-      const days = daysBetween(date, maturity);
-
-      return days <= 0
-        ? 'Matured / due'
-        : days <= 90
-          ? 'Next 90 days'
-          : days <= 365
-            ? '91–365 days'
-            : 'After 1 year';
-    }),
     stocks: underlying.stocks,
     holdings: concentration(held, total, (h) => identity(h.instrument, stock(h))),
     lookthrough: {
@@ -253,49 +200,5 @@ export function portfolioAnalytics(
         .reduce((n, h) => n + h.value, 0),
       estimated: marketHoldings.filter((h) => h.estimate).reduce((n, h) => n + h.value, 0),
     },
-  };
-}
-
-export function validAllocationTargets(targets: AllocationTargets): boolean {
-  const entries = Object.entries(targets);
-
-  return (
-    entries.length > 0 &&
-    entries.every(
-      ([k, v]) =>
-        ASSET_CLASSES.includes(k as AssetClass) && Number.isFinite(v) && v >= 0 && v <= 100,
-    ) &&
-    Math.abs(entries.reduce((n, [, v]) => n + v, 0) - 100) < 0.001
-  );
-}
-
-export function rebalancePlan(
-  current: AllocationTargets,
-  targets: AllocationTargets,
-  contribution = 0,
-) {
-  const total = Object.values(current).reduce((n, v) => n + v, 0);
-  const valid =
-    validAllocationTargets(targets) && Number.isFinite(contribution) && contribution >= 0;
-
-  return {
-    valid,
-    total: total + contribution,
-    rows: valid
-      ? ASSET_CLASSES.map((assetClass) => {
-          const value = current[assetClass] ?? 0;
-          const targetPct = targets[assetClass] ?? 0;
-          const targetValue = ((total + contribution) * targetPct) / 100;
-
-          return {
-            assetClass,
-            value,
-            currentShare: share(value, total),
-            targetPct,
-            targetValue,
-            change: targetValue - value,
-          };
-        })
-      : [],
   };
 }

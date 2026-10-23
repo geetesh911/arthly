@@ -7,6 +7,7 @@ import {
   addFundReports,
   addPasskey,
   all,
+  type AllocationPlanSettings,
   type AllocationTargets,
   type AmfiScheme,
   amountProblem,
@@ -30,6 +31,7 @@ import {
   DEFAULT_RATES,
   deleteEvent,
   dismissalId,
+  type EmergencySettings,
   type EngineCache,
   engineCache,
   type EntityMap,
@@ -70,6 +72,7 @@ import {
   loanTotals,
   type LocalStore,
   makeBackup,
+  MAX_BAND,
   MemoryLocalStore,
   mergeFundHoldings,
   mergeIndexData,
@@ -84,6 +87,7 @@ import {
   paymentProblem,
   pickImporter,
   planImport,
+  planning,
   portfolioAnalytics,
   type Price,
   PriceBook,
@@ -113,6 +117,8 @@ import {
   upcoming,
   upToDate,
   validAllocationTargets,
+  validEmergencySettings,
+  validPlanSettings,
   VaultLog,
   verifyKeyring,
   versionOf,
@@ -142,6 +148,7 @@ import type {
   NewLoanInput,
   OverviewDto,
   PlanDto,
+  PlanningDto,
   PrepareResult,
   PriceStatusDto,
   UnlockMethodDto,
@@ -672,8 +679,6 @@ export class DataService {
         s.loans,
         s.cardDues,
       ),
-      targets:
-        this.setting<AllocationTargets>(`analyticsTargets:${filter.memberId || 'all'}`) ?? null,
       indices: benchmarks(v.prices.indices, this.listedMembers()),
       reference: {
         ...(v.prices.nse ? { nseDate: v.prices.nse.date } : {}),
@@ -728,12 +733,65 @@ export class DataService {
     return counts;
   }
 
-  async saveAllocationTargets(targets: AllocationTargets, memberId?: string): Promise<void> {
+  // ---- plan ----
+
+  plan(filter: Filter = {}): PlanningDto {
+    const v = this.need();
+    const date = this.today();
+    const s = summary(v.state, v.book, date, filter, this.opts());
+    const scope = filter.memberId || 'all';
+    // Fund reports split hybrid funds into the classes they hold.
+    const reference = {
+      schemes: v.prices.schemes,
+      portfolios: withAddedReports(v.prices.fundHoldings?.portfolios ?? [], v.addedFunds),
+      retained: v.prices.fundHoldings?.retained,
+    };
+
+    return {
+      ...planning(s.holdings, date, reference, s.loans),
+      targets: this.setting<AllocationTargets>(`analyticsTargets:${scope}`) ?? null,
+      allocation: this.setting<AllocationPlanSettings>(`allocationPlan:${scope}`) ?? null,
+      emergencyFund: this.setting<EmergencySettings>(`emergencyFund:${scope}`) ?? null,
+      loans: { owedToYou: s.loans.owedToYou, youOwe: s.loans.youOwe },
+      cardDues: s.cardDues,
+    };
+  }
+
+  /** Saves the targets and how to rebalance, for Everyone or one member. */
+  async saveAllocationPlan(
+    { targets, mode, band, amount }: AllocationPlanSettings & { targets: AllocationTargets },
+    memberId?: string,
+  ): Promise<void> {
     if (!validAllocationTargets(targets)) {
       throw new Error('Targets must be between 0 and 100% and total 100%.');
     }
 
-    await this.save('setting', { id: `analyticsTargets:${memberId || 'all'}`, value: targets });
+    if (!validPlanSettings({ mode, band, amount })) {
+      throw new Error(`Enter an amount of zero or more and a drift band from 0 to ${MAX_BAND}.`);
+    }
+
+    const v = this.writable();
+    const scope = memberId || 'all';
+    // Saved targets keep their old key, so targets saved before Plan existed carry over.
+    const put = (id: string, value: unknown) =>
+      putEvent(v.log.clock.next(), 'setting', { id, value }, versionOf(v.state, 'setting', id));
+
+    await v.log.append([
+      put(`analyticsTargets:${scope}`, targets),
+      put(`allocationPlan:${scope}`, { mode, band, amount }),
+    ]);
+    this.refresh();
+  }
+
+  async saveEmergencyFund(settings: EmergencySettings, memberId?: string): Promise<void> {
+    if (!validEmergencySettings(settings)) {
+      throw new Error('Enter monthly expenses above zero and from 1 to 36 months.');
+    }
+
+    await this.save('setting', {
+      id: `emergencyFund:${memberId || 'all'}`,
+      value: { monthlyExpenses: settings.monthlyExpenses, months: settings.months },
+    });
   }
 
   holding(key: string): HoldingDetailDto | null {

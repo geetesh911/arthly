@@ -57,6 +57,16 @@ export function pct(n: number | null | undefined, digits = 2, sign = false): str
   }).format(n);
 }
 
+const pointsFmt = new Intl.NumberFormat('en-IN', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  signDisplay: 'exceptZero',
+});
+
+/** A gap in percentage points, from a fraction: 0.032 is +3.2 pts. */
+export const points = (n: number | null | undefined) =>
+  n === null || n === undefined || !Number.isFinite(n) ? '—' : `${pointsFmt.format(n * 100)} pts`;
+
 export const units = (n: number | null | undefined) =>
   n === null || n === undefined ? '—' : unitsFmt.format(n);
 

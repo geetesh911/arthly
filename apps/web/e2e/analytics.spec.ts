@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from '@playwright/test';
 
-test('analytics shows scoped allocations and validates a saved planning scenario', async ({
-  page,
-}, info) => {
+test('analytics shows allocations, and planning lives on Plan', async ({ page }, info) => {
   const errors: string[] = [];
 
   page.on('pageerror', (error) => errors.push(error.message));
@@ -20,7 +18,6 @@ test('analytics shows scoped allocations and validates a saved planning scenario
     'Market cap split',
     'Active / passive split',
     'Stock concentration',
-    'Allocation planner',
   ]) {
     await expect(page.getByText(title, { exact: true }).first()).toBeVisible();
   }
@@ -28,28 +25,12 @@ test('analytics shows scoped allocations and validates a saved planning scenario
   await expect(
     page.getByText('No identified stocks in this selection. Fund disclosures may be missing.'),
   ).toBeVisible();
-  const equity = page.getByRole('spinbutton', { name: 'Equity target %' });
 
-  await equity.fill('101');
-  await expect(page.getByRole('button', { name: 'Save targets' })).toBeDisabled();
-  await expect(page.getByText('Targets must total 100%')).toBeVisible();
-
-  for (const asset of ['Equity', 'Debt', 'Hybrid', 'Gold', 'Silver', 'Cash', 'Other']) {
-    await page
-      .getByRole('spinbutton', { name: `${asset} target %` })
-      .fill(asset === 'Equity' ? '60' : asset === 'Debt' ? '40' : '0');
+  for (const title of ['Allocation planner', 'Access to your money', 'Maturity ladder']) {
+    await expect(page.getByText(title, { exact: true })).toHaveCount(0);
   }
 
-  await page.getByRole('spinbutton', { name: 'New contribution' }).fill('10000');
-  await page.getByRole('button', { name: 'Save targets' }).click();
-  await expect(page.getByText('Targets saved for this selection.')).toBeVisible();
-  // Member-specific targets do not overwrite the family scenario.
-  const member = page.getByRole('combobox', { name: 'Member', exact: true });
-
-  await member.selectOption('mem_demo1');
-  await expect(page.getByRole('spinbutton', { name: 'Debt target %' })).toHaveValue('0');
-  await member.selectOption({ label: 'Everyone' });
-  await expect(equity).toHaveValue('60');
+  await expect(page.getByRole('link', { name: 'Plan', exact: true }).first()).toBeAttached();
   await expect(page).toHaveTitle(/Arthly/);
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
   expect(errors).toEqual([]);

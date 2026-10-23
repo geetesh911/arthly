@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
 
-import { inrSigned, pct, shortDate } from './format.ts';
+import { inrSigned, pct, points, shortDate } from './format.ts';
 
 describe('pct', () => {
   it('shows a fraction as a percentage with 2 decimals', () => {
@@ -28,6 +28,15 @@ describe('inrSigned', () => {
     expect(inrSigned(47051.4)).toBe('+₹47,051');
     expect(inrSigned(-1234)).toBe('-₹1,234');
     expect(inrSigned(-0.3)).toBe('₹0');
+  });
+});
+
+describe('points', () => {
+  it('shows a gap in percentage points, signed, never -0.0', () => {
+    expect(points(0.032)).toBe('+3.2 pts');
+    expect(points(-0.1)).toBe('-10.0 pts');
+    expect(points(-0.0004)).toBe('0.0 pts');
+    expect(points(NaN)).toBe('—');
   });
 });
 

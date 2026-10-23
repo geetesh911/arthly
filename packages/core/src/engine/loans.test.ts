@@ -12,6 +12,7 @@ import {
   loanStatuses,
   loanTotals,
 } from './loans.ts';
+import { planning } from './plan.ts';
 import { summary } from './portfolio.ts';
 import { PriceBook } from './prices.ts';
 import { Ledger } from './testkit.ts';
@@ -233,23 +234,26 @@ describe('loans in net worth and analytics', () => {
     const s = summary(withLoans().state(), book, '2026-04-01');
     const a = portfolioAnalytics(s.holdings, '2026-04-01', {}, s.loans);
     const plain = portfolioAnalytics(s.holdings, '2026-04-01');
+    const p = planning(s.holdings, '2026-04-01', {}, s.loans);
     const slices = (b: typeof a.assetSplit) => b.slices.map((x) => [x.label, x.value]);
 
     expect(slices(a.assetSplit)).toEqual([
       ['Owed to you', 30_000],
       ['equity', 15_000],
     ]);
-    expect(slices(a.liquidity)).toEqual([
+    expect(slices(p.liquidity)).toEqual([
       ['Owed to you', 30_000],
       ['Market-linked holdings', 15_000],
     ]);
     expect(a.instrumentSplit).toEqual(plain.instrumentSplit);
     expect(a.currency).toEqual(plain.currency);
-    expect(a.assetValues).toEqual({ equity: 15_000 });
+    // The planner leaves loans out: rebalancing into a friend's loan makes no sense.
+    expect(p.assetValues).toEqual({ equity: 15_000 });
+    expect(p.total).toBe(15_000);
     expect(a.total).toBe(15_000);
     expect(a.loans).toEqual({ owedToYou: 30_000, youOwe: 10_000 });
 
-    for (const b of [a.assetSplit, a.liquidity, a.instrumentSplit, a.currency]) {
+    for (const b of [a.assetSplit, p.liquidity, a.instrumentSplit, a.currency]) {
       expect(b.slices.every((x) => x.value > 0 && !/owe$/i.test(x.label))).toBe(true);
     }
   });

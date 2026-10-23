@@ -142,16 +142,18 @@ test('sample data counts loans in net worth and what you are owed in analytics',
   await expect(parts).toContainText('owed to you ₹25,000');
   await expect(parts).toContainText('you owe ₹75,000');
   await page.getByRole('link', { name: 'Explore analytics' }).click();
-
-  for (const title of ['Asset split', 'Access to your money']) {
-    const card = page
+  const owed = (title: string) =>
+    page
       .locator('[data-slot=card]')
-      .filter({ has: page.getByText(title, { exact: true }) });
+      .filter({ has: page.getByText(title, { exact: true }) })
+      .getByText('Owed to you', { exact: true })
+      .first();
 
-    await expect(card.getByText('Owed to you', { exact: true }).first()).toBeVisible();
-  }
-
+  await expect(owed('Asset split')).toBeVisible();
   await expect(page.getByText(/The ₹75,000 you owe isn’t charted/)).toBeVisible();
+  // Access to your money is on Plan, and counts what you're owed too.
+  await page.getByRole('link', { name: 'Plan', exact: true }).last().click();
+  await expect(owed('Access to your money')).toBeVisible();
   await openLoans(page);
   await expect(page.getByTestId('loan-row')).toHaveCount(2);
   await fitsWidth(page);

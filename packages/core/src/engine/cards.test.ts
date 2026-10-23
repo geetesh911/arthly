@@ -305,7 +305,7 @@ describe('cards in net worth and analytics', () => {
     expect(a.cardDues).toBe(11_400);
     expect(plain.cardDues).toBe(0);
 
-    for (const key of ['assetSplit', 'liquidity', 'instrumentSplit', 'currency'] as const) {
+    for (const key of ['assetSplit', 'instrumentSplit', 'currency'] as const) {
       expect(a[key]).toEqual(plain[key]);
     }
   });
