@@ -1,0 +1,8 @@
+// Cloudflare Pages: the app from apps/web/build, plus the price relay in functions/.
+// `pnpm relay` runs both locally; `pnpm run deploy` publishes them (see README).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arthly",
+  "pages_build_output_dir": "apps/web/build",
+  "compatibility_date": "2026-10-01",
+}

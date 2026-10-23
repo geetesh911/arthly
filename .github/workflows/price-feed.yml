@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Builds the public price feed every evening and publishes it to GitHub Pages.
+name: Price feed
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 23:30 IST
+    - cron: '30 1 * * *' # retry, 07:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: price-feed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore price history
+        uses: actions/cache/restore@v4
+        with:
+          path: apps/price-feed/.cache
+          key: price-history-${{ github.run_id }}
+          restore-keys: price-history-
+      - name: Build the feed
+        working-directory: apps/price-feed
+        run: node src/main.ts
+        env:
+          FEED_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+      - name: Save price history
+        uses: actions/cache/save@v4
+        with:
+          path: apps/price-feed/.cache
+          key: price-history-${{ github.run_id }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/price-feed/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

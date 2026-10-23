@@ -1,0 +1,26 @@
+# Changelog
+
+## Unreleased
+
+First version, under construction:
+
+- Encrypted, local-first change log with sync-ready merging and `.pvault` backups
+- Engine: FIFO lots, XIRR, FDs, bonds and SGBs, PPF, EPF and EPS, cash, income per financial year, upcoming events and checks
+- Importers: Groww mutual-fund holdings, Groww stock holdings, Bank of Baroda PPF statements, EPFO passbook PDFs, and the app's own Excel, template, CSV and JSON files
+- Exports: Excel (reading tabs plus data tabs), JSON, blank template
+- Public price feed: AMFI, NSE (BSE fallback) and ECB FX, with history groups
+- Web app: unlock with passphrase, recovery code or passkey; dashboard, holdings, import preview with undo, hand-entry forms, checks, income, settings
+- New look built with shadcn-svelte (Luma style): a sidebar on desktop, a tab bar with icons on phones, charts with tooltips, and a light, dark or system theme
+- Fixed: unlocking with a passphrase or recovery code now opens the app
+- Zip files: drop or share a zip of statements, and each file inside is imported in turn
+- Settings: rename and remove members and accounts. Removing an account removes its records too
+- Fixed: Settings and the hand-entry forms now confirm what they saved, and refresh straight away
+- EPF: import EPFO member passbook PDFs, one per member ID and year, with each share kept apart and the totals checked
+- Holdings: one table with Invested, Value, Gain and XIRR columns, a subtotal per section and a total; returns and XIRR show 2 decimals
+- Fixed: a return just below zero shows as 0.00%, not -0.00%
+- Prices: a Refresh button on Holdings fetches fund NAVs from AMFI and stock prices from NSE (BSE if NSE fails) through the app's own relay on Cloudflare Pages, and the USD rate from Frankfurter. The GitHub price feed is now optional
+- XIRR shows once a holding is a year old; before that, gain % covers it. Fixed: holdings imported from a Groww file showed XIRRs in the millions of %
+- Named Arthly
+- Arthly's colours: Citrus Lime, Light Lime, Lemon Yellow, Forest and Deep Green, in light and dark, as shadcn tokens in `apps/web/src/app.css`; text meets WCAG AA, and a new icon
+- Dark theme: Citrus Midnight (#C4F05A on #121713), with stronger focus halos in dark and a visible keyboard focus on the Add screen's file picker
+- XIRR for holdings imported from a file counts from the file's date at its value then, since the file doesn't say when you bought; invested and gain still use the cost

@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- A made-up EPFO member passbook in the layout of the real one: same labels, rows and totals.
+     Every name, ID and amount is invented. passbook.pdf is this page printed to A4 by Chromium. -->
+<meta charset="utf-8" />
+<style>
+  body { font: 8pt Arial, sans-serif; margin: 0; }
+  .row { display: flex; height: 15px; align-items: baseline; white-space: nowrap; }
+  .row span { display: inline-block; }
+  .l { width: 90px; } .m { width: 150px; } .w { width: 380px; } .n { width: 55px; text-align: right; }
+  .t { width: 260px; } .p { width: 150px; }
+  .page { page-break-after: always; position: relative; height: 1050px; }
+  .foot { position: absolute; bottom: 0; }
+</style>
+<div class="page">
+  <div class="row"><span class="w"></span><span>Member Passbook</span></div>
+  <div class="row"><span class="l"></span><span class="m">| Establishment ID/Name</span><span>KRBNG0012345000 / ACME SOFTWARE PRIVATE LIMITED</span></div>
+  <div class="row"><span class="l"></span><span class="m">| Member ID/Name</span><span>KRBNG00123450000098765 / ASHA RAO</span></div>
+  <div class="row"><span class="l"></span><span class="m">| Date of Birth</span><span>01-01-1990</span></div>
+  <div class="row"><span class="l"></span><span class="m">| UAN</span><span>100000000001</span></div>
+  <div class="row"><span class="w"></span><span>EPF Passbook [ Financial Year - 2025-2026 ]</span></div>
+  <div class="row"><span class="w">Particulars</span><span class="n">Employee</span><span class="n">Employer</span><span class="n">Pension</span></div>
+  <div class="row"><span class="w"></span><span class="n">Balance</span><span class="n">Balance</span><span class="n">Balance</span></div>
+  <div class="row"><span class="w">OB Int. Updated upto 31/03/2025</span><span class="n">1,20,000</span><span class="n">45,000</span><span class="n">60,000</span></div>
+  <div class="row"><span class="p">Wage Month</span><span class="t">Particulars</span><span class="n">EPF</span><span class="n">EPS</span><span class="n">Employee</span><span class="n">Employer</span><span class="n">Pension</span></div>
+  <div class="row"><span class="p">Mar-2025 15-04-2025 CR</span><span class="t">Cont. for Due-Month 042025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Apr-2025 15-05-2025 CR</span><span class="t">Cont. for Due-Month 052025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">May-2025 15-06-2025 CR</span><span class="t">Cont. for Due-Month 062025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Jun-2025 15-07-2025 CR</span><span class="t">Cont. for Due-Month 072025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Jul-2025 15-08-2025 CR</span><span class="t">Cont. for Due-Month 082025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Aug-2025 15-09-2025 CR</span><span class="t">Cont. for Due-Month 092025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Sep-2025 15-10-2025 CR</span><span class="t">Cont. for Due-Month 102025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Oct-2025 15-11-2025 CR</span><span class="t">Cont. for Due-Month 112025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Nov-2025 15-12-2025 CR</span><span class="t">Cont. for Due-Month 122025</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Dec-2025 15-01-2026 CR</span><span class="t">Cont. for Due-Month 012026</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Jan-2026 15-02-2026 CR</span><span class="t">Cont. for Due-Month 022026</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row"><span class="p">Feb-2026 15-03-2026 CR</span><span class="t">Cont. for Due-Month 032026</span><span class="n">30,000</span><span class="n">15,000</span><span class="n">3,600</span><span class="n">2,350</span><span class="n">1,250</span></div>
+  <div class="row foot"><span class="w">KRBNG00123450000098765</span><span>Page 1 of 2</span></div>
+</div>
+<div class="page">
+  <div class="row"><span class="w">Total Contributions for the year [ 2025 ]</span><span class="n">43,200</span><span class="n">28,200</span><span class="n">15,000</span></div>
+  <div class="row"><span class="w">Total Transfer-Ins/Adj for the year [ 2025 ]</span><span class="n">0</span><span class="n">0</span><span class="n">0</span></div>
+  <div class="row"><span class="w">Total Withdrawals for the year [ 2025 ]</span><span class="n">0</span><span class="n">0</span><span class="n">0</span></div>
+  <div class="row"><span class="w">Int. Updated upto 31/03/2026</span><span class="n">11,534</span><span class="n">4,779</span><span class="n">0</span></div>
+  <div class="row"><span class="w">Closing Balance as on 31/03/2026</span><span class="n">1,74,734</span><span class="n">77,979</span><span class="n">75,000</span></div>
+  <div class="row"><span class="w"></span><span>Printed On : 20-10-2026 10:15:00</span></div>
+  <div class="row foot"><span class="w">KRBNG00123450000098765</span><span>Page 2 of 2</span></div>
+</div>

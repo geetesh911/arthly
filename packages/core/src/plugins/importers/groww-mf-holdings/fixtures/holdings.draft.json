@@ -1,0 +1,176 @@
+{
+  "accounts": [
+    {
+      "ref": "folio:ppfas mutual fund:••••5678",
+      "institution": "PPFAS Mutual Fund",
+      "kind": "mf",
+      "label": "PPFAS Mutual Fund folio ••••5678",
+      "maskedRef": "••••5678",
+      "currency": "INR"
+    },
+    {
+      "ref": "folio:axis mutual fund:••••3401",
+      "institution": "Axis Mutual Fund",
+      "kind": "mf",
+      "label": "Axis Mutual Fund folio ••••3401",
+      "maskedRef": "••••3401",
+      "currency": "INR"
+    },
+    {
+      "ref": "folio:axis mutual fund:••••3499",
+      "institution": "Axis Mutual Fund",
+      "kind": "mf",
+      "label": "Axis Mutual Fund folio ••••3499",
+      "maskedRef": "••••3499",
+      "currency": "INR"
+    },
+    {
+      "ref": "folio:tata mutual fund:••••8899",
+      "institution": "Tata Mutual Fund",
+      "kind": "mf",
+      "label": "Tata Mutual Fund folio ••••8899",
+      "maskedRef": "••••8899",
+      "currency": "INR"
+    },
+    {
+      "ref": "folio:sbi mutual fund:••••7890",
+      "institution": "SBI Mutual Fund",
+      "kind": "mf",
+      "label": "SBI Mutual Fund folio ••••7890",
+      "maskedRef": "••••7890",
+      "currency": "INR"
+    },
+    {
+      "ref": "folio:icici prudential mutual fund:••••6677",
+      "institution": "ICICI Prudential Mutual Fund",
+      "kind": "mf",
+      "label": "ICICI Prudential Mutual Fund folio ••••6677",
+      "maskedRef": "••••6677",
+      "currency": "INR"
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "scheme:parag parikh elss tax saver fund direct growth",
+      "kind": "mf",
+      "name": "Parag Parikh ELSS Tax Saver Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {},
+      "hints": {
+        "amc": "PPFAS Mutual Fund",
+        "category": "Equity",
+        "subCategory": "ELSS"
+      }
+    },
+    {
+      "ref": "scheme:axis midcap fund direct growth",
+      "kind": "mf",
+      "name": "Axis Midcap Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {},
+      "hints": {
+        "amc": "Axis Mutual Fund",
+        "category": "Equity",
+        "subCategory": "Mid Cap"
+      }
+    },
+    {
+      "ref": "scheme:tata nifty next 50 index direct",
+      "kind": "mf",
+      "name": "Tata Nifty Next 50 Index Direct",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {},
+      "hints": {
+        "amc": "Tata Mutual Fund",
+        "category": "Equity",
+        "subCategory": "Large Cap"
+      }
+    },
+    {
+      "ref": "scheme:sbi focused direct plan growth",
+      "kind": "mf",
+      "name": "SBI Focused Direct Plan Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {},
+      "hints": {
+        "amc": "SBI Mutual Fund",
+        "category": "Equity",
+        "subCategory": "Focused"
+      }
+    },
+    {
+      "ref": "scheme:icici prudential corporate bond fund direct growth",
+      "kind": "mf",
+      "name": "ICICI Prudential Corporate Bond Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "debt",
+      "ids": {},
+      "hints": {
+        "amc": "ICICI Prudential Mutual Fund",
+        "category": "Debt",
+        "subCategory": "Corporate Bond"
+      }
+    }
+  ],
+  "transactions": [],
+  "snapshots": [
+    {
+      "account": "folio:ppfas mutual fund:••••5678",
+      "instrument": "scheme:parag parikh elss tax saver fund direct growth",
+      "asOf": "2026-10-21",
+      "units": 1500.75,
+      "invested": 120000,
+      "value": 135067.75
+    },
+    {
+      "account": "folio:axis mutual fund:••••3401",
+      "instrument": "scheme:axis midcap fund direct growth",
+      "asOf": "2026-10-21",
+      "units": 2000,
+      "invested": 200000,
+      "value": 230000
+    },
+    {
+      "account": "folio:axis mutual fund:••••3499",
+      "instrument": "scheme:axis midcap fund direct growth",
+      "asOf": "2026-10-21",
+      "units": 100,
+      "invested": 10000,
+      "value": 11500
+    },
+    {
+      "account": "folio:tata mutual fund:••••8899",
+      "instrument": "scheme:tata nifty next 50 index direct",
+      "asOf": "2026-10-21",
+      "units": 3000.123,
+      "invested": 450000,
+      "value": 440500.75
+    },
+    {
+      "account": "folio:sbi mutual fund:••••7890",
+      "instrument": "scheme:sbi focused direct plan growth",
+      "asOf": "2026-10-21",
+      "units": 600.5,
+      "invested": 200000,
+      "value": 230500
+    },
+    {
+      "account": "folio:icici prudential mutual fund:••••6677",
+      "instrument": "scheme:icici prudential corporate bond fund direct growth",
+      "asOf": "2026-10-21",
+      "units": 1500,
+      "invested": 45000,
+      "value": 47250
+    }
+  ],
+  "warnings": [],
+  "asOf": "2026-10-21",
+  "totals": {
+    "invested": 1025000,
+    "value": 1094818.5
+  }
+}

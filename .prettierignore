@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+LICENSE
+**/fixtures/**
+docs/
+**/.svelte-kit/**
+**/build/**
+**/test-results/**
+**/.wrangler/**

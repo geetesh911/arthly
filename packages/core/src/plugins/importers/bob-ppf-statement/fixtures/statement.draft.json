@@ -1,0 +1,110 @@
+{
+  "accounts": [
+    {
+      "ref": "ppf",
+      "institution": "Bank of Baroda",
+      "kind": "ppf",
+      "label": "Bank of Baroda PPF ••••2345",
+      "maskedRef": "••••2345",
+      "currency": "INR"
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "ppf",
+      "kind": "ppf",
+      "name": "PPF (Bank of Baroda ••••2345)",
+      "currency": "INR",
+      "assetClass": "debt",
+      "ids": {},
+      "terms": {
+        "opened": "2023-05-12"
+      }
+    }
+  ],
+  "transactions": [
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2023-05-12",
+      "type": "contribution",
+      "amount": 20000,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2023-11-03",
+      "type": "contribution",
+      "amount": 5000,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2024-03-31",
+      "type": "interest",
+      "amount": 1331,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2024-04-04",
+      "type": "contribution",
+      "amount": 10050,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2025-03-31",
+      "type": "contribution",
+      "amount": 1500,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2025-03-31",
+      "type": "interest",
+      "amount": 2583,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2025-07-20",
+      "type": "contribution",
+      "amount": 500,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2026-03-31",
+      "type": "interest",
+      "amount": 2897,
+      "currency": "INR"
+    },
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "date": "2026-06-10",
+      "type": "contribution",
+      "amount": 1000,
+      "currency": "INR"
+    }
+  ],
+  "snapshots": [
+    {
+      "account": "ppf",
+      "instrument": "ppf",
+      "asOf": "2026-09-15",
+      "units": 44861,
+      "value": 44861
+    }
+  ],
+  "warnings": [],
+  "asOf": "2026-09-15"
+}

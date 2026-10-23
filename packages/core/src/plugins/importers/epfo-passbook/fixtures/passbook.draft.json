@@ -1,0 +1,484 @@
+{
+  "accounts": [
+    {
+      "ref": "epf",
+      "institution": "Acme Software Private Limited",
+      "kind": "epf",
+      "label": "Acme Software Private Limited EPF ••••8765",
+      "maskedRef": "••••8765",
+      "currency": "INR"
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "epf",
+      "kind": "epf",
+      "name": "EPF (Acme Software Private Limited ••••8765)",
+      "currency": "INR",
+      "assetClass": "debt",
+      "ids": {}
+    },
+    {
+      "ref": "eps",
+      "kind": "eps",
+      "name": "EPS (Acme Software Private Limited ••••8765)",
+      "currency": "INR",
+      "assetClass": "debt",
+      "ids": {}
+    }
+  ],
+  "transactions": [
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-04-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-04-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-04-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-05-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-05-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-05-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-06-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-06-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-06-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-07-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-07-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-07-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-08-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-08-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-08-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-09-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-09-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-09-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-10-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-10-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-10-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-11-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-11-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-11-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-12-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2025-12-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2025-12-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-01-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-01-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2026-01-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-02-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-02-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2026-02-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-03-15",
+      "type": "contribution",
+      "amount": 3600,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-03-15",
+      "type": "contribution",
+      "amount": 2350,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "date": "2026-03-15",
+      "type": "contribution",
+      "amount": 1250,
+      "currency": "INR",
+      "meta": {
+        "part": "pension"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-03-31",
+      "type": "interest",
+      "amount": 11534,
+      "currency": "INR",
+      "meta": {
+        "part": "employee"
+      }
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "date": "2026-03-31",
+      "type": "interest",
+      "amount": 4779,
+      "currency": "INR",
+      "meta": {
+        "part": "employer"
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "asOf": "2025-03-31",
+      "units": 165000,
+      "value": 165000
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "asOf": "2025-03-31",
+      "units": 60000,
+      "value": 60000
+    },
+    {
+      "account": "epf",
+      "instrument": "epf",
+      "asOf": "2026-03-31",
+      "units": 252713,
+      "value": 252713
+    },
+    {
+      "account": "epf",
+      "instrument": "eps",
+      "asOf": "2026-03-31",
+      "units": 75000,
+      "value": 75000
+    }
+  ],
+  "warnings": [
+    "The passbook starts with a balance of ₹2,25,000 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit."
+  ],
+  "asOf": "2026-03-31"
+}

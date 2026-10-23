@@ -1,0 +1,139 @@
+{
+  "accounts": [
+    {
+      "ref": "demat",
+      "institution": "Groww",
+      "kind": "demat",
+      "label": "Groww demat ••••5432",
+      "maskedRef": "••••5432",
+      "currency": "INR"
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "isin:IN0020230184",
+      "kind": "sgb",
+      "name": "2.50%GOLDBONDS2032SR-IV",
+      "currency": "INR",
+      "assetClass": "gold",
+      "ids": {
+        "isin": "IN0020230184"
+      }
+    },
+    {
+      "ref": "isin:INF0000TST01",
+      "kind": "etf",
+      "name": "NIP IND ETF NIFTY BEES",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {
+        "isin": "INF0000TST01"
+      }
+    },
+    {
+      "ref": "isin:INF0000TST02",
+      "kind": "etf",
+      "name": "NIPPONAMC - NETFSILVER",
+      "currency": "INR",
+      "assetClass": "silver",
+      "ids": {
+        "isin": "INF0000TST02"
+      }
+    },
+    {
+      "ref": "isin:INF0000TST03",
+      "kind": "etf",
+      "name": "ZERODHAAMC - GOLDCASE",
+      "currency": "INR",
+      "assetClass": "gold",
+      "ids": {
+        "isin": "INF0000TST03"
+      }
+    },
+    {
+      "ref": "isin:INF0000TST04",
+      "kind": "etf",
+      "name": "ZERODHAAMC - LIQUIDCASE",
+      "currency": "INR",
+      "assetClass": "cash",
+      "ids": {
+        "isin": "INF0000TST04"
+      }
+    },
+    {
+      "ref": "isin:INE002A01018",
+      "kind": "stock",
+      "name": "RELIANCE INDUSTRIES LTD",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {
+        "isin": "INE002A01018"
+      }
+    }
+  ],
+  "transactions": [],
+  "snapshots": [
+    {
+      "account": "demat",
+      "instrument": "isin:IN0020230184",
+      "asOf": "2026-10-20",
+      "units": 10,
+      "invested": 62630,
+      "value": 120000,
+      "price": 12000
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INF0000TST01",
+      "asOf": "2026-10-20",
+      "units": 50,
+      "invested": 12500,
+      "value": 13500,
+      "price": 270
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INF0000TST02",
+      "asOf": "2026-10-20",
+      "units": 300,
+      "invested": 30000,
+      "value": 33000,
+      "price": 110
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INF0000TST03",
+      "asOf": "2026-10-20",
+      "units": 1000,
+      "invested": 20000,
+      "value": 22000,
+      "price": 22
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INF0000TST04",
+      "asOf": "2026-10-20",
+      "units": 10,
+      "invested": 1100,
+      "value": 1120,
+      "price": 112
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INE002A01018",
+      "asOf": "2026-10-20",
+      "units": 5,
+      "invested": 6500,
+      "value": 7000,
+      "price": 1400
+    }
+  ],
+  "warnings": [
+    "Add the issue date of 2.50%GOLDBONDS2032SR-IV to track its coupons"
+  ],
+  "asOf": "2026-10-20",
+  "totals": {
+    "invested": 132730,
+    "value": 196620
+  }
+}

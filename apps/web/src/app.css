@@ -1,0 +1,197 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
+
+/* Inter, bundled: only Latin and Latin Extended (which has ₹), so the offline cache stays small. */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* Dark follows the device, unless Settings put .light or .dark on <html>. */
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not(.light), :root:not(.light) *) {
+      @slot;
+    }
+  }
+}
+
+/*
+  Arthly's palette, the single source of truth for colour. Light: Citrus Lime #B7E33D, Light Lime
+  #D9F99D, Lemon Yellow #FDE047, Forest Green #23452C, Deep Green #19251A on warm off-white. Dark:
+  Citrus Midnight, #C4F05A on #121713. Each colour is light-dark(light, dark), resolved by
+  color-scheme, so the theme needs no script; the comment above each gives the source hex (light,
+  then dark), converted to OKLCH. Text pairs meet WCAG AA (4.5:1).
+*/
+:root {
+  color-scheme: light dark;
+  --radius: 0.625rem;
+  /* #F7F9EF #121713 */
+  --background: light-dark(oklch(0.978 0.013 115.828), oklch(0.198 0.011 151.138));
+  /* #19251A #F0F5EB */
+  --foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
+  /* #FFFFFF #1A211B */
+  --card: light-dark(oklch(1 0 0), oklch(0.239 0.015 149.155));
+  --card-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
+  /* #FFFFFF #232C24: dialogs and dropdowns sit one step above cards in dark. */
+  --popover: light-dark(oklch(1 0 0), oklch(0.282 0.019 148.133));
+  --popover-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
+  /* #B7E33D #C4F05A */
+  --primary: light-dark(oklch(0.855 0.19 123.614), oklch(0.896 0.181 123.953));
+  /* #19251A #192219 */
+  --primary-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.24 0.021 144.875));
+  /* #D9F99D #2E3A23 (citrus at 12% over a card) */
+  --secondary: light-dark(oklch(0.938 0.122 124.321), oklch(0.331 0.042 130.783));
+  /* #23452C #C4F05A */
+  --secondary-foreground: light-dark(oklch(0.357 0.059 150.993), oklch(0.896 0.181 123.953));
+  /* #F0F3E8 #232C24 */
+  --muted: light-dark(oklch(0.959 0.015 119.105), oklch(0.282 0.019 148.133));
+  /* #66705E #A5B2A2 */
+  --muted-foreground: light-dark(oklch(0.531 0.03 131.189), oklch(0.749 0.027 139.829));
+  /* #FDE047 #333C34 (hover and selected surfaces) */
+  --accent: light-dark(oklch(0.905 0.166 98.111), oklch(0.345 0.018 148.321));
+  /* #292D17 #F0F5EB */
+  --accent-foreground: light-dark(oklch(0.287 0.037 117.245), oklch(0.964 0.014 128.626));
+  /* #DC2626 #F87171 */
+  --destructive: light-dark(oklch(0.577 0.215 27.325), oklch(0.711 0.166 22.216));
+  /* #FFFFFF #192219. Soft red tints can't give red text 4.5:1, so destructive fills are solid. */
+  --destructive-foreground: light-dark(oklch(1 0 0), oklch(0.24 0.021 144.875));
+  /* #E1E8D5 #344136 */
+  --border: light-dark(oklch(0.921 0.026 123.443), oklch(0.36 0.025 149.407));
+  /* #DCE4D0 #3B4A3D: inputs are filled with this at 50%, a step lighter than borders in dark. */
+  --input: light-dark(oklch(0.907 0.028 124.793), oklch(0.392 0.029 148.723));
+  /* #789D25 #C4F05A */
+  --ring: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
+  /* #F0F4E6 #1A211B */
+  --sidebar: light-dark(oklch(0.96 0.019 119.748), oklch(0.239 0.015 149.155));
+  --sidebar-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
+  /* #B7E33D #C4F05A */
+  --sidebar-primary: light-dark(oklch(0.855 0.19 123.614), oklch(0.896 0.181 123.953));
+  /* #19251A #192219 */
+  --sidebar-primary-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.24 0.021 144.875));
+  /* #E5EED4 #232C24 */
+  --sidebar-accent: light-dark(oklch(0.935 0.036 122.656), oklch(0.282 0.019 148.133));
+  /* #23452C #F0F5EB */
+  --sidebar-accent-foreground: light-dark(oklch(0.357 0.059 150.993), oklch(0.964 0.014 128.626));
+  --sidebar-border: light-dark(oklch(0.921 0.026 123.443), oklch(0.36 0.025 149.407));
+  --sidebar-ring: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
+  /* #23452C #C4F05A, for icons and links: lime is too light for text on a light page. */
+  --brand: light-dark(oklch(0.357 0.059 150.993), oklch(0.896 0.181 123.953));
+  /* Money going up or down: semantic green and red, never the brand lime, readable on every surface. */
+  /* #15783A #4ADE80 */
+  --gain: light-dark(oklch(0.504 0.129 150.302), oklch(0.8 0.182 151.711));
+  /* #B91C1C #FA8C8C */
+  --loss: light-dark(oklch(0.505 0.19 27.518), oklch(0.759 0.134 20.682));
+  /*
+    Chart series, in this order: 1 portfolio value, 2 positive returns, 3 gold and fixed deposits,
+    4 international, 5 other assets; 6 and 7 for further allocation slices. Each is at least 3:1
+    against cards.
+  */
+  /* #789D25 #C4F05A */
+  --chart-1: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
+  /* #36805A #34D399 */
+  --chart-2: light-dark(oklch(0.542 0.096 158.362), oklch(0.773 0.153 163.223));
+  /* #EAB308 #F5C451 */
+  --chart-3: light-dark(oklch(0.795 0.162 86.047), oklch(0.843 0.141 85.525));
+  /* #D97736 #6CB6F5 */
+  --chart-4: light-dark(oklch(0.668 0.145 51.045), oklch(0.753 0.118 245.892));
+  /* #398C91 #B79CF0 */
+  --chart-5: light-dark(oklch(0.592 0.08 200.721), oklch(0.748 0.121 298.202));
+  /* #23452C #F2994A */
+  --chart-6: light-dark(oklch(0.357 0.059 150.993), oklch(0.76 0.142 59.51));
+  /* #66705E #A5B2A2 */
+  --chart-7: light-dark(oklch(0.531 0.03 131.189), oklch(0.749 0.027 139.829));
+}
+
+:root.light {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-brand: var(--brand);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-7: var(--chart-7);
+  --color-chart-6: var(--chart-6);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+}

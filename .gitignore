@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+.svelte-kit/
+coverage/
+test-results/
+playwright-report/
+.DS_Store
+*.log
+# never commit personal data
+*.pvault
+/private/
+.wrangler/

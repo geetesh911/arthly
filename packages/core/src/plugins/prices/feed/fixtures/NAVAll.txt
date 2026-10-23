@@ -1,0 +1,26 @@
+Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date
+ 
+ 
+Open Ended Schemes(Equity Scheme - ELSS)
+ 
+PPFAS Mutual Fund
+ 
+147481;INF879O01100;-;Parag Parikh ELSS Tax Saver Fund;Direct Plan;Growth;30.8127;21-Oct-2026
+ 
+Open Ended Schemes(Equity Scheme - ELSS)
+ 
+PPFAS Mutual Fund
+ 
+147482;INF879O01092;-;Parag Parikh ELSS Tax Saver Fund;Regular Plan;Growth;28.2691;21-Oct-2026
+ 
+Open Ended Schemes(Equity Scheme - Mid Cap Fund)
+ 
+Axis Mutual Fund
+ 
+120505;INF846K01EH3;-;Axis Midcap Fund;Direct Plan;Growth Option;133.50;21-Oct-2026
+ 
+Open Ended Schemes(Equity Scheme - Mid Cap Fund)
+ 
+Axis Mutual Fund
+ 
+120504;INF846K01EF7;INF846K01EG5;Axis Midcap Fund;Direct Plan;IDCW Option;51.74;21-Oct-2026
