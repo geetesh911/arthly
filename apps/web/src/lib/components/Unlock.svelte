@@ -1,35 +1,44 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Cloud from '@lucide/svelte/icons/cloud';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
   import Plus from '@lucide/svelte/icons/plus';
   import Smartphone from '@lucide/svelte/icons/smartphone';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Upload from '@lucide/svelte/icons/upload';
+  import type { GoogleGrant } from '@pv/core';
 
   import { api } from '#lib/api.ts';
   import { attempt, opened } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Logo from '#lib/components/Logo.svelte';
+  import OpenFromCloud from '#lib/components/OpenFromCloud.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import * as Card from '#lib/components/ui/card/index.ts';
   import { Input } from '#lib/components/ui/input/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
+  import { ask } from '#lib/confirm.svelte.ts';
   import { readFile } from '#lib/files.ts';
+  import { takeGoogleRedirect } from '#lib/google.ts';
   import { passkeysSupported, usePasskey } from '#lib/passkey.ts';
-  import type { VaultSummary } from '#lib/worker/dto.ts';
+  import { typedSecret } from '#lib/secret.ts';
+  import { IN_USE, type VaultSummary } from '#lib/worker/dto.ts';
+  import type { Secret } from '#lib/worker/service.ts';
 
   import Create from './Create.svelte';
 
   let vaults = $state<VaultSummary[] | null>(null);
   let chosen = $state('');
-  let mode = $state<'passphrase' | 'recovery' | 'restore' | 'create'>('passphrase');
+  let mode = $state<'passphrase' | 'recovery' | 'restore' | 'create' | 'cloud'>('passphrase');
   let secret = $state('');
   let busy = $state(false);
   let canPasskey = $state(false);
   let backup = $state<File | null>(null);
   let restoreName = $state('My portfolio');
+  /** A Google sign-in that came back here after a full-page redirect; raw, so it can go to the worker. */
+  let cloudGrant = $state.raw<GoogleGrant | null>(null);
 
   const vault = $derived(vaults?.find((v) => v.vaultId === chosen));
   const ios =
@@ -39,23 +48,51 @@
   onMount(async () => {
     vaults = await api().vaults();
     chosen = vaults.at(-1)?.vaultId ?? '';
+    cloudGrant = takeGoogleRedirect('open');
 
-    if (vaults.length === 0) {
+    if (cloudGrant) {
+      mode = 'cloud';
+    } else if (vaults.length === 0) {
       mode = 'create';
     }
 
     canPasskey = await passkeysSupported();
 
-    if (canPasskey && vault?.passkeys.length) {
+    if (canPasskey && vault?.passkeys.length && mode !== 'cloud') {
       void fingerprint();
     }
   });
+
+  /** Unlocks, offering to take the portfolio over if another tab has it open. */
+  async function unlockWith(key: Secret): Promise<boolean> {
+    try {
+      await api().unlock(chosen, key);
+    } catch (error) {
+      if (!(error as Error).message.includes(IN_USE)) {
+        throw error;
+      }
+
+      const here = await ask({
+        title: 'Open it here instead?',
+        description: `${IN_USE} It will lock there.`,
+        action: 'Open here',
+      });
+
+      if (!here) {
+        return false;
+      }
+
+      await api().unlock(chosen, key, true);
+    }
+
+    return true;
+  }
 
   async function unlock(event: Event) {
     event.preventDefault();
     busy = true;
     const done = await attempt(() =>
-      api().unlock(chosen, mode === 'recovery' ? { recoveryCode: secret } : { passphrase: secret }),
+      unlockWith(mode === 'recovery' ? { recoveryCode: secret } : { passphrase: secret }),
     );
 
     busy = false;
@@ -71,13 +108,7 @@
       return;
     }
 
-    const result = await attempt(async () => {
-      const key = await usePasskey(vault.passkeys);
-
-      await api().unlock(chosen, key);
-
-      return true;
-    });
+    const result = await attempt(async () => unlockWith(await usePasskey(vault.passkeys)));
 
     if (result) {
       await opened();
@@ -93,10 +124,7 @@
 
     busy = true;
     const bytes = await readFile(backup);
-    const isCode = /^[A-Za-z2-7]{4}(-?[A-Za-z2-7]{4}){7}$/.test(secret.trim());
-    const done = await attempt(() =>
-      api().restore(bytes, isCode ? { recoveryCode: secret } : { passphrase: secret }, restoreName),
-    );
+    const done = await attempt(() => api().restore(bytes, typedSecret(secret), restoreName));
 
     busy = false;
 
@@ -111,7 +139,7 @@
   }
 </script>
 
-{#snippet others(items: ('create' | 'restore' | 'sample')[])}
+{#snippet others(items: ('create' | 'restore' | 'cloud' | 'sample')[])}
   <div class="grid gap-1">
     {#each items as item (item)}
       {#if item === 'create'}
@@ -121,6 +149,10 @@
       {:else if item === 'restore'}
         <Button variant="ghost" class="justify-start" onclick={() => (mode = 'restore')}
           ><Upload />Restore a backup file</Button
+        >
+      {:else if item === 'cloud'}
+        <Button variant="ghost" class="justify-start" onclick={() => (mode = 'cloud')}
+          ><Cloud />Open from Google Drive</Button
         >
       {:else}
         <Button variant="ghost" class="justify-start" onclick={sample}
@@ -158,7 +190,12 @@
       <p class="text-muted-foreground text-center text-sm">Loading…</p>
     {:else if mode === 'create'}
       <Create onCancel={vaults.length ? () => (mode = 'passphrase') : undefined} />
-      {@render others(['sample', 'restore'])}
+      {@render others(['sample', 'restore', 'cloud'])}
+    {:else if mode === 'cloud'}
+      <OpenFromCloud
+        grant={cloudGrant}
+        onBack={() => (mode = vaults?.length ? 'passphrase' : 'create')}
+      />
     {:else if mode === 'restore'}
       <Card.Root>
         <Card.Header>
@@ -254,7 +291,7 @@
           </form>
         </Card.Content>
       </Card.Root>
-      {@render others(['create', 'restore', 'sample'])}
+      {@render others(['create', 'restore', 'cloud', 'sample'])}
     {/if}
   </div>
 </div>

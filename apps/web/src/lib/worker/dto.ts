@@ -236,6 +236,36 @@ export interface FileOut {
   bytes: Uint8Array;
 }
 
+/** Cloud sync for the open portfolio, as Settings shows it. */
+export interface CloudStatusDto {
+  /** False for sample data, which never syncs. */
+  available: boolean;
+  /** Set once this device is connected. */
+  provider?: 'google-drive';
+  /** The Google account's email address. */
+  account?: string;
+  /** When the last pass finished without an error. */
+  lastSync?: string;
+  syncing: boolean;
+  /** The last pass couldn't reach Google, or Drive changed under it; it tries again. */
+  retrying?: boolean;
+  /** The sign-in stopped working, so nothing syncs until this device connects again. */
+  reconnect?: boolean;
+  error?: string;
+  /** Files that couldn't be read and were skipped. */
+  problems: number;
+}
+
+/** A portfolio found in Google Drive, to open on this device. */
+export interface CloudVaultDto {
+  vaultId: string;
+  created: string;
+  onDevice: boolean;
+}
+
+/** The error when a portfolio is already open in another tab of this browser. */
+export const IN_USE = 'This portfolio is open in another tab.';
+
 export interface LoanDto {
   id: string;
   memberId: string;

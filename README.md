@@ -18,6 +18,7 @@ It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF an
 - **Fixed income done properly:** FD compounding and payouts, SGB and bond coupons, PPF interest on the lowest balance from the 5th, EPF interest from the month after each contribution.
 - **Checks:** stale prices or files, holdings that don't match your files, possible duplicates, maturities and payouts due soon, and PPF minimums and limits.
 - **Income per financial year:** interest and dividends, received and earned. A summary for your records, not tax advice.
+- **Cloud sync:** connect Google Drive in Settings and the portfolio stays up to date on every device: phone, laptop or a family member's. Changes merge by themselves, and when the same record was changed on two devices, the later change wins and Checks offers the other. On a new device, choose **Open from Google Drive** and unlock with your passphrase or recovery code.
 - **No lock-in:** export to Excel or JSON at any time, and import them back. An encrypted backup file restores everything on another device.
 
 ## Privacy
@@ -28,6 +29,7 @@ It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF an
 - Sectors come from whole NSE constituent lists and the industries in fund reports, grouped into NSE's 22 sectors. Cap sizes come from AMFI's whole stock categorisation, which covers every listed company. The last successful lists are kept if a refresh fails.
 - Fund holdings arrive as whole monthly disclosure workbooks from PPFAS, Nippon India, HDFC, SBI, Tata, DSP, Bank of India, Zerodha, Quant, Invesco, Canara Robeco and Mirae Asset. The relay discovers and streams their official files; the browser parses and encrypts them locally. It fetches every supported file without sending your fund selections. Missing reports remain unclassified, and saved reports retain their original dates after a failed refresh.
 - Index levels arrive as NSE's and BSE's whole daily all-index files, fetched whatever you hold or look at. If one exchange fails, its last levels stay with their original date.
+- Cloud sync puts only encrypted files in your Google Drive, in an `Arthly` folder. Arthly asks only for the files it makes itself, so it can't see anything else in your Drive. The Google sign-in is kept encrypted on each device and is never synced or put in a backup file.
 - No analytics, no third-party scripts, no remote fonts.
 
 See [SECURITY.md](SECURITY.md) for the details and the limits.
@@ -55,6 +57,21 @@ The app is a static site plus one small piece of server code: the price relay in
 
 3. Open the site, add your holdings, and press **Refresh prices** on the **Holdings** screen.
 
+**Cloud sync with Google Drive (optional):** the app signs in to Google through a second small function in `functions/`, which holds your Google client secret. It swaps Google's sign-in codes for tokens and never sees any data. Without it, Settings says Google Drive isn't set up.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Drive API**.
+2. Under **Google Auth Platform**, fill in the branding, choose the **External** audience, and add the `https://www.googleapis.com/auth/drive.file` scope under **Data access**. Then publish the app: while it's in testing, Google's sign-ins expire after 7 days. That scope is non-sensitive, so Google doesn't review the app, though it may ask to verify the branding if you add a logo.
+3. Under **Clients**, create a **Web application** client with the authorized redirect URI `https://<your site>/oauth.html`. To try it locally with `pnpm relay`, also add `http://localhost:8788/oauth.html`.
+4. Give the Pages project the client's ID and secret, then deploy again:
+
+   ```bash
+   pnpm exec wrangler pages secret put GOOGLE_CLIENT_ID
+   pnpm exec wrangler pages secret put GOOGLE_CLIENT_SECRET
+   pnpm run deploy
+   ```
+
+   For `pnpm relay`, put `GOOGLE_CLIENT_ID=…` and `GOOGLE_CLIENT_SECRET=…` in a `.dev.vars` file at the top of the repository instead. Git ignores it.
+
 The relay goes back up to a week for the last trading day's file. If NSE turns it away, it uses BSE's file instead. If neither answers, the app keeps the last prices and says so.
 
 **Fund disclosures:** **Refresh data** in Analytics updates the supported monthly fund portfolios alongside prices and classification lists. Automatic checks run daily when the app refreshes prices. Underlying exposure uses current fund value × disclosed weight, so it is a dated estimate. Cash, debt and commodities stay separate; nested funds are expanded only when their reports can be matched. A fund without a report counts under its own type in the underlying asset split, marked "by fund type"; its stocks stay unclassified. Physical stock weights do not subtract derivative hedges. A new month's reports from every fund house come to about 60 MB, and saved months aren't downloaded again. If one scheme in a fund house's workbook can't be read, the rest still load and Analytics says which. Other AMCs need additional source adapters; AMFI's NAV list alone does not provide underlying holdings. Axis and Edelweiss refuse requests that don't come from a browser, and HDFC's site currently refuses the relay. For those, download the fund house's monthly portfolio from its website and choose **Add a fund report** under the fund holdings in Analytics. The file is read and kept on this device only, and the newest report of each scheme is used, whether fetched or added.
@@ -81,9 +98,9 @@ pnpm e2e         # Playwright, at phone and desktop sizes
 
 | Folder            | What it holds                                                                                                                                                                                      |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/core`   | Plain TypeScript with no DOM: the change log, encryption, sync, the engine, and the plugins (importers, asset types, price sources, exporters)                                                     |
+| `packages/core`   | Plain TypeScript with no DOM: the change log, encryption, sync, the engine, and the plugins (importers, asset types, price sources, exporters, storage providers)                                  |
 | `apps/web`        | The SvelteKit app. `src/lib/worker` is the data worker that holds the key and the data; the screens talk to it over Comlink and are built from shadcn-svelte components in `src/lib/components/ui` |
-| `functions`       | The price relay, as a Cloudflare Pages Function; its logic and tests are in `packages/core/src/plugins/prices/relay`                                                                               |
+| `functions`       | The price relay and the Google token function, as Cloudflare Pages Functions; their logic and tests are in `packages/core/src/plugins/prices/relay` and `plugins/storage/google-drive`             |
 | `apps/price-feed` | The optional nightly price feed, run by `.github/workflows/price-feed.yml`                                                                                                                         |
 
 To add an importer or another plugin, see [CONTRIBUTING.md](CONTRIBUTING.md).

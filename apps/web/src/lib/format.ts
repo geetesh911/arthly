@@ -92,6 +92,16 @@ export const shortDate = (iso: string, now = new Date()) =>
     ? dayFmt.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`))
     : date(iso);
 
+const momentFmt = new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+/** A moment in this device's time zone: 24 Oct, 10:42 am. */
+export const dateTime = (iso: string) => momentFmt.format(new Date(iso));
+
 export const fyLabel = (fy: number) => `FY ${fy}-${String((fy + 1) % 100).padStart(2, '0')}`;
 
 export const CLASS_NAMES: Record<string, string> = {

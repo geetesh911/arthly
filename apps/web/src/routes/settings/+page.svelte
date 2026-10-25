@@ -13,6 +13,7 @@
 
   import { api, list } from '#lib/api.ts';
   import { app, attempt, changed, lock, say } from '#lib/app.svelte.ts';
+  import CloudSync from '#lib/components/CloudSync.svelte';
   import FormField from '#lib/components/FormField.svelte';
   import NameRow from '#lib/components/NameRow.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
@@ -257,10 +258,12 @@
 <!-- Two independent columns, so a long list on one side leaves no gap on the other. -->
 <div class="grid items-start gap-4 lg:grid-cols-2">
   <div class="flex flex-col gap-4">
+    <CloudSync />
+
     <Card.Root>
       {@render title(
         'Backup and export',
-        'A backup (.pvault) restores everything on any device with your passphrase or recovery code. Cloud sync comes in a later version.',
+        'A backup (.pvault) restores everything on any device with your passphrase or recovery code.',
       )}
       <Card.Content class="grid gap-4">
         {#if persisted === false}

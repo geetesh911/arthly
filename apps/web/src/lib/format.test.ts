@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { describe, expect, it } from 'vitest';
 
-import { inrSigned, pct, points, shortDate } from './format.ts';
+import { dateTime, inrSigned, pct, points, shortDate } from './format.ts';
 
 describe('pct', () => {
   it('shows a fraction as a percentage with 2 decimals', () => {
@@ -46,5 +46,13 @@ describe('shortDate', () => {
 
     expect(shortDate('2026-10-21', now)).toBe('21 Oct');
     expect(shortDate('2025-12-31', now)).toBe('31 Dec 2025');
+  });
+});
+
+describe('dateTime', () => {
+  it('shows the day and time in local time, without the year', () => {
+    const at = new Date(2026, 9, 24, 10, 42);
+
+    expect(dateTime(at.toISOString())).toMatch(/^24 Oct(,| at) 10:42\s?am$/i);
   });
 });

@@ -48,6 +48,11 @@ import {
   type FundSourceId,
   fyOf,
   get,
+  GoogleDrive,
+  type GoogleDriveFolder,
+  type GoogleGrant,
+  GoogleSession,
+  GoogleTokens,
   history,
   type Holding,
   importApplyEvent,
@@ -80,6 +85,7 @@ import {
   newRecoveryCode,
   NSE_LIST_INDEX,
   type NseReferenceFile,
+  OfflineError,
   openChunk,
   outstanding,
   OWED_TO_YOU,
@@ -97,6 +103,7 @@ import {
   type RateTables,
   readBackup,
   readFundReport,
+  ReconnectError,
   RelayClient,
   type RelayLatest,
   type RelayPart,
@@ -128,32 +135,36 @@ import {
 import { cardName } from '../cards.ts';
 import { LOAN_WORDS } from '../loans.ts';
 
-import type {
-  AccountDto,
-  AddedFundReportDto,
-  AnalyticsDto,
-  BatchDto,
-  BillDto,
-  CardDetailDto,
-  CardDto,
-  CardsDto,
-  FileOut,
-  Filter,
-  HoldingDetailDto,
-  HoldingDto,
-  LoanDetailDto,
-  LoanDto,
-  LoansDto,
-  NewCardInput,
-  NewLoanInput,
-  OverviewDto,
-  PlanDto,
-  PlanningDto,
-  PrepareResult,
-  PriceStatusDto,
-  UnlockMethodDto,
-  UpcomingDto,
-  VaultSummary,
+import { CloudSync } from './cloud.ts';
+import {
+  type AccountDto,
+  type AddedFundReportDto,
+  type AnalyticsDto,
+  type BatchDto,
+  type BillDto,
+  type CardDetailDto,
+  type CardDto,
+  type CardsDto,
+  type CloudStatusDto,
+  type CloudVaultDto,
+  type FileOut,
+  type Filter,
+  type HoldingDetailDto,
+  type HoldingDto,
+  IN_USE,
+  type LoanDetailDto,
+  type LoanDto,
+  type LoansDto,
+  type NewCardInput,
+  type NewLoanInput,
+  type OverviewDto,
+  type PlanDto,
+  type PlanningDto,
+  type PrepareResult,
+  type PriceStatusDto,
+  type UnlockMethodDto,
+  type UpcomingDto,
+  type VaultSummary,
 } from './dto.ts';
 import { readPdf } from './pdf.ts';
 import type { DeviceStorage } from './storage.ts';
@@ -212,6 +223,10 @@ export interface Env {
   feedUrl?: string;
   /** Cheaper Argon2id settings for tests. */
   kdf?: Omit<KdfParams, 'salt'>;
+  /** The browser's Web Locks, so a portfolio is open in one tab at a time. */
+  locks?: LockManager;
+  /** False leaves cloud sync to `syncNow`, as tests do. */
+  autoSync?: boolean;
 }
 
 const PRICE_REFRESH_MS = 6 * 3600_000;
@@ -230,7 +245,17 @@ export class DataService {
   private open?: OpenVault;
   private lockTimer?: ReturnType<typeof setTimeout>;
   private autoLockMs = 5 * 60_000;
-  onLock?: () => void;
+  private cloud?: CloudSync;
+  /** Lets go of the open portfolio's Web Lock. */
+  private release?: () => void;
+  /** Settles once the last closed portfolio's sync pass has stopped and its Web Lock is free. */
+  private closing: Promise<void> = Promise.resolve();
+  /** A Google sign-in made to open a portfolio from Google Drive, until a portfolio opens or locks. */
+  private signedIn?: GoogleSession;
+  /** Hears that the vault locked, and why if it wasn't the user or the idle timer. */
+  onLock?: (reason?: string) => void;
+  /** Hears each cloud sync status, and whether the pass brought in changes. */
+  onSync?: (status: CloudStatusDto, pulled: boolean) => void;
 
   constructor(
     private storage: DeviceStorage,
@@ -294,7 +319,8 @@ export class DataService {
     this.refresh();
   }
 
-  async unlock(vaultId: string, secret: Secret): Promise<void> {
+  /** `takeOver` opens it here even if another tab has it open; that tab then locks. */
+  async unlock(vaultId: string, secret: Secret, takeOver = false): Promise<void> {
     const entry = (await this.storage.vaults()).find((v) => v.vaultId === vaultId);
 
     if (!entry) {
@@ -310,7 +336,7 @@ export class DataService {
 
     const dk = await unlockSecret(keyring, secret);
 
-    await this.attach(vaultId, entry.name, dk, local, keyring, false);
+    await this.attach(vaultId, entry.name, dk, local, keyring, false, takeOver);
   }
 
   private async attach(
@@ -320,7 +346,15 @@ export class DataService {
     local: LocalStore,
     keyring: Keyring,
     demo: boolean,
+    takeOver = false,
   ) {
+    this.close();
+    await this.closing;
+
+    if (!demo) {
+      await this.claim(vaultId, takeOver);
+    }
+
     const log = await VaultLog.open(local, dk, keyring);
     const empty: PriceCache = { fetched: '', latest: [], history: [], schemes: [] };
     const prices = await this.loadSealed(vaultId, dk, local, 'cache/prices', empty);
@@ -349,12 +383,90 @@ export class DataService {
     this.refresh();
     this.autoLockMs = ((await local.getMeta<number>('autoLockMinutes')) ?? 5) * 60_000;
     this.touch();
+
+    if (!demo) {
+      const cloud = await CloudSync.load(
+        { vaultId, dk, local, log },
+        {
+          fetch: this.env.fetch,
+          now: this.env.now,
+          tokens: this.googleTokens(),
+          auto: this.env.autoSync ?? true,
+        },
+        (status, pulled) => {
+          // A pass that finishes after locking, or after another portfolio opened, goes unheard.
+          if (this.open?.log !== log) {
+            return;
+          }
+
+          if (pulled) {
+            this.refresh();
+          }
+
+          this.onSync?.(status, pulled);
+        },
+      );
+
+      this.cloud = cloud;
+      log.onChange = () => cloud.soon();
+      cloud.start();
+    }
   }
 
-  lock(): void {
-    this.open = undefined;
+  lock(reason?: string): void {
+    this.close();
     clearTimeout(this.lockTimer);
-    this.onLock?.();
+    this.onLock?.(reason);
+  }
+
+  private close(): void {
+    const release = this.release;
+    // A pass still running could seal the open chunk, so another tab waits until it's stopped.
+    const stopped = this.cloud?.stop();
+
+    this.closing = Promise.all([this.closing, stopped]).then(() => release?.());
+    this.cloud = undefined;
+    this.release = undefined;
+    this.open = undefined;
+    this.signedIn = undefined;
+  }
+
+  /** Holds the portfolio's Web Lock while it's open, so two tabs never write the same files. */
+  private async claim(vaultId: string, takeOver: boolean): Promise<void> {
+    const locks = this.env.locks;
+
+    if (!locks) {
+      return;
+    }
+
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const granted = await new Promise<boolean>((resolve) => {
+      locks
+        .request(
+          `arthly:${vaultId}`,
+          takeOver ? { steal: true } : { ifAvailable: true },
+          (lock) => {
+            resolve(lock !== null);
+
+            return lock ? held : undefined;
+          },
+        )
+        .catch(() => {
+          resolve(false);
+
+          // Another tab took the portfolio over.
+          if (this.release === release) {
+            this.lock('The portfolio was opened in another tab, so it locked here.');
+          }
+        });
+    });
+
+    if (!granted) {
+      throw new Error(IN_USE);
+    }
+
+    this.release = release;
   }
 
   isUnlocked(): boolean {
@@ -563,6 +675,7 @@ export class DataService {
   private async deviceFacts() {
     const v = this.need();
     const lastBackup = await v.local.getMeta<string>('lastBackup');
+    const lastSync = this.cloud?.lastSync();
     let persisted: boolean | undefined;
 
     try {
@@ -573,6 +686,7 @@ export class DataService {
 
     return {
       ...(lastBackup ? { lastBackup } : {}),
+      ...(lastSync ? { lastSync: localToday(new Date(lastSync)) } : {}),
       ...(persisted !== undefined ? { persisted } : {}),
       ...(v.demo ? { lastBackup: this.today() } : {}),
     };
@@ -1901,6 +2015,120 @@ export class DataService {
 
     return vaultId;
   }
+
+  // ---- cloud sync ----
+
+  /** The app's token function, next to the relay (functions/api/google). */
+  private googleTokens(): GoogleTokens {
+    return new GoogleTokens(this.env.fetch, new URL('/api/google/token', this.env.relayUrl).href);
+  }
+
+  private googleSession(grant: GoogleGrant): Promise<GoogleSession> {
+    return GoogleSession.start(this.googleTokens(), grant, () => this.env.now().getTime());
+  }
+
+  private needCloud(): CloudSync {
+    if (!this.cloud) {
+      this.need();
+      throw new Error('Sample data stays in this browser and doesn’t sync.');
+    }
+
+    return this.cloud;
+  }
+
+  cloudStatus(): CloudStatusDto {
+    this.need();
+
+    return this.cloud?.status() ?? { available: false, syncing: false, problems: 0 };
+  }
+
+  /** Connects the open portfolio to Google Drive with what Google's sign-in page sent back. */
+  async connectGoogle(grant: GoogleGrant): Promise<CloudStatusDto> {
+    const cloud = this.needCloud();
+
+    await cloud.connect(await this.googleSession(grant));
+
+    return cloud.status();
+  }
+
+  /** Stops syncing on this device. The files stay in Google Drive for the other devices. */
+  async disconnectCloud(): Promise<void> {
+    await this.needCloud().disconnect();
+  }
+
+  /** Syncs now and waits for it. */
+  async syncNow(): Promise<CloudStatusDto> {
+    const cloud = this.needCloud();
+
+    await cloud.run();
+
+    return cloud.status();
+  }
+
+  /** Syncs if the last pass was a while ago, as when the app comes back into view or online. */
+  syncIfStale(): void {
+    this.cloud?.ifStale();
+  }
+
+  /** Signs in to Google to open a portfolio kept there, and lists the portfolios found. */
+  async googlePortfolios(grant: GoogleGrant): Promise<CloudVaultDto[]> {
+    const session = await this.googleSession(grant);
+    const drive = new GoogleDrive(this.env.fetch, session);
+    const here = new Set((await this.storage.vaults()).map((v) => v.vaultId));
+    const out: CloudVaultDto[] = [];
+
+    for (const { vaultId, folderId } of await drive.vaults()) {
+      // A damaged keyring leaves that folder out; losing the connection stops the search.
+      const keyring = await readKeyring(drive.folder(folderId)).catch((error: unknown) => {
+        if (error instanceof OfflineError || error instanceof ReconnectError) {
+          throw error;
+        }
+      });
+
+      if (keyring?.vaultId === vaultId) {
+        out.push({ vaultId, created: keyring.created, onDevice: here.has(vaultId) });
+      }
+    }
+
+    this.signedIn = session;
+
+    return out.sort((a, b) => a.created.localeCompare(b.created));
+  }
+
+  /** Opens a portfolio from Google Drive on this device, once `googlePortfolios` has signed in. */
+  async openFromCloud(vaultId: string, secret: Secret, name: string): Promise<void> {
+    const session = this.signedIn;
+
+    if (!session) {
+      throw new Error('Sign in to Google first');
+    }
+
+    if ((await this.storage.vaults()).some((x) => x.vaultId === vaultId)) {
+      throw new Error('This portfolio is already on this device. Unlock it instead.');
+    }
+
+    const drive = new GoogleDrive(this.env.fetch, session);
+    const folderId = await drive.vaultFolder(vaultId, false);
+    const keyring = folderId ? await readKeyring(drive.folder(folderId)) : undefined;
+
+    if (!folderId || keyring?.vaultId !== vaultId) {
+      throw new Error('That portfolio is no longer in Google Drive');
+    }
+
+    const dk = await unlockSecret(keyring, secret);
+
+    if (!(await verifyKeyring(keyring, dk))) {
+      throw new Error('The portfolio in Google Drive has been changed outside the app');
+    }
+
+    await this.storage.addVault({ vaultId, name, created: this.env.now().toISOString() });
+    await this.attach(vaultId, name, dk, await this.storage.open(vaultId), keyring, false);
+    await this.needCloud().connect(session, folderId);
+  }
+}
+
+async function readKeyring(folder: GoogleDriveFolder): Promise<Keyring> {
+  return JSON.parse(new TextDecoder().decode(await folder.read('keyring.json'))) as Keyring;
 }
 
 /** The likeliest heading row of each sheet: the row with the most text cells, at least three. No values. */

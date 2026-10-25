@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <!-- Google's code arrives in this page's address: it runs only oauth.js and talks to nothing. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'"
+    />
+    <title>Arthly · Google sign-in</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        background: #f7f9ef;
+        color: #1b211c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #121713;
+          color: #e6ebe3;
+        }
+      }
+      body {
+        display: grid;
+        min-height: 100dvh;
+        margin: 0;
+        padding: 0 16px;
+        place-items: center;
+        text-align: center;
+      }
+    </style>
+    <script src="oauth.js" defer></script>
+  </head>
+  <body>
+    <p id="message">Finishing the Google sign-in…</p>
+  </body>
+</html>

@@ -2,8 +2,9 @@
 // What every screen shares: whether the vault is open, the member filter, and a message line.
 import { on } from 'svelte/events';
 
-import type { Filter } from './worker/dto.ts';
+import type { CloudStatusDto, Filter } from './worker/dto.ts';
 import { api, list, proxy } from './api.ts';
+import { takeGoogleRedirect } from './google.ts';
 
 type Status = 'loading' | 'locked' | 'open';
 
@@ -15,18 +16,40 @@ export const app = $state({
   version: 0,
   message: '' as string,
   members: [] as { id: string; name: string }[],
+  /** Cloud sync for the open portfolio, as the data worker last reported it. */
+  sync: null as CloudStatusDto | null,
 });
 
 let lastTouch = 0;
 
 export async function start(): Promise<void> {
   await api().listenForLock(
-    proxy(() => {
+    proxy((reason?: string) => {
       app.status = 'locked';
       app.vault = null;
+      app.sync = null;
+
+      if (reason) {
+        say(reason);
+      }
+    }),
+  );
+  await api().listenForSync(
+    proxy((status: CloudStatusDto, pulled: boolean) => {
+      app.sync = status;
+
+      // Changes from another device: the screens reload.
+      if (pulled) {
+        void changed();
+      }
     }),
   );
   await opened();
+  on(document, 'visibilitychange', () => {
+    if (document.visibilityState === 'visible' && app.status === 'open') {
+      void api().syncIfStale();
+    }
+  });
 
   for (const event of ['pointerdown', 'keydown']) {
     on(window, event, () => {
@@ -47,7 +70,9 @@ export async function opened(): Promise<void> {
 
   if (app.vault) {
     app.members = (await list('member')).map((m) => ({ id: m.id, name: m.name }));
+    app.sync = await api().cloudStatus();
     app.version += 1;
+    void finishConnecting();
     void api()
       .refreshPrices()
       .then((r) => {
@@ -64,6 +89,23 @@ export async function lock(): Promise<void> {
   await api().lock();
   app.status = 'locked';
   app.vault = null;
+  app.sync = null;
+}
+
+/** Connects Google Drive with a sign-in that came back after a full-page redirect and an unlock. */
+async function finishConnecting(): Promise<void> {
+  const grant = takeGoogleRedirect('connect', app.vault?.vaultId);
+
+  if (!grant) {
+    return;
+  }
+
+  const status = await attempt(() => api().connectGoogle(grant));
+
+  if (status) {
+    app.sync = status;
+    say('Google Drive is connected.');
+  }
 }
 
 export async function changed(): Promise<void> {

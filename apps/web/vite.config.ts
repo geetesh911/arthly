@@ -52,8 +52,14 @@ export default defineConfig({
           'default-src': ['self'],
           'script-src': ['self', 'wasm-unsafe-eval'],
           'worker-src': ['self', 'blob:'],
-          // The relay is on the app's own origin; Frankfurter gives the USD rate.
-          'connect-src': ['self', 'https://api.frankfurter.dev', ...feedOrigins],
+          // The relay and the Google token function are on the app's own origin; Frankfurter
+          // gives the USD rate, and cloud sync talks to the Google Drive API.
+          'connect-src': [
+            'self',
+            'https://api.frankfurter.dev',
+            'https://www.googleapis.com',
+            ...feedOrigins,
+          ],
           'img-src': ['self', 'data:', 'blob:'],
           'style-src': ['self', 'unsafe-inline'],
           'font-src': ['self'],

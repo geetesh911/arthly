@@ -63,6 +63,8 @@ const freshMeta = (): Meta => ({ openSeq: 1, uploaded: 0, marks: {}, snaps: [], 
 export class VaultLog {
   readonly problems: string[] = [];
   clock: Clock;
+  /** Called after this device saves events or changes the keyring, so sync can follow. */
+  onChange?: () => void;
   private known = new Map<string, Event>();
   private openEvents: Event[] = [];
   private queue: Promise<unknown> = Promise.resolve();
@@ -142,11 +144,18 @@ export class VaultLog {
       if (this.openEvents.length >= OPEN_LIMIT) {
         await this.seal();
       }
+
+      this.onChange?.();
     });
   }
 
   /** Stores a keyring changed on this device (new passphrase, passkey, revocation). */
   async setKeyring(keyring: Keyring): Promise<void> {
+    await this.storeKeyring(keyring);
+    this.onChange?.();
+  }
+
+  private async storeKeyring(keyring: Keyring): Promise<void> {
     this.keyring = keyring;
     await this.local.setMeta('keyring', keyring);
   }
@@ -221,7 +230,7 @@ export class VaultLog {
 
     if (keyring !== this.keyring) {
       report.keyringChanged = true;
-      await this.setKeyring(keyring);
+      await this.storeKeyring(keyring);
     }
   }
 

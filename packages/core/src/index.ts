@@ -63,6 +63,9 @@ export {
   type RelayPart,
 } from './plugins/prices/relay/client.ts';
 export type { PriceContext, PriceSource } from './plugins/prices/types.ts';
+export * from './plugins/storage/google-drive/drive.ts';
+export * from './plugins/storage/google-drive/oauth.ts';
+export * from './plugins/storage/google-drive/session.ts';
 export * from './sync/backup.ts';
 export * from './sync/stores.ts';
 export * from './sync/vault-log.ts';
