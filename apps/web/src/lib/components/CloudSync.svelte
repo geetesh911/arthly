@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import Cloud from '@lucide/svelte/icons/cloud';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+  import ScanQrCode from '@lucide/svelte/icons/scan-qr-code';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import type { GoogleGrant } from '@pv/core';
 
@@ -15,10 +16,12 @@
   import * as Alert from './ui/alert/index.ts';
   import { Button } from './ui/button/index.ts';
   import * as Card from './ui/card/index.ts';
+  import LinkDevice from './LinkDevice.svelte';
 
   let setUp = $state<boolean | null>(null);
   let waiting = $state<AbortController | null>(null);
   let connecting = $state(false);
+  let linking = $state(false);
   const s = $derived(app.sync);
   const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -148,9 +151,15 @@
           <Button variant="outline" onclick={syncNow} disabled={s.syncing}
             ><RefreshCw />Sync now</Button
           >
+          <Button variant="outline" onclick={() => (linking = true)} disabled={linking}
+            ><ScanQrCode />Link a device</Button
+          >
         {/if}
         <Button variant="ghost" class="text-destructive" onclick={disconnect}>Disconnect</Button>
       </div>
+      {#if linking && !s.reconnect}
+        <LinkDevice onClose={() => (linking = false)} />
+      {/if}
     {:else}
       {#if setUp === false}
         <p class="text-muted-foreground text-sm">
@@ -176,9 +185,10 @@
     {#if s?.available !== false}
       <p class="text-muted-foreground text-xs leading-relaxed">
         Each device connects on its own. On a new device, choose <strong
-          >Open from Google Drive</strong
+          >Link with another device</strong
         >
-        where it asks you to unlock, and use your passphrase or recovery code.
+        where it asks you to unlock, and scan its code with <strong>Link a device</strong> here. Or
+        choose <strong>Open from Google Drive</strong> there, and use your passphrase or recovery code.
       </p>
     {/if}
   </Card.Content>

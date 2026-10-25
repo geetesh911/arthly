@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 export * from './crypto/chunk.ts';
 export * from './crypto/keyring.ts';
+export * from './crypto/link.ts';
 export * from './engine/analytics.ts';
 export * from './engine/asset-type.ts';
 export * from './engine/benchmarks.ts';

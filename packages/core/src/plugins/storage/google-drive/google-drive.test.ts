@@ -241,11 +241,16 @@ describe('Google Drive provider', () => {
 
     expect(await drive.vaults()).toEqual([]);
     expect(await drive.vaultFolder('vault_aaaa', false)).toBeUndefined();
+    expect(await drive.rootFolder(false)).toBeUndefined();
     const a = await drive.vaultFolder('vault_aaaa', true);
     const b = await drive.vaultFolder('vault_bbbb', true);
 
     expect(await drive.vaultFolder('vault_aaaa', true)).toBe(a);
-    expect([...google.files.values()].filter((f) => f.name === ROOT_FOLDER)).toHaveLength(1);
+    const roots = [...google.files.values()].filter((f) => f.name === ROOT_FOLDER);
+
+    expect(roots).toHaveLength(1);
+    expect(await drive.rootFolder(true)).toBe(roots[0]!.id);
+    expect(await (await signIn(fakeGoogle())).drive.rootFolder(true)).toEqual(expect.any(String));
     expect((await drive.vaults()).sort((x, y) => x.vaultId.localeCompare(y.vaultId))).toEqual([
       { vaultId: 'vault_aaaa', folderId: a },
       { vaultId: 'vault_bbbb', folderId: b },
@@ -273,6 +278,10 @@ describe('Google Drive provider', () => {
       { path: 'log/abcd/00000002.pvc', size: 7 },
     ]);
     expect(await folder.read('log/abcd/00000002.pvc')).toEqual(bytes);
+    expect((await folder.listFiles('log/')).map((f) => [f.name, f.modified])).toEqual([
+      ['log/abcd/00000002.pvc', expect.stringMatching(/^2026-/)],
+      ['log/abcd/00000001.pvc', expect.stringMatching(/^2026-/)],
+    ]);
     await folder.write('keyring.json', utf8.encode('{"v":2}'));
     expect(utf8.decode(await folder.read('keyring.json'))).toBe('{"v":2}');
     expect(google.state.requests.filter((r) => r.startsWith('PATCH'))).toHaveLength(1);

@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { googleAuthUrl, type GoogleGrant, type LocalStore, MemoryLocalStore, pkce } from '@pv/core';
+import {
+  formatLinkCode,
+  googleAuthUrl,
+  type GoogleGrant,
+  type LocalStore,
+  MemoryLocalStore,
+  pkce,
+  ROOT_FOLDER,
+} from '@pv/core';
 import { type FakeGoogle, fakeGoogle } from '@pv/core/plugins/storage/google-drive/fake-google.ts';
 import { googleToken } from '@pv/core/plugins/storage/google-drive/token-server.ts';
 import { describe, expect, it } from 'vitest';
@@ -73,16 +81,18 @@ function device(
     storage = memoryStorage(),
     locks,
     fetch = network(google),
+    now = () => new Date('2026-10-24T10:00:00+05:30'),
   }: {
     storage?: DeviceStorage;
     locks?: LockManager;
     fetch?: typeof globalThis.fetch;
+    now?: () => Date;
   } = {},
 ) {
   return new DataService(storage, {
     fetch,
     relayUrl: `${APP}/api/prices/`,
-    now: () => new Date('2026-10-24T10:00:00+05:30'),
+    now,
     kdf: { alg: 'argon2id', m: 256, t: 1, p: 1 },
     autoSync: false,
     ...(locks ? { locks } : {}),
@@ -137,9 +147,9 @@ function fakeLocks(): LockManager {
   } as unknown as LockManager;
 }
 
-async function connected() {
+async function connected(now?: () => Date) {
   const google = fakeGoogle();
-  const laptop = device(google);
+  const laptop = device(google, now ? { now } : {});
   const { vaultId } = await laptop.create('Family', 'Asha', PASSPHRASE);
 
   await laptop.connectGoogle(signIn(google));
@@ -276,6 +286,160 @@ describe('cloud sync', () => {
     await s.demo();
     expect(s.cloudStatus()).toEqual({ available: false, syncing: false, problems: 0 });
     await expect(s.connectGoogle(signIn(google))).rejects.toThrow(/doesn’t sync/);
+  });
+});
+
+describe('linking a device', () => {
+  /** The link files in the Arthly folder. */
+  const linkFiles = (google: FakeGoogle) => {
+    const root = [...google.files.values()].find((f) => f.name === ROOT_FOLDER)!;
+
+    return [...google.folder(root.id).keys()].filter((k) => k.startsWith('link-')).sort();
+  };
+
+  it('opens the portfolio on a device signed in to the same Google account', async () => {
+    const { google, laptop, vaultId } = await connected();
+    const phone = device(google);
+    const start = await phone.startLink(signIn(google), 'Safari on iPhone');
+
+    expect(start).toEqual({
+      code: expect.stringMatching(/^[A-Z2-7]{16}$/),
+      account: 'asha@example.com',
+      expires: '2026-10-24T04:40:00.000Z',
+    });
+    expect(linkFiles(google)).toEqual([`link-${start.code}.json`]);
+    expect(await phone.checkLink()).toBe('waiting');
+    // Typed by hand, in any case, with or without dashes.
+    expect(await laptop.findLink(formatLinkCode(start.code).toLowerCase())).toEqual({
+      code: start.code,
+      device: 'Safari on iPhone',
+      created: '2026-10-24T04:30:00.000Z',
+    });
+    await laptop.approveLink(start.code);
+    expect(linkFiles(google)).toEqual([`link-${start.code}-reply.json`, `link-${start.code}.json`]);
+    await expect(laptop.approveLink(start.code)).rejects.toThrow(/Scan or type/);
+
+    expect(await phone.checkLink()).toBe('opened');
+    expect(phone.current()).toMatchObject({ vaultId, name: 'Family' });
+    expect(phone.list('member').map((m) => m.name)).toEqual(['Asha']);
+    expect(phone.cloudStatus()).toMatchObject({
+      provider: 'google-drive',
+      account: 'asha@example.com',
+    });
+    expect(linkFiles(google)).toEqual([]);
+    await expect(phone.checkLink()).rejects.toThrow(/Make a code first/);
+
+    // From then on it's like any other device: it unlocks with the passphrase and syncs.
+    phone.lock();
+    await phone.unlock(vaultId, { passphrase: PASSPHRASE });
+    await phone.save('member', { id: 'mem_ravi', name: 'Ravi' });
+    await phone.syncNow();
+    await laptop.syncNow();
+    expect(
+      laptop
+        .list('member')
+        .map((m) => m.name)
+        .sort(),
+    ).toEqual(['Asha', 'Ravi']);
+  });
+
+  it('finds no request from another Google account, and turns away what isn’t a code', async () => {
+    const { laptop } = await connected();
+    const elsewhere = fakeGoogle({ email: 'ravi@example.com' });
+    const tablet = device(elsewhere);
+    const { code, account } = await tablet.startLink(signIn(elsewhere), 'Chrome on Android');
+
+    expect(account).toBe('ravi@example.com');
+    await expect(laptop.findLink(code)).rejects.toThrow(
+      /No device is waiting.*signed in to Google as asha@example\.com/,
+    );
+    await expect(laptop.findLink('ABCD-EFGH')).rejects.toThrow(/16 letters and digits/);
+    await expect(laptop.approveLink(code)).rejects.toThrow(/Scan or type/);
+  });
+
+  it('expires after 10 minutes, and a new code starts again', async () => {
+    let minutes = 0;
+    const now = () => new Date(Date.parse('2026-10-24T04:30:00Z') + minutes * 60_000);
+    const { google, laptop } = await connected(now);
+    const phone = device(google, { now });
+    const first = await phone.startLink(signIn(google), 'Safari on iPhone');
+
+    minutes = 11;
+    // The open device refuses a request left behind by a device that went away.
+    await expect(laptop.findLink(first.code)).rejects.toThrow(/expired/);
+    expect(await phone.checkLink()).toBe('expired');
+    expect(linkFiles(google)).toEqual([]);
+    await expect(laptop.findLink(first.code)).rejects.toThrow(/No device is waiting/);
+
+    // A new code reuses the sign-in.
+    const second = await phone.startLink(null, 'Safari on iPhone');
+
+    expect(second.code).not.toBe(first.code);
+    await laptop.findLink(second.code);
+    await laptop.approveLink(second.code);
+    expect(await phone.checkLink()).toBe('opened');
+  });
+
+  it('refuses a portfolio already on the device, and tidies up when cancelled', async () => {
+    const { google, laptop, vaultId } = await connected();
+    const phone = device(google);
+
+    await phone.googlePortfolios(signIn(google));
+    await phone.openFromCloud(vaultId, { passphrase: PASSPHRASE }, 'Family');
+    phone.lock();
+    const { code } = await phone.startLink(signIn(google), 'Safari on iPhone');
+
+    await laptop.findLink(code);
+    await laptop.approveLink(code);
+    await expect(phone.checkLink()).rejects.toThrow(/already on this device/);
+    expect(linkFiles(google)).toEqual([]);
+
+    const again = await phone.startLink(null, 'Safari on iPhone');
+
+    expect(linkFiles(google)).toEqual([`link-${again.code}.json`]);
+    await phone.cancelLink();
+    expect(linkFiles(google)).toEqual([]);
+    await expect(phone.startLink(null, 'Safari on iPhone')).rejects.toThrow(
+      /Sign in to Google first/,
+    );
+  });
+
+  it('clears link files left over an hour ago', async () => {
+    const google = fakeGoogle();
+    // Google stamps files at midnight UTC in the fake; these devices think it's 04:30.
+    const gone = await device(google).startLink(signIn(google), 'Firefox on Linux');
+    const phone = device(google);
+    const { code } = await phone.startLink(signIn(google), 'Safari on iPhone');
+
+    expect(linkFiles(google)).toEqual([`link-${code}.json`]);
+    expect(code).not.toBe(gone.code);
+  });
+
+  it('links only from a device that syncs, and never sends a changed portfolio', async () => {
+    const google = fakeGoogle();
+    const laptop = device(google);
+
+    await laptop.create('Family', 'Asha', PASSPHRASE);
+    const phone = device(google);
+    const { code } = await phone.startLink(signIn(google), 'Safari on iPhone');
+
+    await expect(laptop.findLink(code)).rejects.toThrow(/Connect Google Drive/);
+    const sample = device(google);
+
+    await sample.demo();
+    await expect(sample.findLink(code)).rejects.toThrow(/doesn’t sync/);
+
+    // A reply that doesn't open the keyring in that folder is refused.
+    await laptop.connectGoogle(signIn(google));
+    const keyring = [...google.files.values()].find((f) => f.name === 'keyring.json')!;
+    const ring = JSON.parse(new TextDecoder().decode(keyring.bytes)) as { check: { ct: string } };
+
+    ring.check.ct = ring.check.ct.replace(/^./, (c) => (c === 'A' ? 'B' : 'A'));
+    keyring.bytes = new TextEncoder().encode(JSON.stringify(ring));
+    await laptop.findLink(code);
+    await laptop.approveLink(code);
+    await expect(phone.checkLink()).rejects.toThrow(/changed outside the app/);
+    expect(await phone.vaults()).toEqual([]);
   });
 });
 

@@ -145,6 +145,13 @@
         never put in a backup file.
       </li>
       <li>
+        <strong>Linking a device:</strong> when you link a new device with a QR code, the two
+        devices leave two small files in the Arthly folder for a few minutes: the new device's
+        one-time public key, and your portfolio's key sealed so that only that device can open it.
+        The new device deletes them once it's linked. To read the QR code, Arthly uses the camera
+        while you scan. The pictures stay in your browser and are never saved or sent anywhere.
+      </li>
+      <li>
         <strong>The token function:</strong> Google needs a secret to issue those tokens, and a
         secret can't be kept in a web page, so the site's function adds it. Google's sign-in codes
         and tokens pass through it, never your data, and it keeps none of them.

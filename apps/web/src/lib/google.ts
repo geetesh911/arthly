@@ -5,7 +5,7 @@
 // in the same window, and the result waits in sessionStorage until the screens pick it up.
 import { CALLBACK_PAGE, googleAuthUrl, type GoogleGrant, pkce } from '@pv/core';
 
-export type GooglePurpose = 'connect' | 'open';
+export type GooglePurpose = 'connect' | 'open' | 'link';
 
 /** Shared with static/oauth.js. */
 const CHANNEL = 'arthly-google';

@@ -39,7 +39,9 @@
   "dependencies": {
     "@pv/core": "workspace:*",
     "comlink": "^4.4.2",
-    "pdfjs-dist": "^6.4.299"
+    "jsqr": "1.4.0",
+    "pdfjs-dist": "^6.4.299",
+    "uqr": "0.1.3"
   },
   "imports": {
     "#lib": "./src/lib",

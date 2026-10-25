@@ -263,6 +263,27 @@ export interface CloudVaultDto {
   onDevice: boolean;
 }
 
+/** A link code made on this device, to show until the other device answers. */
+export interface LinkStartDto {
+  /** 16 letters and digits, without dashes. */
+  code: string;
+  /** The Google account this device signed in to. */
+  account?: string;
+  expires: string;
+}
+
+/** A new device waiting to be linked, as a device with the portfolio open sees it. */
+export interface LinkRequestDto {
+  /** The code as `approveLink` takes it. */
+  code: string;
+  /** Such as "Chrome on macOS". */
+  device: string;
+  created: string;
+}
+
+/** Whether the other device has answered a link code yet. */
+export type LinkState = 'waiting' | 'expired' | 'opened';
+
 /** The error when a portfolio is already open in another tab of this browser. */
 export const IN_USE = 'This portfolio is open in another tab.';
 

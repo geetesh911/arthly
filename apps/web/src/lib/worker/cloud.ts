@@ -116,6 +116,19 @@ export class CloudSync {
     return this.connection?.lastSync;
   }
 
+  /** Google Drive as this device is signed in to it, and the vault's folder, while connected. */
+  linkTarget(): { drive: GoogleDrive; folderId: string; account?: string } | undefined {
+    const c = this.connection;
+
+    return c && this.session
+      ? {
+          drive: new GoogleDrive(this.drive, this.session),
+          folderId: c.folderId,
+          ...(c.account ? { account: c.account } : {}),
+        }
+      : undefined;
+  }
+
   /** Syncs now, then every 5 minutes. */
   start(): void {
     this.stopped = false;

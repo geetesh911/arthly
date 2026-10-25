@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type BrowserContext, expect, type Page, test } from '@playwright/test';
+import {
+  type Browser,
+  type BrowserContext,
+  expect,
+  type Page,
+  test,
+  type TestInfo,
+} from '@playwright/test';
 
 import {
   type FakeGoogle,
@@ -103,6 +110,43 @@ async function openSettings(page: Page) {
 const syncCard = (page: Page) =>
   page.locator('[data-slot=card]').filter({ has: page.getByText('Cloud sync', { exact: true }) });
 
+/**
+ * A second device with the same Google account. It's an installed app, so it goes to Google and
+ * back in the same window.
+ */
+async function installedApp(
+  browser: Browser,
+  info: TestInfo,
+  google: FakeGoogle,
+  errors: string[],
+): Promise<{ context: BrowserContext; page: Page }> {
+  const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = info.project.use;
+  const context = await browser.newContext({
+    baseURL: 'http://localhost:4180',
+    serviceWorkers: 'block',
+    ...(viewport ? { viewport } : {}),
+    ...(userAgent ? { userAgent } : {}),
+    ...(deviceScaleFactor ? { deviceScaleFactor } : {}),
+    ...(isMobile ? { isMobile } : {}),
+    ...(hasTouch ? { hasTouch } : {}),
+  });
+
+  await context.addInitScript(() => {
+    const real = window.matchMedia.bind(window);
+
+    window.matchMedia = (query: string) =>
+      query === '(display-mode: standalone)'
+        ? ({ matches: true, media: query } as MediaQueryList)
+        : real(query);
+  });
+  await fakeCloud(context, google);
+  const page = await context.newPage();
+
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  return { context, page };
+}
+
 async function fitsWidth(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -132,30 +176,8 @@ test('syncs a portfolio through Google Drive to a second device and back', async
   await expect(card.getByTestId('sync-status')).toContainText('Last synced');
   await fitsWidth(page);
 
-  // The phone is an installed app, so it goes to Google and back in the same window.
-  const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = info.project.use;
-  const phoneContext = await browser.newContext({
-    baseURL: 'http://localhost:4180',
-    serviceWorkers: 'block',
-    ...(viewport ? { viewport } : {}),
-    ...(userAgent ? { userAgent } : {}),
-    ...(deviceScaleFactor ? { deviceScaleFactor } : {}),
-    ...(isMobile ? { isMobile } : {}),
-    ...(hasTouch ? { hasTouch } : {}),
-  });
+  const { context: phoneContext, page: phone } = await installedApp(browser, info, google, errors);
 
-  await phoneContext.addInitScript(() => {
-    const real = window.matchMedia.bind(window);
-
-    window.matchMedia = (query: string) =>
-      query === '(display-mode: standalone)'
-        ? ({ matches: true, media: query } as MediaQueryList)
-        : real(query);
-  });
-  await fakeCloud(phoneContext, google);
-  const phone = await phoneContext.newPage();
-
-  phone.on('pageerror', (error) => errors.push(error.message));
   await phone.goto('/');
   await phone.getByRole('button', { name: 'Open from Google Drive' }).click();
   await phone.getByRole('button', { name: 'Sign in with Google' }).click();
@@ -185,6 +207,60 @@ test('syncs a portfolio through Google Drive to a second device and back', async
   const folder = [...google.files.values()].find((f) => f.name.startsWith('vault_'))!;
 
   expect([...google.folder(folder.id).keys()].filter((k) => k.startsWith('log/'))).toHaveLength(2);
+  expect(errors).toEqual([]);
+  await phoneContext.close();
+});
+
+test('links a new device with the code it shows, without the passphrase', async ({
+  page,
+  context,
+  browser,
+}, info) => {
+  const google = fakeGoogle();
+  const errors: string[] = [];
+
+  page.on('pageerror', (error) => errors.push(error.message));
+  await fakeCloud(context, google);
+  await createVault(page);
+  await openSettings(page);
+  const card = syncCard(page);
+  const popup = page.waitForEvent('popup');
+
+  await card.getByRole('button', { name: 'Connect Google Drive' }).click();
+  await (await popup).waitForEvent('close');
+  await expect(card.getByTestId('sync-status')).toContainText('Last synced');
+
+  // The new device signs in to Google and shows a code.
+  const { context: phoneContext, page: phone } = await installedApp(browser, info, google, errors);
+
+  await phone.goto('/');
+  await phone.getByRole('button', { name: 'Link with another device' }).click();
+  await phone.getByRole('button', { name: 'Sign in with Google' }).click();
+  await expect(phone.getByRole('img', { name: 'QR code to link this device' })).toBeVisible();
+  await expect(phone.getByText(/^Signed in to Google as asha@example\.com\./)).toBeVisible();
+  await expect(phone.getByText(/unlocks like any other/)).toBeVisible();
+  const code = (await phone.getByTestId('link-code').textContent())!.trim();
+
+  expect(code).toMatch(/^([A-Z2-7]{4}-){3}[A-Z2-7]{4}$/);
+  await fitsWidth(phone);
+
+  // The laptop has no camera here, so it types the code.
+  await card.getByRole('button', { name: 'Link a device' }).click();
+  await card.getByRole('textbox', { name: /^(Or type the )?code$/i }).fill(code.toLowerCase());
+  await card.getByRole('button', { name: 'Link', exact: true }).click();
+  const confirm = page.getByRole('alertdialog');
+
+  await expect(confirm).toContainText(/^Link .+ on .+\?/);
+  await expect(confirm).toContainText('It will open Family');
+  await confirm.getByRole('button', { name: 'Link', exact: true }).click();
+  await expect(page.getByText(/^Linked\. Family is opening on/)).toBeVisible();
+
+  // Prices are offline here, so their message may take the message line before "Linked" shows.
+  await expect(phone.getByText('Welcome', { exact: true })).toBeVisible();
+  await openSettings(phone);
+  await expect(phone.getByRole('list', { name: 'Members' })).toContainText('Asha');
+  await expect(syncCard(phone).getByTestId('sync-status')).toContainText('Last synced');
+  expect([...google.files.values()].filter((f) => f.name.startsWith('link-'))).toEqual([]);
   expect(errors).toEqual([]);
   await phoneContext.close();
 });

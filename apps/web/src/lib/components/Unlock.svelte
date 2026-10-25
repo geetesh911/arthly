@@ -4,6 +4,7 @@
   import Cloud from '@lucide/svelte/icons/cloud';
   import FingerprintPattern from '@lucide/svelte/icons/fingerprint-pattern';
   import Plus from '@lucide/svelte/icons/plus';
+  import QrCode from '@lucide/svelte/icons/qr-code';
   import Smartphone from '@lucide/svelte/icons/smartphone';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Upload from '@lucide/svelte/icons/upload';
@@ -12,6 +13,7 @@
   import { api } from '#lib/api.ts';
   import { attempt, opened } from '#lib/app.svelte.ts';
   import FormField from '#lib/components/FormField.svelte';
+  import LinkFromDevice from '#lib/components/LinkFromDevice.svelte';
   import Logo from '#lib/components/Logo.svelte';
   import OpenFromCloud from '#lib/components/OpenFromCloud.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
@@ -31,7 +33,9 @@
 
   let vaults = $state<VaultSummary[] | null>(null);
   let chosen = $state('');
-  let mode = $state<'passphrase' | 'recovery' | 'restore' | 'create' | 'cloud'>('passphrase');
+  let mode = $state<'passphrase' | 'recovery' | 'restore' | 'create' | 'cloud' | 'link'>(
+    'passphrase',
+  );
   let secret = $state('');
   let busy = $state(false);
   let canPasskey = $state(false);
@@ -39,6 +43,7 @@
   let restoreName = $state('My portfolio');
   /** A Google sign-in that came back here after a full-page redirect; raw, so it can go to the worker. */
   let cloudGrant = $state.raw<GoogleGrant | null>(null);
+  let linkGrant = $state.raw<GoogleGrant | null>(null);
 
   const vault = $derived(vaults?.find((v) => v.vaultId === chosen));
   const ios =
@@ -49,16 +54,19 @@
     vaults = await api().vaults();
     chosen = vaults.at(-1)?.vaultId ?? '';
     cloudGrant = takeGoogleRedirect('open');
+    linkGrant = takeGoogleRedirect('link');
 
     if (cloudGrant) {
       mode = 'cloud';
+    } else if (linkGrant) {
+      mode = 'link';
     } else if (vaults.length === 0) {
       mode = 'create';
     }
 
     canPasskey = await passkeysSupported();
 
-    if (canPasskey && vault?.passkeys.length && mode !== 'cloud') {
+    if (canPasskey && vault?.passkeys.length && mode !== 'cloud' && mode !== 'link') {
       void fingerprint();
     }
   });
@@ -139,12 +147,16 @@
   }
 </script>
 
-{#snippet others(items: ('create' | 'restore' | 'cloud' | 'sample')[])}
+{#snippet others(items: ('create' | 'restore' | 'link' | 'cloud' | 'sample')[])}
   <div class="grid gap-1">
     {#each items as item (item)}
       {#if item === 'create'}
         <Button variant="ghost" class="justify-start" onclick={() => (mode = 'create')}
           ><Plus />New portfolio</Button
+        >
+      {:else if item === 'link'}
+        <Button variant="ghost" class="justify-start" onclick={() => (mode = 'link')}
+          ><QrCode />Link with another device</Button
         >
       {:else if item === 'restore'}
         <Button variant="ghost" class="justify-start" onclick={() => (mode = 'restore')}
@@ -190,10 +202,15 @@
       <p class="text-muted-foreground text-center text-sm">Loading…</p>
     {:else if mode === 'create'}
       <Create onCancel={vaults.length ? () => (mode = 'passphrase') : undefined} />
-      {@render others(['sample', 'restore', 'cloud'])}
+      {@render others(['sample', 'restore', 'link', 'cloud'])}
     {:else if mode === 'cloud'}
       <OpenFromCloud
         grant={cloudGrant}
+        onBack={() => (mode = vaults?.length ? 'passphrase' : 'create')}
+      />
+    {:else if mode === 'link'}
+      <LinkFromDevice
+        grant={linkGrant}
         onBack={() => (mode = vaults?.length ? 'passphrase' : 'create')}
       />
     {:else if mode === 'restore'}
@@ -291,7 +308,7 @@
           </form>
         </Card.Content>
       </Card.Root>
-      {@render others(['create', 'restore', 'cloud', 'sample'])}
+      {@render others(['create', 'restore', 'link', 'cloud', 'sample'])}
     {/if}
 
     <p class="text-muted-foreground text-center text-xs">

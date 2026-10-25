@@ -20,7 +20,7 @@ It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF an
 - **Fixed income done properly:** FD compounding and payouts, SGB and bond coupons, PPF interest on the lowest balance from the 5th, EPF interest from the month after each contribution.
 - **Checks:** stale prices or files, holdings that don't match your files, possible duplicates, maturities and payouts due soon, and PPF minimums and limits.
 - **Income per financial year:** interest and dividends, received and earned. A summary for your records, not tax advice.
-- **Cloud sync:** connect Google Drive in Settings and the portfolio stays up to date on every device: phone, laptop or a family member's. Changes merge by themselves, and when the same record was changed on two devices, the later change wins and Checks offers the other. On a new device, choose **Open from Google Drive** and unlock with your passphrase or recovery code.
+- **Cloud sync:** connect Google Drive in Settings and the portfolio stays up to date on every device: phone, laptop or a family member's. Changes merge by themselves, and when the same record was changed on two devices, the later change wins and Checks offers the other. On a new device, choose **Link with another device**, sign in to Google, and scan the code it shows from Settings → Cloud sync → **Link a device** on a device where the portfolio is open. No passphrase needed. Or choose **Open from Google Drive** and unlock with your passphrase or recovery code.
 - **No lock-in:** export to Excel or JSON at any time, and import them back. An encrypted backup file restores everything on another device.
 
 ## Privacy
@@ -31,7 +31,7 @@ It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF an
 - Sectors come from whole NSE constituent lists and the industries in fund reports, grouped into NSE's 22 sectors. Cap sizes come from AMFI's whole stock categorisation, which covers every listed company. The last successful lists are kept if a refresh fails.
 - Fund holdings arrive as whole monthly disclosure workbooks from PPFAS, Nippon India, HDFC, SBI, Tata, DSP, Bank of India, Zerodha, Quant, Invesco, Canara Robeco and Mirae Asset. The relay discovers and streams their official files; the browser parses and encrypts them locally. It fetches every supported file without sending your fund selections. Missing reports remain unclassified, and saved reports retain their original dates after a failed refresh.
 - Index levels arrive as NSE's and BSE's whole daily all-index files, fetched whatever you hold or look at. If one exchange fails, its last levels stay with their original date.
-- Cloud sync puts only encrypted files in your Google Drive, in an `Arthly` folder. Arthly asks only for the files it makes itself, so it can't see anything else in your Drive. The Google sign-in is kept encrypted on each device and is never synced or put in a backup file.
+- Cloud sync puts only encrypted files in your Google Drive, in an `Arthly` folder. Arthly asks only for the files it makes itself, so it can't see anything else in your Drive. The Google sign-in is kept encrypted on each device and is never synced or put in a backup file. Linking a device sends the portfolio's key through that folder, sealed so only the new device can open it.
 - No analytics, no third-party scripts, no remote fonts.
 
 See the [privacy policy](https://arthly.pages.dev/privacy) and [SECURITY.md](SECURITY.md) for the details and the limits.

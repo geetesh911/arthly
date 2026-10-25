@@ -185,6 +185,13 @@ export class GoogleDrive {
     return [...seen].map(([vaultId, folderId]) => ({ vaultId, folderId }));
   }
 
+  /** The Arthly folder, made if needed when `create`. Linking a device leaves its files here. */
+  async rootFolder(create: boolean): Promise<string | undefined> {
+    const [root] = (await this.folders()).roots;
+
+    return root?.id ?? (create ? this.createFolder(ROOT_FOLDER, 'root') : undefined);
+  }
+
   /** The vault's folder, made with the Arthly folder if needed when `create`. */
   async vaultFolder(vaultId: string, create: boolean): Promise<string | undefined> {
     const { roots, vaults } = await this.folders();
@@ -267,6 +274,11 @@ export class GoogleDriveFolder implements StorageProvider {
     }
 
     return [...out].map(([path, size]) => ({ path, size }));
+  }
+
+  /** The files whose names start with `prefix`, newest first, with their times. */
+  async listFiles(prefix: string): Promise<DriveFile[]> {
+    return (await this.files()).filter((f) => f.name.startsWith(prefix));
   }
 
   async read(path: string): Promise<Uint8Array> {

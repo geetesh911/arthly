@@ -11,6 +11,7 @@ import {
   type AllocationTargets,
   type AmfiScheme,
   amountProblem,
+  answerLink,
   applyPlan,
   benchmarks,
   billFiguresProblem,
@@ -25,6 +26,7 @@ import {
   cardsDue,
   type CardStatus,
   cardStatuses,
+  checkLinkRequest,
   checks as runChecks,
   createVault,
   daysBetween,
@@ -66,6 +68,12 @@ import {
   jsonExporter,
   type KdfParams,
   type Keyring,
+  LINK_TTL_MS,
+  type LinkedPortfolio,
+  LinkError,
+  linkFiles,
+  type LinkReply,
+  type LinkRequest,
   type Loan,
   LOAN_EPS,
   type LoanEntry,
@@ -82,11 +90,13 @@ import {
   mergeFundHoldings,
   mergeIndexData,
   mergeNseReference,
+  newLink,
   newRecoveryCode,
   NSE_LIST_INDEX,
   type NseReferenceFile,
   OfflineError,
   openChunk,
+  openLinkReply,
   outstanding,
   OWED_TO_YOU,
   parseHlc,
@@ -103,6 +113,7 @@ import {
   type RateTables,
   readBackup,
   readFundReport,
+  readLinkCode,
   ReconnectError,
   RelayClient,
   type RelayLatest,
@@ -152,6 +163,9 @@ import {
   type HoldingDetailDto,
   type HoldingDto,
   IN_USE,
+  type LinkRequestDto,
+  type LinkStartDto,
+  type LinkState,
   type LoanDetailDto,
   type LoanDto,
   type LoansDto,
@@ -252,6 +266,16 @@ export class DataService {
   private closing: Promise<void> = Promise.resolve();
   /** A Google sign-in made to open a portfolio from Google Drive, until a portfolio opens or locks. */
   private signedIn?: GoogleSession;
+  /** A link this device is waiting on: its sign-in and the Arthly folder, and its key while a code is out. */
+  private linking?: {
+    session: GoogleSession;
+    box: GoogleDriveFolder;
+    code?: string;
+    privateKey?: CryptoKey;
+    expires?: number;
+  };
+  /** A new device's request found by `findLink`, until the user agrees to link it. */
+  private answering?: { code: string; request: LinkRequest; box: GoogleDriveFolder };
   /** Hears that the vault locked, and why if it wasn't the user or the idle timer. */
   onLock?: (reason?: string) => void;
   /** Hears each cloud sync status, and whether the pass brought in changes. */
@@ -429,6 +453,8 @@ export class DataService {
     this.release = undefined;
     this.open = undefined;
     this.signedIn = undefined;
+    this.linking = undefined;
+    this.answering = undefined;
   }
 
   /** Holds the portfolio's Web Lock while it's open, so two tabs never write the same files. */
@@ -2115,15 +2141,231 @@ export class DataService {
       throw new Error('That portfolio is no longer in Google Drive');
     }
 
-    const dk = await unlockSecret(keyring, secret);
+    await this.addFromCloud(keyring, await unlockSecret(keyring, secret), name, session, folderId);
+  }
 
+  /** Adds a portfolio from Google Drive to this device, opens it and keeps it connected. */
+  private async addFromCloud(
+    keyring: Keyring,
+    dk: CryptoKey,
+    name: string,
+    session: GoogleSession,
+    folderId: string,
+  ): Promise<void> {
     if (!(await verifyKeyring(keyring, dk))) {
       throw new Error('The portfolio in Google Drive has been changed outside the app');
     }
 
+    const vaultId = keyring.vaultId;
+
     await this.storage.addVault({ vaultId, name, created: this.env.now().toISOString() });
     await this.attach(vaultId, name, dk, await this.storage.open(vaultId), keyring, false);
     await this.needCloud().connect(session, folderId);
+  }
+
+  // ---- linking a device ----
+
+  /**
+   * On a new device: signs in to Google, or keeps the last sign-in for a new code, and leaves a
+   * request in the Arthly folder for a device that has the portfolio open. Gives the code to show.
+   */
+  async startLink(grant: GoogleGrant | null, deviceName: string): Promise<LinkStartDto> {
+    const previous = this.linking;
+    const session = grant ? await this.googleSession(grant) : previous?.session;
+
+    if (!session) {
+      throw new Error('Sign in to Google first');
+    }
+
+    this.linking = undefined;
+
+    if (previous?.code) {
+      await removeLinkFiles(previous.box, previous.code);
+    }
+
+    const drive = new GoogleDrive(this.env.fetch, session);
+    const box = drive.folder((await drive.rootFolder(true))!);
+    const now = this.env.now();
+
+    // Requests and answers from links that never finished.
+    for (const f of await box.listFiles('link-')) {
+      if (now.getTime() - Date.parse(f.modified) > LINK_LEFTOVER_MS) {
+        await box.remove(f.name);
+      }
+    }
+
+    const { code, request, privateKey } = await newLink(deviceName, now);
+
+    await box.write(linkFiles(code).request, new TextEncoder().encode(JSON.stringify(request)));
+    const account = await drive.account();
+    const expires = now.getTime() + LINK_TTL_MS;
+
+    this.linking = { session, box, code, privateKey, expires };
+
+    return { code, ...(account ? { account } : {}), expires: new Date(expires).toISOString() };
+  }
+
+  /** On a new device: opens the portfolio once the other device has answered the code. */
+  async checkLink(): Promise<LinkState> {
+    const l = this.linking;
+
+    if (!l?.code || !l.privateKey || l.expires === undefined) {
+      throw new Error('Make a code first');
+    }
+
+    const { session, box, code, privateKey } = l;
+
+    if (this.env.now().getTime() > l.expires) {
+      this.linking = { session, box };
+      await removeLinkFiles(box, code);
+
+      return 'expired';
+    }
+
+    const reply = linkFiles(code).reply;
+
+    try {
+      if (!(await box.list(reply)).length) {
+        return 'waiting';
+      }
+
+      const portfolio = await openLinkReply(
+        code,
+        privateKey,
+        await readJson<LinkReply>(box, reply),
+      );
+
+      await this.addLinked(portfolio, session);
+    } catch (error) {
+      // Offline: the answer waits in Drive for the next look.
+      if (error instanceof OfflineError) {
+        return 'waiting';
+      }
+
+      this.linking = { session, box };
+      await removeLinkFiles(box, code);
+      throw error;
+    }
+
+    this.linking = undefined;
+    await removeLinkFiles(box, code);
+
+    return 'opened';
+  }
+
+  /** On a new device: stops waiting, and forgets the sign-in made to link. */
+  async cancelLink(): Promise<void> {
+    const l = this.linking;
+
+    this.linking = undefined;
+
+    if (l?.code) {
+      await removeLinkFiles(l.box, l.code);
+    }
+  }
+
+  private async addLinked(portfolio: LinkedPortfolio, session: GoogleSession): Promise<void> {
+    const { vaultId, dk, folderId, name } = portfolio;
+
+    if ((await this.storage.vaults()).some((x) => x.vaultId === vaultId)) {
+      throw new Error('This portfolio is already on this device. Unlock it instead.');
+    }
+
+    const keyring = await readKeyring(new GoogleDrive(this.env.fetch, session).folder(folderId));
+
+    if (keyring.vaultId !== vaultId) {
+      throw new Error('The portfolio in Google Drive has been changed outside the app');
+    }
+
+    await this.addFromCloud(keyring, dk, name, session, folderId);
+  }
+
+  /** The open portfolio's Google Drive, for linking another device to it. */
+  private linkTarget() {
+    const target = this.needCloud().linkTarget();
+
+    if (!target) {
+      throw new Error('Connect Google Drive in Settings → Cloud sync before linking a device.');
+    }
+
+    return target;
+  }
+
+  /**
+   * On a device with the portfolio open: finds the request a new device left for this code, typed
+   * or scanned, and checks it belongs to the code. `approveLink` then answers it.
+   */
+  async findLink(text: string): Promise<LinkRequestDto> {
+    const target = this.linkTarget();
+    const code = readLinkCode(text);
+
+    this.answering = undefined;
+
+    if (!code) {
+      throw new LinkError('That isn’t a link code. It has 16 letters and digits.');
+    }
+
+    const rootId = await target.drive.rootFolder(false);
+    const box = rootId ? target.drive.folder(rootId) : undefined;
+    const name = linkFiles(code).request;
+
+    if (!box || !(await box.list(name)).length) {
+      const who = target.account ? `as ${target.account}` : 'with the same account as this device';
+
+      throw new LinkError(
+        `No device is waiting with this code. Check it, and that the new device signed in to Google ${who}.`,
+      );
+    }
+
+    const request = await readJson<LinkRequest>(box, name);
+
+    checkLinkRequest(code, request, this.env.now());
+    this.answering = { code, request, box };
+
+    return { code, device: request.device, created: request.created };
+  }
+
+  /** Sends the open portfolio to the device `findLink` found, once the user has agreed. */
+  async approveLink(code: string): Promise<void> {
+    const v = this.need();
+    const a = this.answering;
+
+    if (a?.code !== code) {
+      throw new Error('Scan or type the code from the new device first.');
+    }
+
+    this.answering = undefined;
+    const reply = await answerLink(
+      code,
+      a.request,
+      { vaultId: v.vaultId, dk: v.dk, folderId: this.linkTarget().folderId, name: v.name },
+      this.env.now(),
+    );
+
+    await a.box.write(linkFiles(code).reply, new TextEncoder().encode(JSON.stringify(reply)));
+  }
+}
+
+/** Link files older than this are from links that never finished. */
+const LINK_LEFTOVER_MS = 3600_000;
+
+/** Removes a link's two files. Any left behind, offline say, go an hour later. */
+async function removeLinkFiles(box: GoogleDriveFolder, code: string): Promise<void> {
+  const files = linkFiles(code);
+
+  await box.remove(files.request).catch(() => undefined);
+  await box.remove(files.reply).catch(() => undefined);
+}
+
+async function readJson<T>(box: GoogleDriveFolder, name: string): Promise<T> {
+  try {
+    return JSON.parse(new TextDecoder().decode(await box.read(name))) as T;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new LinkError('That link file isn’t from Arthly');
+    }
+
+    throw error;
   }
 }
 
