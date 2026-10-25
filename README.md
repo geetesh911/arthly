@@ -2,6 +2,8 @@
 
 Arthly is a free, open-source portfolio tracker for Indian investors. It runs in your browser, and your data is encrypted on your device. No server ever sees your holdings.
 
+Use it at **[arthly.pages.dev](https://arthly.pages.dev)**, or [host your own copy](#host-it-yourself).
+
 It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF and EPS, bank cash, US stocks (priced by hand for now), money you've lent or borrowed, and credit card bills. One portfolio can hold a whole family, with each account belonging to a member.
 
 > Status: version 1 is under construction. The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-10-22-portfolio-app-design.md), and the build plan in [docs/superpowers/plans](docs/superpowers/plans/2026-10-22-v1-phases.md).
@@ -32,11 +34,11 @@ It tracks Indian stocks, ETFs and mutual funds, SGBs and bonds, FDs, PPF, EPF an
 - Cloud sync puts only encrypted files in your Google Drive, in an `Arthly` folder. Arthly asks only for the files it makes itself, so it can't see anything else in your Drive. The Google sign-in is kept encrypted on each device and is never synced or put in a backup file.
 - No analytics, no third-party scripts, no remote fonts.
 
-See [SECURITY.md](SECURITY.md) for the details and the limits.
+See the [privacy policy](https://arthly.pages.dev/privacy) and [SECURITY.md](SECURITY.md) for the details and the limits.
 
 ## Use it
 
-Open the hosted site, choose **New portfolio**, set a passphrase and write down the recovery code. On iPhone, add the app to your Home Screen first, because Safari may clear data for sites that aren't added.
+Open [arthly.pages.dev](https://arthly.pages.dev), choose **New portfolio**, set a passphrase and write down the recovery code. On iPhone, add the app to your Home Screen first, because Safari may clear data for sites that aren't added.
 
 Each month, download your Groww holdings files and drop them on the **Import** screen (**Add** → **Import files**). On Android you can share the files straight to the app.
 
@@ -60,7 +62,7 @@ The app is a static site plus one small piece of server code: the price relay in
 **Cloud sync with Google Drive (optional):** the app signs in to Google through a second small function in `functions/`, which holds your Google client secret. It swaps Google's sign-in codes for tokens and never sees any data. Without it, Settings says Google Drive isn't set up.
 
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and enable the **Google Drive API**.
-2. Under **Google Auth Platform**, fill in the branding, choose the **External** audience, and add the `https://www.googleapis.com/auth/drive.file` scope under **Data access**. Then publish the app: while it's in testing, Google's sign-ins expire after 7 days. That scope is non-sensitive, so Google doesn't review the app, though it may ask to verify the branding if you add a logo.
+2. Under **Google Auth Platform**, fill in the branding, with `https://<your site>/` as the home page and `https://<your site>/privacy` as the privacy policy. Choose the **External** audience, and add the `https://www.googleapis.com/auth/drive.file` scope under **Data access**. Then publish the app: while it's in testing, Google's sign-ins expire after 7 days. That scope is non-sensitive, so Google doesn't review the app, though it may ask to verify the branding if you add a logo.
 3. Under **Clients**, create a **Web application** client with the authorized redirect URI `https://<your site>/oauth.html`. To try it locally with `pnpm relay`, also add `http://localhost:8788/oauth.html`.
 4. Give the Pages project the client's ID and secret, then deploy again:
 

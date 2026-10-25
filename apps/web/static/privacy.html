@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- A plain page, readable without the app, for Google's consent screen and anyone checking. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'"
+    />
+    <title>Arthly · Privacy policy</title>
+    <meta
+      name="description"
+      content="What Arthly, a private portfolio tracker, does with your data and your Google account."
+    />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+        background: #f7f9ef;
+        color: #1b211c;
+        --muted: #4a5449;
+        --link: #2c5f2d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #121713;
+          color: #e6ebe3;
+          --muted: #a9b3a6;
+          --link: #c4f05a;
+        }
+      }
+      body {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 2rem 16px 4rem;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        line-height: 1.25;
+      }
+      h2 {
+        margin: 2rem 0 0.5rem;
+        font-size: 1.15rem;
+      }
+      p,
+      ul {
+        margin: 0.5rem 0;
+      }
+      li + li {
+        margin-top: 0.35rem;
+      }
+      a {
+        color: var(--link);
+        text-underline-offset: 3px;
+        overflow-wrap: anywhere;
+      }
+      .muted {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <p><a href="./">Open Arthly</a></p>
+    <h1>Privacy policy</h1>
+    <p class="muted">Last updated 25 October 2026</p>
+
+    <p>
+      Arthly is a free, open-source portfolio tracker for Indian investors. It runs in your browser.
+      This page says what it does with your data, wherever it's hosted. The code is public on
+      <a href="https://github.com/geetesh911/arthly">GitHub</a>, so you can check every word.
+    </p>
+
+    <h2>In short</h2>
+    <ul>
+      <li>Your portfolio is encrypted on your device. No server ever sees it, ours included.</li>
+      <li>No sign-up, no analytics, no ads, no cookies and no outside scripts.</li>
+      <li>If you turn on cloud sync, only encrypted files go to your own Google Drive.</li>
+    </ul>
+
+    <h2>What stays on your device</h2>
+    <p>
+      Everything you type in or import (holdings, transactions, loans, cards, plans and the names of
+      family members) is read and stored in your browser. It's encrypted with AES-256-GCM under a
+      key that only your passphrase, your recovery code or your device's passkey can unlock. Files
+      you import are read in your browser, then dropped: they're never uploaded or kept.
+    </p>
+    <p>
+      Backup files and exports are saved wherever you choose. Backups are encrypted; Excel and JSON
+      exports aren't, and the app warns you before saving one.
+    </p>
+
+    <h2>What the site sees</h2>
+    <p>The site sends you the app's files and runs two small functions:</p>
+    <ul>
+      <li>
+        <strong>The price relay</strong> fetches whole public files for the app: fund prices from
+        AMFI, stock prices and index levels from NSE and BSE, AMFI's list of company sizes and the
+        fund houses' monthly portfolios. It always fetches whole files, so it never learns what you
+        hold.
+      </li>
+      <li>
+        <strong>The Google token function</strong> is used only for cloud sync, as described below.
+      </li>
+    </ul>
+    <p>
+      Arthly stores nothing about you on the server. Like any website, its host (Cloudflare) gets
+      your IP address and browser details with each request, as
+      <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a> describes.
+    </p>
+
+    <h2>Other services your browser talks to</h2>
+    <ul>
+      <li>
+        <strong>Frankfurter</strong> (api.frankfurter.dev), for the US dollar rate. It sees your IP
+        address, never your data.
+      </li>
+      <li><strong>A price feed</strong>, only if you enter one in Settings.</li>
+      <li><strong>Google</strong>, only if you turn on cloud sync.</li>
+    </ul>
+
+    <h2>Cloud sync with Google Drive</h2>
+    <p>Cloud sync is off unless you connect Google Drive in Settings.</p>
+    <ul>
+      <li>
+        <strong>What Arthly can see:</strong> it asks only for Google's <code>drive.file</code>
+        permission, so it can see and change only the files it makes itself. It can't see anything
+        else in your Drive.
+      </li>
+      <li>
+        <strong>What it stores in your Drive:</strong> an Arthly folder holding your portfolio's
+        encrypted files. Google, or anyone who can open your Drive, can see those files, their
+        sizes, when they change and names that show each device's ID, but never what's in them.
+      </li>
+      <li>
+        <strong>Your email address:</strong> Arthly reads it from Google Drive to show which account
+        is connected. It stays on that device.
+      </li>
+      <li>
+        <strong>Staying signed in:</strong> Google gives each device a token that lets it keep
+        syncing. It's encrypted with your portfolio's key on that device. It's never synced and
+        never put in a backup file.
+      </li>
+      <li>
+        <strong>The token function:</strong> Google needs a secret to issue those tokens, and a
+        secret can't be kept in a web page, so the site's function adds it. Google's sign-in codes
+        and tokens pass through it, never your data, and it keeps none of them.
+      </li>
+    </ul>
+    <p>
+      Arthly uses your Google data only to sync your portfolio between your devices. It doesn't sell
+      it, share it, show ads with it or use it to train AI models, and no person reads it. Arthly's
+      use and transfer of information received from Google APIs adheres to the
+      <a href="https://developers.google.com/terms/api-services-user-data-policy"
+        >Google API Services User Data Policy</a
+      >, including the Limited Use requirements.
+    </p>
+
+    <h2>Removing your data</h2>
+    <ul>
+      <li>
+        <strong>From a device:</strong> in Settings, choose
+        <em>Remove this portfolio from this device</em>, or clear this site's data in your browser.
+      </li>
+      <li>
+        <strong>From Google Drive:</strong> delete the Arthly folder in your Drive, then remove
+        Arthly under
+        <a href="https://myaccount.google.com/connections">Third-party apps &amp; services</a> in
+        your Google account. That stops sync on every device. <em>Disconnect</em> in Settings stops
+        it on one device.
+      </li>
+    </ul>
+    <p>Arthly holds nothing on its server, so there's nothing for anyone to delete there.</p>
+
+    <h2>Changes</h2>
+    <p>
+      If this policy changes, the date at the top changes too, and every change is in the project's
+      history on GitHub.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Ask a question by opening an issue on
+      <a href="https://github.com/geetesh911/arthly/issues">GitHub</a>. Report a security problem
+      privately through GitHub's <em>Report a vulnerability</em> button on the repository.
+    </p>
+  </body>
+</html>

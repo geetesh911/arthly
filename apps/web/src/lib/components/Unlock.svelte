@@ -293,5 +293,9 @@
       </Card.Root>
       {@render others(['create', 'restore', 'cloud', 'sample'])}
     {/if}
+
+    <p class="text-muted-foreground text-center text-xs">
+      <a href="privacy.html" target="_blank" class="underline underline-offset-4">Privacy policy</a>
+    </p>
   </div>
 </div>

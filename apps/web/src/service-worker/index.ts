@@ -87,6 +87,12 @@ sw.addEventListener('fetch', (event) => {
         (await cache.match(url.pathname)) ??
         (url.pathname.endsWith('/') ? await cache.match(`${url.pathname}index.html`) : undefined);
 
+      // Cloudflare redirects oauth.html and privacy.html to addresses without .html, so they were
+      // cached through a redirect, and a page load fails on a redirected response: give a copy.
+      if (hit?.redirected) {
+        return new Response(hit.body, hit);
+      }
+
       return hit ?? fetch(event.request);
     }),
   );

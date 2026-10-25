@@ -510,7 +510,10 @@
         'About',
         `Version ${version}. Open source under AGPL-3.0. No analytics, no outside scripts: everything runs on this device.`,
       )}
-      <Card.Content>
+      <Card.Content class="grid justify-items-start gap-4">
+        <a href="privacy.html" target="_blank" class="text-sm underline underline-offset-4"
+          >Privacy policy</a
+        >
         <Button variant="destructive" onclick={forget}
           >Remove this portfolio from this device</Button
         >

@@ -667,6 +667,32 @@ test('opens offline once loaded, even where _headers is refused', async ({ page,
   await expect(page.getByRole('button', { name: 'Try with sample data' })).toBeVisible();
 });
 
+test('the privacy policy opens from the start screen, also from the offline copy', async ({
+  page,
+  context,
+}) => {
+  // Cloudflare Pages drops .html from addresses, so the offline copy is cached through a redirect.
+  const policy = await readFile(join(import.meta.dirname, '../static/privacy.html'), 'utf8');
+
+  await context.route('**/privacy.html', (route) =>
+    route.fulfill({ status: 308, headers: { location: '/privacy' } }),
+  );
+  await context.route('**/privacy', (route) =>
+    route.fulfill({ contentType: 'text/html', body: policy }),
+  );
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  const tab = page.waitForEvent('popup');
+
+  await page.getByRole('link', { name: 'Privacy policy' }).click();
+  const privacy = await tab;
+
+  await expect(privacy.getByRole('heading', { name: 'Privacy policy' })).toBeVisible();
+  expect(
+    await privacy.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  ).toBe(true);
+});
+
 test('switches to a new version when asked, not only after every tab closes', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => navigator.serviceWorker.ready);
