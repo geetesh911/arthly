@@ -101,6 +101,8 @@ export interface HoldingDto {
   xirrEstimate: boolean;
   /** XIRR is the one the holdings file of this date gives. */
   xirrAsOf?: ISODate;
+  /** XIRR runs to this day, the last interest credit (EPF, PPF). */
+  xirrTo?: ISODate;
   estimate: boolean;
   weight: number;
   firstDate?: ISODate;

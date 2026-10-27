@@ -177,26 +177,32 @@ describe('PPF', () => {
       .account({ id: 'acc_1', kind: 'ppf' })
       .instrument({ id: 'ins_1', kind: 'ppf', assetClass: 'debt' });
 
+  /** The interest the year's rules give, credited on 31 March 2026. */
+  const credit = (l: Ledger) => {
+    const { p, i, type } = only(l, '2026-03-31');
+
+    return type.projected!(p, i, '2026-03-30', '2026-03-31', ctx('2026-03-31'))[0]?.amount;
+  };
+
   it('earns on the lowest balance from the 5th, credited on 31 March', () => {
     const early = base().txn({ date: '2025-04-03', type: 'contribution', amount: 150_000 });
-    const a = only(early, '2026-03-31');
 
-    expect(a.type.value(a.p, a.i, ctx('2026-03-31')).value).toBeCloseTo(150_000 + 10_650, 6);
+    expect(credit(early)).toBeCloseTo(10_650, 6);
 
     const late = base().txn({ date: '2025-04-10', type: 'contribution', amount: 150_000 });
-    const b = only(late, '2026-03-31');
 
-    expect(b.type.value(b.p, b.i, ctx('2026-03-31')).value).toBeCloseTo(150_000 + 887.5 * 11, 6);
+    expect(credit(late)).toBeCloseTo(887.5 * 11, 6);
   });
 
-  it('shows interest accrued since 1 April', () => {
+  it('counts only the interest credited, not what it has earned since', () => {
     const l = base().txn({ date: '2025-04-03', type: 'contribution', amount: 150_000 });
-    const { p, i, type } = only(l, '2025-06-30');
+    const { p, i, type } = only(l, '2026-06-30');
 
-    expect(type.value(p, i, ctx('2025-06-30'))).toMatchObject({
-      value: 150_000 + 887.5 * 3,
-      estimate: true,
-    });
+    expect(type.value(p, i, ctx('2026-06-30'))).toMatchObject({ value: 150_000, estimate: false });
+    expect(type.accrued!(p, i, '2026-03-31', '2026-06-30', ctx('2026-06-30'))).toBeCloseTo(
+      ((150_000 + 10_650) * 7.1 * 3) / 1200,
+      6,
+    );
   });
 
   it('uses the interest credited in the passbook instead of the estimate', () => {
@@ -230,10 +236,15 @@ describe('EPF and EPS', () => {
       });
     const { p, i, type } = only(l, '2026-03-31');
 
-    expect(type.value(p, i, ctx('2026-03-31')).value).toBeCloseTo(
-      10_000 + ((10_000 * 8.25) / 1200) * 11,
-      6,
-    );
+    expect(type.projected!(p, i, '2026-03-30', '2026-03-31', ctx('2026-03-31'))).toEqual([
+      {
+        date: '2026-03-31',
+        amount: expect.closeTo(((10_000 * 8.25) / 1200) * 11, 6),
+        kind: 'credit',
+        estimated: true,
+      },
+    ]);
+    expect(type.value(p, i, ctx('2026-03-31')).value).toBe(10_000);
   });
 
   it('values EPS at its contributions', () => {

@@ -154,9 +154,11 @@
           ? 'Shown once it’s a year old'
           : h.xirrAsOf
             ? `From your holdings file of ${date(h.xirrAsOf)}`
-            : h.xirrEstimate
-              ? `≈ since ${date(h.firstDate)}`
-              : undefined}
+            : h.xirrTo
+              ? `To the interest credited ${date(h.xirrTo)}`
+              : h.xirrEstimate
+                ? `≈ since ${date(h.firstDate)}`
+                : undefined}
       />
       {#if h.units !== null}
         <Stat label="Units" value={units(h.units)} />

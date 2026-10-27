@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// PPF: monthly interest on the lowest balance from the 5th, credited each 31 March.
+// PPF: monthly interest on the lowest balance from the 5th, credited each 31 March. The value counts
+// only interest a statement shows; the estimates are for Income and Upcoming.
 import type { AssetContext, AssetType, CashFlow } from '../../../engine/asset-type.ts';
 import { interestBetween, simulateInterest } from '../../../engine/interest.ts';
 import type { Position } from '../../../engine/positions.ts';
@@ -30,14 +31,8 @@ export const ppf: AssetType = {
       return { value: 0, estimate: false, status: 'closed' };
     }
 
-    const estimated = r.accrued > 0 || r.credits.some((c) => c.estimated);
-
-    return {
-      value: r.balance + r.accrued,
-      estimate: estimated,
-      status: 'open',
-      balance: r.balance,
-    };
+    // Only interest the passbook shows: none earned since 31 March, nor any for a year not in yet.
+    return { value: r.received, estimate: false, status: 'open', balance: r.received };
   },
   invested: (p) => p.principal,
   projected(p, i, from, to, ctx) {

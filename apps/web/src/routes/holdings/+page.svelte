@@ -241,6 +241,7 @@
     holdings.some((h) => h.xirrEstimate && h.xirr !== null) &&
       '≈ Counted from the holdings file’s date, as the file doesn’t say when you bought.',
     holdings.some((h) => h.xirrAsOf) && 'Fund XIRR is the one in your holdings file.',
+    holdings.some((h) => h.xirrTo) && 'EPF and PPF XIRR runs to the last interest credit.',
     holdings.some((h) => h.estimate) && '* No market price yet; valued at cost or by its terms.',
   ].filter(Boolean)}
   {#if notes.length}<p class="text-muted-foreground text-xs">{notes.join(' ')}</p>{/if}

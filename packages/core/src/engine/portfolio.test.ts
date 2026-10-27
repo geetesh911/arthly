@@ -208,6 +208,24 @@ describe('summary', () => {
       3,
     );
   });
+
+  it('values EPF at the interest credited, and measures its XIRR to the last credit', () => {
+    const l = new Ledger()
+      .member()
+      .account({ id: 'acc_1', kind: 'epf' })
+      .instrument({ id: 'ins_1', kind: 'epf', assetClass: 'debt' })
+      .txn({ date: '2024-03-01', type: 'contribution', amount: 10_000 });
+    const at = (date: string) => summary(l.state(), book, date).holdings[0]!;
+
+    // A year old, but with nothing credited yet there is no return to measure.
+    expect(at('2025-03-15')).toMatchObject({ value: 10_000, xirr: null });
+
+    l.txn({ date: '2025-03-31', type: 'interest', amount: 825 });
+    const h = at('2025-10-15');
+
+    expect(h).toMatchObject({ value: 10_825, gain: 825, xirrTo: '2025-03-31' });
+    expect(h.xirr).toBeCloseTo(1.0825 ** (365 / 395) - 1, 4);
+  });
 });
 
 describe('history', () => {

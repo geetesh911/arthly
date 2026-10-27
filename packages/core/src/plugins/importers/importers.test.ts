@@ -491,9 +491,10 @@ describe('bob-ppf-statement', () => {
     const { state, again } = await importTwice(ppfFile(), bobPpfStatement);
     const [h] = evaluate(state, new PriceBook(), '2026-09-15');
 
-    expect(h!.balance).toBeCloseTo(44_861, 6);
-    expect(h!.value).toBeGreaterThan(44_861);
+    expect(h!.value).toBeCloseTo(44_861, 6);
     expect(h!.invested).toBe(38_050);
+    // Measured to the last credit, the return is close to PPF's 7.1%.
+    expect(h).toMatchObject({ xirrTo: '2026-03-31', xirr: expect.closeTo(0.0703, 4) });
     expect(checks(state, new PriceBook(), '2026-09-16', { lastSync: '2026-09-16' })).toEqual([]);
     expect(upToDate(again)).toBe(true);
     expect(again.items.filter((i) => i.mismatch)).toEqual([]);

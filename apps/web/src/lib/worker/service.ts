@@ -661,6 +661,7 @@ export class DataService {
       xirr: h.xirr,
       xirrEstimate: h.xirrEstimate,
       ...(h.xirrAsOf ? { xirrAsOf: h.xirrAsOf } : {}),
+      ...(h.xirrTo ? { xirrTo: h.xirrTo } : {}),
       estimate: h.estimate,
       weight: h.weight,
       ...(h.position.entries[0] ? { firstDate: h.position.entries[0].date } : {}),

@@ -29,6 +29,8 @@ export interface Credit {
 
 export interface InterestResult {
   balance: number;
+  /** The balance from recorded entries alone, without credits worked out from rates. */
+  received: number;
   /** Interest earned in the current financial year and not credited yet. */
   accrued: number;
   months: { month: ISODate; interest: number }[];
@@ -73,7 +75,14 @@ export function simulateInterest(
   upTo: ISODate,
   rule: InterestRule,
 ): InterestResult {
-  const result: InterestResult = { balance: 0, accrued: 0, months: [], credits: [], closed: false };
+  const result: InterestResult = {
+    balance: 0,
+    received: 0,
+    accrued: 0,
+    months: [],
+    credits: [],
+    closed: false,
+  };
   const live = entries.filter((e) => e.date <= upTo);
 
   if (live.length === 0) {
@@ -82,6 +91,7 @@ export function simulateInterest(
 
   const realFys = new Set(live.filter((e) => e.type === 'interest' && !e.synthetic).map(creditFy));
   let balance = 0;
+  let received = 0;
   let fyInterest = 0;
   let index = 0;
   let start = makeDate(year(live[0]!.date), month(live[0]!.date), 1);
@@ -100,9 +110,11 @@ export function simulateInterest(
 
       if (e.type === 'maturity') {
         balance = 0;
+        received = 0;
         result.closed = true;
       } else {
         balance += signed(e);
+        received += signed(e);
 
         if (e.type === 'interest' && !e.synthetic) {
           result.credits.push({
@@ -146,6 +158,7 @@ export function simulateInterest(
   }
 
   result.balance = balance;
+  result.received = received;
   result.accrued = result.closed ? 0 : fyInterest;
 
   return result;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // EPF: monthly interest on last month's closing balance at the year's declared rate,
-// credited each 31 March. Interest credited in the passbook replaces the estimate.
+// credited each 31 March. The value counts only interest a passbook shows; the estimates are for
+// Income and Upcoming.
 import type { AssetContext, AssetType, CashFlow } from '../../../engine/asset-type.ts';
 import { interestBetween, simulateInterest } from '../../../engine/interest.ts';
 import type { Position } from '../../../engine/positions.ts';
@@ -23,14 +24,8 @@ export const epf: AssetType = {
       return { value: 0, estimate: false, status: 'closed' };
     }
 
-    const estimated = r.accrued > 0 || r.credits.some((c) => c.estimated);
-
-    return {
-      value: r.balance + r.accrued,
-      estimate: estimated,
-      status: 'open',
-      balance: r.balance,
-    };
+    // Only interest the passbook shows: none earned since 31 March, nor any for a year not in yet.
+    return { value: r.received, estimate: false, status: 'open', balance: r.received };
   },
   invested: (p) => p.principal,
   projected(p, _i, from, to, ctx) {

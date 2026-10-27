@@ -55,6 +55,8 @@ export interface Holding {
   xirrEstimate: boolean;
   /** XIRR is the one the holdings file of this date gives, not worked out here. */
   xirrAsOf?: ISODate;
+  /** XIRR runs to this day, the last interest credit, rather than to date. */
+  xirrTo?: ISODate;
   weight: number;
 }
 
@@ -216,11 +218,19 @@ export function evaluate(
         : [];
     const flows = [...p.flows, ...assumed];
     const xirrFlows = [...p.xirrFlows, ...assumed];
-    const withValue = value > 0 ? [...xirrFlows, { date, amount: value }] : xirrFlows;
+    // EPF and PPF count interest once it's credited, so their XIRR runs to the last credit.
+    const to =
+      (instrument.kind === 'epf' || instrument.kind === 'ppf') && v.status === 'open'
+        ? p.entries.findLast((e) => e.type === 'interest')?.date
+        : date;
+    const valueTo =
+      to === date || !to ? value : type.value(p, instrument, { ...ctx, date: to }).value * fx(to);
+    const upTo = xirrFlows.filter((f) => to && f.date <= to);
+    const withValue = to && valueTo > 0 ? [...upTo, { date: to, amount: valueTo }] : upTo;
     // Annualising a return over less than a year exaggerates it, so, as SEBI's rules for fund
     // returns do, XIRR waits until the holding is a year old; gainPct covers it until then.
     const since = flows.reduce((min, f) => (f.date < min ? f.date : min), date);
-    const yearOld = daysBetween(since, date) >= 365;
+    const yearOld = !!to && daysBetween(since, to) >= 365;
     const fromFile = options.skipXirr ? undefined : fileXirr(cache.snapshots.get(p.key), p, date);
     const gain = value - invested;
 
@@ -247,6 +257,7 @@ export function evaluate(
       xirr: fromFile ? fromFile.rate : options.skipXirr || !yearOld ? null : xirr(withValue),
       xirrEstimate: p.estimate && !fromFile,
       ...(fromFile ? { xirrAsOf: fromFile.asOf } : {}),
+      ...(!fromFile && to && to !== date ? { xirrTo: to } : {}),
       weight: 0,
     });
   }
