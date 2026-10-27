@@ -35,6 +35,9 @@
 
   const bill = $derived(detail?.card.bill);
   const minimumLeft = $derived(bill ? Math.max(0, bill.minimumDue - bill.paid) : 0);
+  // On a narrow phone a label wraps to two lines, rather than push the form past the card's edge.
+  const choice =
+    'h-auto min-h-9 min-w-0 flex-1 shrink self-stretch py-1 leading-tight whitespace-normal group-data-[spacing=0]/toggle-group:px-2';
 
   /** Pay in full fills in what's left to pay, and Pay minimum what's left of the minimum due. */
   function fill(next: How) {
@@ -266,13 +269,13 @@
               aria-label="How much"
               class="w-full sm:w-auto"
             >
-              <ToggleGroup.Item value="full" class="flex-1 px-2" disabled={c.due <= 0}
+              <ToggleGroup.Item value="full" class={choice} disabled={c.due <= 0}
                 >Pay in full</ToggleGroup.Item
               >
-              <ToggleGroup.Item value="minimum" class="flex-1 px-2" disabled={minimumLeft <= 0}
+              <ToggleGroup.Item value="minimum" class={choice} disabled={minimumLeft <= 0}
                 >Pay minimum</ToggleGroup.Item
               >
-              <ToggleGroup.Item value="other" class="flex-1 px-2">Other amount</ToggleGroup.Item>
+              <ToggleGroup.Item value="other" class={choice}>Other amount</ToggleGroup.Item>
             </ToggleGroup.Root>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField label="Amount (₹)">

@@ -49,6 +49,27 @@ async function fitsWidth(page: Page) {
   );
 
   expect(cut).toEqual([]);
+  // A header's title and description keep the width they need; its buttons wrap below instead.
+  const crowded = await page.evaluate(() =>
+    [...document.querySelectorAll('main h1')]
+      .filter((h) => {
+        const title = h.parentElement!;
+        const width = title.getBoundingClientRect().width;
+
+        title.style.flex = 'none';
+        const needs = Math.min(
+          title.getBoundingClientRect().width,
+          title.parentElement!.clientWidth,
+        );
+
+        title.style.flex = '';
+
+        return width + 1 < needs;
+      })
+      .map((h) => h.textContent),
+  );
+
+  expect(crowded).toEqual([]);
 }
 
 test('each main screen fits the width, with the right navigation', async ({ page }, info) => {
@@ -106,6 +127,32 @@ test('each main screen fits the width, with the right navigation', async ({ page
 
   await page.getByRole('link', { name: /Flexi Cap/ }).click();
   await expect(page.getByRole('heading', { name: /Flexi Cap/ })).toBeVisible();
+  await fitsWidth(page);
+});
+
+// A card's bank and due date beside Add a bill are too wide for a narrow phone.
+test('a header with a description and a button keeps its title readable', async ({
+  page,
+}, info) => {
+  const phone = info.project.name === 'phone';
+
+  if (phone) {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page
+      .getByRole('navigation', { name: 'Screens' })
+      .getByRole('link', { name: 'More', exact: true })
+      .click();
+    await page.getByRole('link', { name: /^Cards/ }).click();
+  } else {
+    await page
+      .getByRole('navigation', { name: 'Sections' })
+      .getByRole('link', { name: 'Cards' })
+      .click();
+  }
+
+  await page.getByTestId('card-row').filter({ hasText: 'Shopping card' }).click();
+  await expect(page.getByRole('heading', { name: 'Shopping card' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add a bill' })).toBeVisible();
   await fitsWidth(page);
 });
 

@@ -28,8 +28,9 @@
       ><ChevronLeft />{back.label}</Button
     >
   {/if}
+  <!-- The title keeps its width, so on a phone the actions wrap below it rather than squeeze it. -->
   <div class="flex flex-wrap items-center gap-3">
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-auto">
       <h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
       {#if description}<p class="text-muted-foreground text-sm">{description}</p>{/if}
     </div>
