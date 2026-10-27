@@ -106,7 +106,7 @@
   );
 </script>
 
-<div class="grid gap-4 lg:grid-cols-2">
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
   <Card.Root>
     <Card.Header>
       <Card.Title class="text-lg font-semibold">Bond</Card.Title>
@@ -200,7 +200,7 @@
       >
     </Card.Header>
     <Card.Content class="grid content-start gap-4">
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
         <FormField label="Interest rate (%)">
           <Input type="number" min="0" max="100" step="0.05" bind:value={fdRate} />
         </FormField>
@@ -230,7 +230,7 @@
       <Card.Title class="text-lg font-semibold">Compare</Card.Title>
       <Card.Description>What each pays back, before and after tax.</Card.Description>
     </Card.Header>
-    <Card.Content class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+    <Card.Content class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <div class="grid content-start gap-4">
         <div class="grid grid-cols-2 gap-3">
           <FormField label="Amount (₹)">

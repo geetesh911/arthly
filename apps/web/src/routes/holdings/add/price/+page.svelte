@@ -63,7 +63,7 @@
           {#each instruments as i (i.id)}<option value={i.id}>{i.name}</option>{/each}
         </NativeSelect>
       </FormField>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Date"><Input type="date" bind:value={date} required /></FormField>
         <FormField label="Price per unit">
           <Input inputmode="decimal" bind:value={price} required />

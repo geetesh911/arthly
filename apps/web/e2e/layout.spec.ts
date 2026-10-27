@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const ORDERS = join(
+  import.meta.dirname,
+  '../../../packages/core/src/plugins/importers/groww-mf-orders/fixtures/orders.xlsx',
+);
 
 test.beforeEach(async ({ page }) => {
   await page.route(/github\.io|frankfurter|\/api\/prices\//, (route) => route.abort());
@@ -23,6 +30,18 @@ async function fitsWidth(page: Page) {
   );
 
   expect(clipped).toEqual([]);
+  // Nor may a row run into a card's padding, as a button too long to wrap does.
+  const squeezed = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-slot=card-content]')]
+      .filter((c) => {
+        const edge = c.getBoundingClientRect().right - parseFloat(getComputedStyle(c).paddingRight);
+
+        return [...c.children].some((k) => k.getBoundingClientRect().right > edge + 1);
+      })
+      .map((c) => c.textContent?.trim().slice(0, 40)),
+  );
+
+  expect(squeezed).toEqual([]);
   const cut = await page.evaluate(() =>
     [...document.querySelectorAll('[data-slot=stat-value]')]
       .filter((s) => s.scrollWidth > s.clientWidth + 1)
@@ -88,4 +107,54 @@ test('each main screen fits the width, with the right navigation', async ({ page
   await page.getByRole('link', { name: /Flexi Cap/ }).click();
   await expect(page.getByRole('heading', { name: /Flexi Cap/ })).toBeVisible();
   await fitsWidth(page);
+});
+
+// A grid column as wide as its longest line would widen the page, and phones then push the fixed
+// tab bar past the right and bottom edges.
+test('a long file name on a narrow phone keeps every screen to the width', async ({
+  page,
+}, info) => {
+  const phone = info.project.name === 'phone';
+  const nav = page.getByRole('navigation', { name: phone ? 'Screens' : 'Sections' });
+
+  if (phone) {
+    await page.setViewportSize({ width: 360, height: 780 });
+  }
+
+  if (phone) {
+    await nav.getByRole('button', { name: 'Add', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Add' })
+      .getByRole('link', { name: 'Import files' })
+      .click();
+  } else {
+    await page.getByRole('complementary').getByRole('button', { name: 'Add' }).click();
+    await page.getByRole('menuitem', { name: 'Import files' }).click();
+  }
+
+  await page.getByTestId('import-input').setInputFiles({
+    name: 'Mutual_Funds_Order_History_01-04-2020_27-10-2026_exported_from_Groww_web.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: await readFile(ORDERS),
+  });
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Holdings', exact: true })).toBeVisible();
+  await fitsWidth(page);
+
+  if (phone) {
+    await nav.getByRole('link', { name: 'More', exact: true }).click();
+    await page.getByRole('link', { name: /Settings, backup/ }).click();
+  } else {
+    await nav.getByRole('link', { name: 'Settings', exact: true }).click();
+  }
+
+  await expect(page.getByText('History of imports')).toBeVisible();
+  await expect(page.getByRole('main').getByText(/exported_from_Groww_web/)).toBeVisible();
+  await fitsWidth(page);
+
+  if (phone) {
+    const box = (await nav.boundingBox())!;
+
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  }
 });

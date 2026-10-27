@@ -70,7 +70,7 @@
     </Card.Content>
   </Card.Root>
 
-  <div class="grid items-start gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
     <Card.Root>
       <Card.Header>
         <Card.Title class="text-lg font-semibold">Your cards</Card.Title>

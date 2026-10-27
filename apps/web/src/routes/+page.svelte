@@ -70,7 +70,7 @@
     <Empty.Content><Button href="#/import">Import files</Button></Empty.Content>
   </Empty.Root>
 {:else}
-  <div class="grid gap-4 lg:grid-cols-3">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
     <Card.Root class="lg:col-span-3">
       <Card.Content class="grid gap-5">
         <div>
@@ -166,7 +166,7 @@
     </Card.Root>
   </div>
 
-  <div class="grid gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <Card.Root>
       <Card.Header><Card.Title class="text-lg font-semibold">Worth a look</Card.Title></Card.Header>
       <Card.Content><CheckList checks={data.checks} limit={3} /></Card.Content>

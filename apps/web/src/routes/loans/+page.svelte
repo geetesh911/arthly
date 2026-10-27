@@ -71,7 +71,7 @@
     </Card.Content>
   </Card.Root>
 
-  <div class="grid items-start gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
     {#each sides as side (side.direction)}
       {@const open = data.loans.filter((l) => l.open && l.direction === side.direction)}
       <Card.Root>

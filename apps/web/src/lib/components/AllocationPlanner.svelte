@@ -130,7 +130,9 @@
     >
   </Card.Header>
   <Card.Content class="grid gap-5">
-    <div class="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,10rem)_auto] sm:items-end">
+    <div
+      class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,10rem)_auto] sm:items-end"
+    >
       <div class="grid gap-2">
         <label for="amount" class="text-sm font-medium">Amount to invest (₹)</label>
         <Input

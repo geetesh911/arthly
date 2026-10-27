@@ -47,7 +47,7 @@
 <Card.Root class="max-w-2xl">
   <Card.Content>
     <form class="grid gap-4" onsubmit={save}>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Which way?">
           <NativeSelect bind:value={direction} class="w-full">
             <option value="lent">I lent money: they owe me</option>
@@ -68,7 +68,7 @@
       >
         <Input bind:value={party} required autocomplete="off" />
       </FormField>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Amount (₹)">
           <Input inputmode="decimal" bind:value={amount} required />
         </FormField>
@@ -76,7 +76,7 @@
           <Input type="date" bind:value={date} required />
         </FormField>
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Due by (optional)" hint="Shows in Coming up, and in Checks once overdue.">
           <Input type="date" bind:value={due} />
         </FormField>

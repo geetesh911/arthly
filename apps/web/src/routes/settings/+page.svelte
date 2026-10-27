@@ -256,7 +256,7 @@
 <PageHeader title="Settings" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden" />
 
 <!-- Two independent columns, so a long list on one side leaves no gap on the other. -->
-<div class="grid items-start gap-4 lg:grid-cols-2">
+<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
   <div class="flex flex-col gap-4">
     <CloudSync />
 
@@ -411,11 +411,11 @@
         </ul>
         {#if canPasskey}
           <Button variant="outline" class="justify-self-start" onclick={addPasskey}
-            ><FingerprintPattern />Add fingerprint / Face ID on this device</Button
+            ><FingerprintPattern />Add fingerprint or Face ID</Button
           >
         {/if}
         <form class="grid gap-4" onsubmit={changePass}>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="New passphrase">
               <Input type="password" bind:value={newPass} autocomplete="new-password" />
             </FormField>

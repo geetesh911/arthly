@@ -63,7 +63,7 @@
 {#if error}
   <p class="text-destructive text-sm" role="alert">{error}</p>
 {:else if !data}
-  <div class="grid gap-4 sm:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <Skeleton class="h-80 rounded-4xl sm:col-span-2" /><Skeleton
       class="h-80 rounded-4xl"
     /><Skeleton class="h-80 rounded-4xl" />
@@ -86,7 +86,7 @@
     hybrid={data.hybrid}
   />
 
-  <div class="grid gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <EmergencyFund
       money={data.emergency}
       saved={data.emergencyFund}

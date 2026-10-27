@@ -116,7 +116,7 @@
 <Card.Root class="max-w-2xl">
   <Card.Content>
     <form class="grid gap-4" onsubmit={save}>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="What is it?">
           <NativeSelect
             bind:value={kind}
@@ -142,7 +142,7 @@
           </FormField>
         {/if}
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label={kind === 'fd' ? 'Bank' : 'Held with (broker or bank)'}>
           <Input
             bind:value={institution}
@@ -159,7 +159,7 @@
         </FormField>
       </div>
       {#if kind === 'fd'}
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Amount deposited (₹)">
             <Input inputmode="decimal" bind:value={principal} required />
           </FormField>
@@ -173,7 +173,7 @@
             ><Input type="date" bind:value={maturity} required /></FormField
           >
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Interest">
             <NativeSelect bind:value={payout} class="w-full">
               <option value="cumulative">Added to the FD (cumulative)</option>
@@ -215,7 +215,7 @@
             ><Input type="date" bind:value={maturity} required /></FormField
           >
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Face value (₹, issue price for SGB)">
             <Input inputmode="decimal" bind:value={faceValue} placeholder="Same as price" />
           </FormField>

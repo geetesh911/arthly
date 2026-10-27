@@ -99,7 +99,7 @@
           {#each instruments as i (i.id)}<option value={i.id}>{i.name}</option>{/each}
         </NativeSelect>
       </FormField>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Type">
           <NativeSelect bind:value={type} class="w-full">
             {#each TYPES as [k, label] (k)}<option value={k}>{label}</option>{/each}
@@ -107,7 +107,7 @@
         </FormField>
         <FormField label="Date"><Input type="date" bind:value={date} required /></FormField>
       </div>
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {#if needsUnits}
           <FormField label="Units">
             <Input inputmode="decimal" bind:value={units} required />

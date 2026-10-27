@@ -249,7 +249,7 @@
     {/if}
   </Card.Root>
 
-  <div class="grid items-start gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
     {#if bill}
       <Card.Root>
         <Card.Header>
@@ -274,7 +274,7 @@
               >
               <ToggleGroup.Item value="other" class="flex-1 px-2">Other amount</ToggleGroup.Item>
             </ToggleGroup.Root>
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField label="Amount (₹)">
                 <Input
                   inputmode="decimal"
@@ -363,11 +363,11 @@
     <Card.Content>
       {#if draft}
         <form class="grid gap-4" onsubmit={saveDetails}>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Bank"><Input bind:value={draft.bank} required /></FormField>
             <FormField label="Name"><Input bind:value={draft.name} required /></FormField>
           </div>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {#if app.members.length > 1}
               <FormField label="Whose?">
                 <NativeSelect bind:value={draft.memberId} class="w-full">

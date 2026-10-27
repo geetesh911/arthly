@@ -189,7 +189,7 @@
     </Alert.Root>
   {/if}
 
-  <div class="grid items-start gap-4 lg:grid-cols-2">
+  <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
     <Card.Root>
       <Card.Header>
         <Card.Title class="text-lg font-semibold">Record a payment</Card.Title>
@@ -197,7 +197,7 @@
       </Card.Header>
       <Card.Content>
         <form class="grid gap-4" onsubmit={record}>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="What happened?">
               <NativeSelect bind:value={type} class="w-full">
                 {#if l.open}<option value="repayment">{words.entry.repayment}</option>{/if}
@@ -270,7 +270,7 @@
               </NativeSelect>
             </FormField>
           {/if}
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Due by (optional)">
               <Input type="date" bind:value={draft.due} />
             </FormField>

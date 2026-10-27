@@ -167,7 +167,7 @@
           {#if fixed.member}<span class="text-muted-foreground">· {fixed.member}</span>{/if}
         </p>
       {:else}
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label="Account type">
             <NativeSelect bind:value={kind} class="w-full">
               <option value="ppf">PPF</option>
@@ -183,7 +183,7 @@
             </FormField>
           {/if}
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField label={kind === 'epf' ? 'Employer or EPF office' : 'Bank'}>
             <Input bind:value={institution} required />
           </FormField>
@@ -200,7 +200,7 @@
           </FormField>
         {/if}
         {#if kind !== 'cash'}
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Entry">
               <NativeSelect bind:value={entry} class="w-full">
                 <option value="contribution">{kind === 'ppf' ? 'Deposit' : 'Contribution'}</option>
@@ -221,7 +221,7 @@
           </div>
         {/if}
       {/if}
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField label="Date"><Input type="date" bind:value={date} required /></FormField>
         <FormField
           label={`${fixed || kind === 'cash' || entry === 'balance' ? 'Balance' : 'Amount'} (₹)`}

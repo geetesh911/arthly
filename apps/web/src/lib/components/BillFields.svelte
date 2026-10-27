@@ -19,7 +19,7 @@
   } = $props();
 </script>
 
-<div class="grid gap-4 sm:grid-cols-2">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
   <FormField label="Bill amount (₹)" hint="The total due. 0 for a month with no spends.">
     <Input inputmode="decimal" bind:value={amount} {required} />
   </FormField>
@@ -27,7 +27,7 @@
     <Input inputmode="decimal" bind:value={minimumDue} {required} />
   </FormField>
 </div>
-<div class="grid gap-4 sm:grid-cols-2">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
   <FormField label="Statement date">
     <Input type="date" bind:value={statementDate} {required} />
   </FormField>
