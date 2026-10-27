@@ -1,0 +1,102 @@
+{
+  "accounts": [
+    {
+      "ref": "demat",
+      "institution": "Groww",
+      "kind": "demat",
+      "label": "Groww demat ••••5432",
+      "maskedRef": "••••5432",
+      "currency": "INR"
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "isin:INE002A01018",
+      "kind": "stock",
+      "name": "RELIANCE INDUSTRIES LTD",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {
+        "isin": "INE002A01018",
+        "nse": "RELIANCE"
+      }
+    },
+    {
+      "ref": "isin:INE155A01022",
+      "kind": "stock",
+      "name": "TATA MOTORS LIMITED",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {
+        "isin": "INE155A01022",
+        "nse": "TATAMOTORS"
+      }
+    },
+    {
+      "ref": "isin:INF0000TST01",
+      "kind": "etf",
+      "name": "NIP IND ETF NIFTY BEES",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {
+        "isin": "INF0000TST01",
+        "nse": "NIFTYBEES"
+      }
+    }
+  ],
+  "transactions": [
+    {
+      "account": "demat",
+      "instrument": "isin:INE002A01018",
+      "date": "2025-03-12",
+      "type": "buy",
+      "units": 2,
+      "price": 1300,
+      "amount": 2600,
+      "currency": "INR"
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INE155A01022",
+      "date": "2025-02-05",
+      "type": "sell",
+      "units": 10,
+      "price": 950,
+      "amount": 9500,
+      "currency": "INR"
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INF0000TST01",
+      "date": "2024-01-10",
+      "type": "buy",
+      "units": 50,
+      "price": 250,
+      "amount": 12500,
+      "currency": "INR"
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INE002A01018",
+      "date": "2023-06-15",
+      "type": "buy",
+      "units": 3,
+      "price": 1300,
+      "amount": 3900,
+      "currency": "INR"
+    },
+    {
+      "account": "demat",
+      "instrument": "isin:INE155A01022",
+      "date": "2022-04-20",
+      "type": "buy",
+      "units": 10,
+      "price": 480,
+      "amount": 4800,
+      "currency": "INR"
+    }
+  ],
+  "snapshots": [],
+  "warnings": [],
+  "asOf": "2026-10-20"
+}

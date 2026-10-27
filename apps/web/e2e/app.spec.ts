@@ -6,6 +6,8 @@ import { join } from 'node:path';
 const fixtures = join(import.meta.dirname, '../../../packages/core/src/plugins/importers');
 const MF = join(fixtures, 'groww-mf-holdings/fixtures/holdings.xlsx');
 const STOCKS = join(fixtures, 'groww-stock-holdings/fixtures/holdings.xlsx');
+const MF_ORDERS = join(fixtures, 'groww-mf-orders/fixtures/orders.xlsx');
+const STOCK_ORDERS = join(fixtures, 'groww-stock-orders/fixtures/orders.xlsx');
 const PPF = join(fixtures, 'bob-ppf-statement/fixtures/statement.xlsx');
 const EPF = join(fixtures, 'epfo-passbook/fixtures/passbook.pdf');
 // Both Groww files, zipped by macOS (so with __MACOSX copies and a .DS_Store).
@@ -112,6 +114,34 @@ test('create a vault, import the Groww files and see the totals', async ({ page 
   await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
   await expect(page.getByTestId('holding-xirr')).toHaveText('11.20%');
   await expect(page.getByText(/From your holdings file of 21 Oct 2026/)).toBeVisible();
+});
+
+test('order history after the holdings files lands in the same holdings', async ({ page }) => {
+  await createVault(page);
+
+  for (const [n, file] of [MF, STOCKS, MF_ORDERS, STOCK_ORDERS].entries()) {
+    if (n > 0) {
+      await openAdd(page, 'Import files');
+    }
+
+    await page.getByTestId('import-input').setInputFiles(file);
+
+    if (file === MF_ORDERS) {
+      await expect(
+        page.getByText('Groww mutual funds (order history) · as of 21 Oct 2026'),
+      ).toBeVisible();
+      await expect(page.getByText(/in any account yet/)).toHaveCount(0);
+    }
+
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await landsOnHoldings(page);
+  }
+
+  // The orders add up to the units in the holdings files, so nothing is counted twice.
+  expect(await netWorth(page)).toBe('₹12,91,439');
+  await page.getByRole('link', { name: 'Holdings' }).click();
+  await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
+  await expect(page.getByText('PPFAS Mutual Fund folio ••••5678').first()).toBeVisible();
 });
 
 test('refresh prices through the relay', async ({ page }) => {

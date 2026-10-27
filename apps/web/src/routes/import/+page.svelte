@@ -164,8 +164,8 @@
         />
       </label>
       <p class="text-muted-foreground text-sm">
-        Groww mutual-fund and stock holdings, Bank of Baroda PPF statements, EPFO passbook PDFs, or
-        this app's own Excel, template or JSON export, or a zip of any of these.
+        Groww mutual-fund and stock holdings or order history, Bank of Baroda PPF statements, EPFO
+        passbook PDFs, or this app's own Excel, template or JSON export, or a zip of any of these.
       </p>
       {#if app.members.length > 1}
         <FormField label="Whose files are these?">

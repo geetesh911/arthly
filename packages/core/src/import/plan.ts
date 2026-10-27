@@ -4,7 +4,7 @@ import { isBalanceKind, ledgers, unitsOn } from '../engine/positions.ts';
 import type { Finding, ImportApplyData, Put } from '../log/events.ts';
 import { all, get, type State } from '../log/replay.ts';
 import { accountId, importedTransactionId, randomId, snapshotId } from '../model/ids.ts';
-import type { Account, Snapshot, Transaction } from '../model/types.ts';
+import type { Account, Instrument, Snapshot, Transaction } from '../model/types.ts';
 import { toHex } from '../util/bytes.ts';
 import { near, roundAmount, valueTolerance } from '../util/numbers.ts';
 
@@ -99,6 +99,8 @@ export function planImport(
   const source = { kind: 'import' as const, batchId: PENDING };
 
   const accounts = new Map<string, Account>();
+  /** New accounts for byHolding drafts: added to the plan only once a line goes to them. */
+  const fallbacks = new Map<string, PlanItem>();
 
   for (const a of draft.accounts) {
     const id = accountId({
@@ -120,7 +122,17 @@ export function planImport(
     accounts.set(a.ref, get(state, 'account', id) ?? value);
 
     if (!get(state, 'account', id)) {
-      items.push({ put: { entity: 'account', id, value }, status: 'new', include: true });
+      const item: PlanItem = {
+        put: { entity: 'account', id, value },
+        status: 'new',
+        include: true,
+      };
+
+      if (a.byHolding) {
+        fallbacks.set(id, item);
+      } else {
+        items.push(item);
+      }
     }
   }
 
@@ -159,15 +171,78 @@ export function planImport(
   }
 
   const known = ledgers(state);
+  const byHolding = new Map(draft.accounts.filter((a) => a.byHolding).map((a) => [a.ref, a.kind]));
+  const homes = new Map<string, Account>();
+  const added = new Set<string>();
+  const notes: string[] = [];
+
+  /** The account a line goes to: its own, or for a byHolding draft the one holding the most units. */
+  const home = (ref: string, instrument: Instrument | undefined): Account | undefined => {
+    const own = accounts.get(ref);
+    const kind = byHolding.get(ref);
+
+    if (!own || !instrument || !kind) {
+      return own;
+    }
+
+    if (!homes.has(instrument.id)) {
+      const holders = [...known.values()]
+        .filter((l) => l.instrumentId === instrument.id)
+        .map((l) => ({
+          account: get(state, 'account', l.accountId),
+          units: unitsOn(l.entries, l.entries.at(-1)?.date ?? ''),
+        }))
+        .filter(
+          (h): h is { account: Account; units: number } =>
+            h.account?.kind === kind && h.account.memberId === options.memberId,
+        )
+        .sort((a, b) => b.units - a.units || (a.account.id < b.account.id ? -1 : 1));
+      const top = holders[0]?.account ?? own;
+      const holding = holders.filter((h) => h.units > 1e-9).length;
+
+      if (holding > 1) {
+        notes.push(
+          `${instrument.name} is held in ${holding} accounts, so all its lines go to ${top.label}.`,
+        );
+      }
+
+      homes.set(instrument.id, top);
+    }
+
+    const account = homes.get(instrument.id)!;
+    const fallback = fallbacks.get(account.id);
+
+    if (fallback && !added.has(account.id)) {
+      items.push(fallback);
+      added.add(account.id);
+    }
+
+    return account;
+  };
+
+  /** Units a file leaves in a new fallback account, by instrument: these are held nowhere else. */
+  const strays = new Map<string, { name: string; label: string; units: number }>();
   const existingTxns = all(state, 'transaction');
   const seen = new Map<string, number>();
 
   for (const t of draft.transactions) {
-    const account = accounts.get(t.account);
     const instrument = instruments.get(t.instrument);
+    const account = home(t.account, instrument);
 
     if (!account || !instrument) {
       continue;
+    }
+
+    if (fallbacks.has(account.id)) {
+      const stray = strays.get(instrument.id) ?? {
+        name: instrument.name,
+        label: account.label,
+        units: 0,
+      };
+      const units = t.units ?? 0;
+
+      stray.units += t.type === 'sell' || t.type === 'switch-out' ? -units : units;
+      strays.set(instrument.id, stray);
     }
 
     const base = {
@@ -233,6 +308,18 @@ export function planImport(
     });
   }
 
+  const unheld = [...strays.values()].filter((s) => s.units > 1e-6);
+
+  if (unheld.length > 0) {
+    const one = unheld.length === 1;
+    const names =
+      unheld.length <= 3 ? unheld.map((s) => s.name).join(', ') : `${unheld.length} holdings`;
+
+    notes.push(
+      `${names} ${one ? "isn't" : "aren't"} in any account yet, so ${one ? 'it goes' : 'they go'} to a new one, ${unheld[0]!.label}. To keep ${one ? 'it' : 'them'} with your holdings, import the holdings file before this one.`,
+    );
+  }
+
   for (const put of draft.records ?? []) {
     const current = state.tables[put.entity].get(put.id)?.value;
     const status: ItemStatus = !current
@@ -248,8 +335,8 @@ export function planImport(
   let linesValue = 0;
 
   for (const s of draft.snapshots) {
-    const account = accounts.get(s.account);
     const instrument = instruments.get(s.instrument);
+    const account = home(s.account, instrument);
 
     if (!account || !instrument) {
       continue;
@@ -321,7 +408,7 @@ export function planImport(
     matches,
     ...(totals ? { totals } : {}),
     findings,
-    warnings: draft.warnings,
+    warnings: [...draft.warnings, ...notes],
   };
 }
 

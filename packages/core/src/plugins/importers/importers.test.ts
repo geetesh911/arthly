@@ -17,7 +17,9 @@ import { all, replay } from '../../log/replay.ts';
 import { bobPpfStatement } from './bob-ppf-statement/index.ts';
 import { epfoPassbook } from './epfo-passbook/index.ts';
 import { growwMfHoldings } from './groww-mf-holdings/index.ts';
+import { growwMfOrders } from './groww-mf-orders/index.ts';
 import { growwStockHoldings } from './groww-stock-holdings/index.ts';
+import { growwStockOrders } from './groww-stock-orders/index.ts';
 import { importers } from './index.ts';
 
 const here = import.meta.dirname;
@@ -25,6 +27,8 @@ const fixture = (path: string) =>
   inputFile(path.split('/').pop()!, new Uint8Array(readFileSync(join(here, path))), readPdf);
 const mfFile = () => fixture('groww-mf-holdings/fixtures/holdings.xlsx');
 const stockFile = () => fixture('groww-stock-holdings/fixtures/holdings.xlsx');
+const mfOrdersFile = () => fixture('groww-mf-orders/fixtures/orders.xlsx');
+const stockOrdersFile = () => fixture('groww-stock-orders/fixtures/orders.xlsx');
 const ppfFile = () => fixture('bob-ppf-statement/fixtures/statement.xlsx');
 const epfFile = () => fixture('epfo-passbook/fixtures/passbook.pdf');
 const ctx: ImportContext = { memberId: 'mem_1', today: '2026-10-22' };
@@ -37,19 +41,37 @@ const sheetFile = (name: string, rows: Cell[][]): InputFile => ({
   pdfText: async () => [],
 });
 
-/** Imports a file into an empty vault, then plans the same file again. */
-async function importTwice(file: InputFile, importer: Importer) {
-  const options = {
+/** Plans a file against a vault. */
+async function planFile(state: ReturnType<typeof replay>, file: InputFile, importer: Importer) {
+  return planImport(state, await importer.parse(file, ctx), {
     importer: { id: importer.id, version: importer.version },
     file: { name: file.name, sha256: await sha256Hex(file.bytes), size: file.bytes.length },
     memberId: 'mem_1',
-  };
-  const first = planImport(replay([]), await importer.parse(file, ctx), options);
-  const state = replay([
+  });
+}
+
+/** Imports each file in turn into an empty vault. */
+async function importAll(files: [InputFile, Importer][]) {
+  const events: Event[] = [
     putEvent(formatHlc(1, 0, 'aaaaaaaa'), 'member', { id: 'mem_1', name: 'Asha' }),
-    importApplyEvent(formatHlc(2, 0, 'aaaaaaaa'), applyPlan(first, 'bat_1')!),
-  ]);
-  const again = planImport(state, await importer.parse(file, ctx), options);
+  ];
+
+  for (const [n, [file, importer]] of files.entries()) {
+    const plan = await planFile(replay(events), file, importer);
+
+    events.push(
+      importApplyEvent(formatHlc(n + 2, 0, 'aaaaaaaa'), applyPlan(plan, `bat_${n + 1}`)!),
+    );
+  }
+
+  return replay(events);
+}
+
+/** Imports a file into an empty vault, then plans the same file again. */
+async function importTwice(file: InputFile, importer: Importer) {
+  const first = await planFile(replay([]), file, importer);
+  const state = await importAll([[file, importer]]);
+  const again = await planFile(state, file, importer);
 
   return { first, state, again };
 }
@@ -74,6 +96,21 @@ describe('picking an importer', () => {
     expect((await pickImporter(stockFile(), importers))?.importer.id).toBe('groww-stock-holdings');
     expect(await growwMfHoldings.detect(stockFile())).toBe(0);
     expect(await growwStockHoldings.detect(mfFile())).toBe(0);
+    expect((await pickImporter(mfOrdersFile(), importers))?.importer.id).toBe('groww-mf-orders');
+    expect((await pickImporter(stockOrdersFile(), importers))?.importer.id).toBe(
+      'groww-stock-orders',
+    );
+
+    for (const file of [mfOrdersFile(), stockOrdersFile()]) {
+      expect(await growwMfHoldings.detect(file)).toBe(0);
+      expect(await growwStockHoldings.detect(file)).toBe(0);
+    }
+
+    for (const file of [mfFile(), stockFile()]) {
+      expect(await growwMfOrders.detect(file)).toBe(0);
+      expect(await growwStockOrders.detect(file)).toBe(0);
+    }
+
     expect(await pickImporter(inputFile('notes.pdf', new Uint8Array()), importers)).toBeNull();
   });
 });
@@ -135,6 +172,264 @@ describe('groww-stock-holdings', () => {
     await expect(JSON.stringify(draft, null, 2)).toMatchFileSnapshot(
       'groww-stock-holdings/fixtures/holdings.draft.json',
     );
+  });
+});
+
+describe('groww-mf-orders', () => {
+  /** A fund order file in Groww's layout, with the given rows. */
+  const orders = (rows: Cell[][]) =>
+    sheetFile('Mutual_Funds_Order_History.xlsx', [
+      ['TRANSACTIONS FROM Apr 01 2026 TO Oct 21 2026'],
+      ['Scheme Name', 'Transaction Type', 'Units', 'NAV', 'Amount', 'Date'],
+      ...rows,
+    ]);
+
+  it('reads purchases and redemptions with their units, NAV and date', async () => {
+    const draft = await growwMfOrders.parse(mfOrdersFile(), ctx);
+
+    expect(draft.asOf).toBe('2026-10-21');
+    // No folio in the file: each fund's orders go to the folio that already holds it.
+    expect(draft.accounts).toEqual([
+      {
+        ref: 'groww',
+        institution: 'Groww',
+        kind: 'mf',
+        label: 'Groww mutual funds',
+        currency: 'INR',
+        byHolding: true,
+      },
+    ]);
+    expect(draft.instruments).toHaveLength(5);
+    expect(
+      draft.transactions.slice(0, 3).map((t) => [t.date, t.type, t.units, t.price, t.amount]),
+    ).toEqual([
+      ['2026-08-20', 'sell', 500, 146.8, 73_400],
+      ['2025-07-10', 'buy', 1500, 30, 45_000],
+      ['2025-01-05', 'buy', 1500.123, 99.9918, 150_000],
+    ]);
+    expect(draft.transactions).toHaveLength(9);
+    expect(draft.warnings).toEqual([]);
+    await expect(JSON.stringify(draft, null, 2)).toMatchFileSnapshot(
+      'groww-mf-orders/fixtures/orders.draft.json',
+    );
+  });
+
+  it('puts each fund in the folio holding it, so the holdings file then agrees', async () => {
+    const state = await importAll([
+      [mfFile(), growwMfHoldings],
+      [mfOrdersFile(), growwMfOrders],
+    ]);
+    const holdings = evaluate(state, new PriceBook([], [], all(state, 'snapshot')), '2026-10-21');
+    const held = (name: string) => holdings.find((h) => h.instrument.name.startsWith(name))!;
+
+    expect(held('Parag').account.label).toBe('PPFAS Mutual Fund folio ••••5678');
+    expect(held('Parag').position.units).toBeCloseTo(1500.75, 6);
+    expect(held('Parag').position.estimate).toBe(false);
+    expect(held('Tata').position.units).toBeCloseTo(3000.123, 6);
+    expect(held('SBI').account.label).toBe('SBI Mutual Fund folio ••••7890');
+    // A fund sold before the holdings file was made is in no folio, so it gets its own account.
+    expect(held('Quant')).toMatchObject({ account: { label: 'Groww mutual funds' } });
+    expect(held('Quant').position.units).toBe(0);
+    expect(all(state, 'account')).toHaveLength(7);
+
+    const holdingsAgain = await planFile(state, mfFile(), growwMfHoldings);
+
+    expect(upToDate(holdingsAgain)).toBe(true);
+    expect(holdingsAgain.items.filter((i) => i.mismatch)).toEqual([]);
+    expect(upToDate(await planFile(state, mfOrdersFile(), growwMfOrders))).toBe(true);
+  });
+
+  it('says where funds no folio holds yet go, and imports once', async () => {
+    const { first, again } = await importTwice(mfOrdersFile(), growwMfOrders);
+
+    expect(first.items.filter((i) => i.put.entity === 'account')).toHaveLength(1);
+    // The sold fund isn't counted: it needs no folio.
+    expect(first.warnings).toEqual([
+      "4 holdings aren't in any account yet, so they go to a new one, Groww mutual funds. To keep them with your holdings, import the holdings file before this one.",
+    ]);
+    expect(upToDate(again)).toBe(true);
+    expect(again.warnings).toEqual([]);
+  });
+
+  it('names the folio it picks for a fund held in two', async () => {
+    const state = await importAll([[mfFile(), growwMfHoldings]]);
+    const plan = await planFile(
+      state,
+      orders([
+        ['Axis Midcap Fund Direct Growth', 'PURCHASE', '10.000', '100.00', '1,000', '12 Oct 2026'],
+      ]),
+      growwMfOrders,
+    );
+    const txn = plan.items.find((i) => i.put.entity === 'transaction')!.put.value as {
+      accountId: string;
+    };
+
+    expect(plan.warnings).toEqual([
+      'Axis Midcap Fund Direct Growth is held in 2 accounts, so all its lines go to Axis Mutual Fund folio ••••3401.',
+    ]);
+    expect(txn.accountId).toBe(
+      all(state, 'account').find((a) => a.label === 'Axis Mutual Fund folio ••••3401')!.id,
+    );
+    expect(plan.items.some((i) => i.put.entity === 'account')).toBe(false);
+  });
+
+  it('leaves out types it does not know, and rows it cannot read', async () => {
+    const draft = await growwMfOrders.parse(
+      orders([
+        ['Axis Midcap Fund Direct Growth', 'SWITCH_IN', '10.000', '100.00', '1,000', '12 Oct 2026'],
+        ['Axis Midcap Fund Direct Growth', 'BONUS', '5.000', '0', '0', '13 Oct 2026'],
+        ['Axis Midcap Fund Direct Growth', 'PURCHASE', '', '100.00', '1,000', '14 Oct 2026'],
+      ]),
+      ctx,
+    );
+
+    expect(draft.transactions.map((t) => t.type)).toEqual(['switch-in']);
+    expect(draft.warnings).toEqual([
+      'Left out transactions of type BONUS',
+      "1 transaction couldn't be read. Check them against the file.",
+    ]);
+  });
+});
+
+describe('groww-stock-orders', () => {
+  const HEADER = [
+    'Stock name',
+    'Symbol',
+    'ISIN',
+    'Type',
+    'Quantity',
+    'Value',
+    'Exchange',
+    'Exchange Order Id',
+    'Execution date and time',
+    'Order status',
+  ];
+
+  it('reads executed buys and sells into the same demat account as the holdings', async () => {
+    const draft = await growwStockOrders.parse(stockOrdersFile(), ctx);
+    const holdings = await growwStockHoldings.parse(stockFile(), ctx);
+
+    expect(draft.asOf).toBe('2026-10-20');
+    expect(draft.accounts).toEqual(holdings.accounts);
+    // The cancelled order is left out; an order on BSE adds no NSE symbol.
+    expect(
+      draft.transactions.map((t) => [t.instrument, t.date, t.type, t.units, t.amount]),
+    ).toEqual([
+      ['isin:INE002A01018', '2025-03-12', 'buy', 2, 2_600],
+      ['isin:INE155A01022', '2025-02-05', 'sell', 10, 9_500],
+      ['isin:INF0000TST01', '2024-01-10', 'buy', 50, 12_500],
+      ['isin:INE002A01018', '2023-06-15', 'buy', 3, 3_900],
+      ['isin:INE155A01022', '2022-04-20', 'buy', 10, 4_800],
+    ]);
+    expect(draft.transactions[0]!.price).toBe(1_300);
+    expect(draft.instruments.map((i) => [i.kind, i.ids])).toEqual([
+      ['stock', { isin: 'INE002A01018', nse: 'RELIANCE' }],
+      ['stock', { isin: 'INE155A01022', nse: 'TATAMOTORS' }],
+      ['etf', { isin: 'INF0000TST01', nse: 'NIFTYBEES' }],
+    ]);
+    expect(draft.warnings).toEqual([]);
+    await expect(JSON.stringify(draft, null, 2)).toMatchFileSnapshot(
+      'groww-stock-orders/fixtures/orders.draft.json',
+    );
+  });
+
+  it('agrees with the holdings statement once both are in', async () => {
+    const state = await importAll([
+      [stockFile(), growwStockHoldings],
+      [stockOrdersFile(), growwStockOrders],
+    ]);
+    const holdings = evaluate(state, new PriceBook([], [], all(state, 'snapshot')), '2026-10-20');
+    const held = (name: string) => holdings.find((h) => h.instrument.name.startsWith(name))!;
+
+    expect(all(state, 'account')).toHaveLength(1);
+    expect(held('RELIANCE').position).toMatchObject({ units: 5, cost: 6_500, estimate: false });
+    expect(held('TATA MOTORS').position).toMatchObject({ units: 0, realised: 4_700 });
+    // The gold bond has no orders, so the holdings file still gives its units.
+    expect(held('2.50%GOLDBONDS').position).toMatchObject({ units: 10, estimate: true });
+
+    const holdingsAgain = await planFile(state, stockFile(), growwStockHoldings);
+
+    expect(upToDate(holdingsAgain)).toBe(true);
+    expect(holdingsAgain.items.filter((i) => i.mismatch)).toEqual([]);
+  });
+
+  it('falls back to the symbol when a shared file masks the ISIN', async () => {
+    const draft = await growwStockOrders.parse(
+      sheetFile('Stocks_Order_History.xlsx', [
+        HEADER,
+        [
+          'ONE 97 COMMUNICATIONS LTD',
+          'PAYTM',
+          'INExxx',
+          'BUY',
+          6,
+          12900,
+          'NSE',
+          123,
+          '16-11-2021 03:30 PM',
+          'Executed',
+        ],
+        [
+          'ONE 97 COMMUNICATIONS LTD',
+          'PAYTM',
+          'INExxx',
+          'SELL',
+          6,
+          11055.3,
+          'NSE',
+          124,
+          '18-11-2021 10:06 AM',
+          'Executed',
+        ],
+        [
+          'LIFE INSURA CORP OF INDIA',
+          'LICI',
+          'INExxx',
+          'BUY',
+          15,
+          13560,
+          'NSE',
+          125,
+          '13-05-2022 03:30 PM',
+          'Rejected',
+        ],
+      ]),
+      ctx,
+    );
+
+    // With no client code, the orders go to the demat account that holds each stock.
+    expect(draft.accounts[0]).toMatchObject({ label: 'Groww demat', byHolding: true });
+    expect(draft.instruments).toMatchObject([
+      { ref: 'name:one 97 communications ltd', kind: 'stock', ids: { nse: 'PAYTM' } },
+    ]);
+    expect(draft.transactions.map((t) => [t.date, t.type, t.amount])).toEqual([
+      ['2021-11-16', 'buy', 12_900],
+      ['2021-11-18', 'sell', 11_055.3],
+    ]);
+  });
+
+  it('says when no order was executed', async () => {
+    const draft = await growwStockOrders.parse(
+      sheetFile('orders.xlsx', [
+        HEADER,
+        [
+          'LIFE INSURA CORP OF INDIA',
+          'LICI',
+          'INE0J1Y01017',
+          'BUY',
+          15,
+          13560,
+          'NSE',
+          1,
+          '13-05-2022 03:30 PM',
+          'Cancelled',
+        ],
+      ]),
+      ctx,
+    );
+
+    expect(draft.transactions).toEqual([]);
+    expect(draft.warnings).toEqual(['The file lists no executed orders']);
   });
 });
 
@@ -561,6 +856,16 @@ describe('import plan', () => {
       '120505',
     );
     expect(p.findings.filter((f) => f.key === 'recon.unmatched')).toHaveLength(3);
+  });
+
+  it('flags a stale price once for a fund held in two folios', async () => {
+    const state = await importAll([[mfFile(), growwMfHoldings]]);
+    const keys = checks(state, new PriceBook([], [], all(state, 'snapshot')), '2026-11-15', {
+      lastSync: '2026-11-15',
+    }).map((c) => c.key);
+
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.filter((k) => k.startsWith('price.stale'))).toHaveLength(5);
   });
 
   it('flags file totals that do not match the lines', async () => {

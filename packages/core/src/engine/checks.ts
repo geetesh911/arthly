@@ -137,10 +137,12 @@ export function checks(
     }
 
     const age = h.priceDate ? daysBetween(h.priceDate, today) : Infinity;
+    const key = `price.stale:${h.instrument.id}`;
 
-    if (age > s.priceStaleDays) {
+    // One check per instrument, though a fund may be held in two folios.
+    if (age > s.priceStaleDays && !out.some((c) => c.key === key)) {
       out.push({
-        key: `price.stale:${h.instrument.id}`,
+        key,
         type: 'price.stale',
         severity: 'warn',
         message: h.priceDate

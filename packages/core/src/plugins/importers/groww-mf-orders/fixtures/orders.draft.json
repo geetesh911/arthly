@@ -1,0 +1,149 @@
+{
+  "accounts": [
+    {
+      "ref": "groww",
+      "institution": "Groww",
+      "kind": "mf",
+      "label": "Groww mutual funds",
+      "currency": "INR",
+      "byHolding": true
+    }
+  ],
+  "instruments": [
+    {
+      "ref": "scheme:tata nifty next 50 index direct",
+      "kind": "mf",
+      "name": "Tata Nifty Next 50 Index Direct",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {}
+    },
+    {
+      "ref": "scheme:icici prudential corporate bond fund direct growth",
+      "kind": "mf",
+      "name": "ICICI Prudential Corporate Bond Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "debt",
+      "ids": {}
+    },
+    {
+      "ref": "scheme:quant small cap fund direct growth",
+      "kind": "mf",
+      "name": "Quant Small Cap Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {}
+    },
+    {
+      "ref": "scheme:parag parikh elss tax saver fund direct growth",
+      "kind": "mf",
+      "name": "Parag Parikh ELSS Tax Saver Fund Direct Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {}
+    },
+    {
+      "ref": "scheme:sbi focused direct plan growth",
+      "kind": "mf",
+      "name": "SBI Focused Direct Plan Growth",
+      "currency": "INR",
+      "assetClass": "equity",
+      "ids": {}
+    }
+  ],
+  "transactions": [
+    {
+      "account": "groww",
+      "instrument": "scheme:tata nifty next 50 index direct",
+      "date": "2026-08-20",
+      "type": "sell",
+      "units": 500,
+      "price": 146.8,
+      "amount": 73400,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:icici prudential corporate bond fund direct growth",
+      "date": "2025-07-10",
+      "type": "buy",
+      "units": 1500,
+      "price": 30,
+      "amount": 45000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:tata nifty next 50 index direct",
+      "date": "2025-01-05",
+      "type": "buy",
+      "units": 1500.123,
+      "price": 99.9918,
+      "amount": 150000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:quant small cap fund direct growth",
+      "date": "2024-04-18",
+      "type": "sell",
+      "units": 250,
+      "price": 240,
+      "amount": 60000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:parag parikh elss tax saver fund direct growth",
+      "date": "2024-03-15",
+      "type": "buy",
+      "units": 700.75,
+      "price": 114.1634,
+      "amount": 80000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:parag parikh elss tax saver fund direct growth",
+      "date": "2023-03-10",
+      "type": "buy",
+      "units": 800,
+      "price": 50,
+      "amount": 40000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:tata nifty next 50 index direct",
+      "date": "2022-06-01",
+      "type": "buy",
+      "units": 2000,
+      "price": 150,
+      "amount": 300000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:quant small cap fund direct growth",
+      "date": "2021-09-14",
+      "type": "buy",
+      "units": 250,
+      "price": 120,
+      "amount": 30000,
+      "currency": "INR"
+    },
+    {
+      "account": "groww",
+      "instrument": "scheme:sbi focused direct plan growth",
+      "date": "2021-02-02",
+      "type": "buy",
+      "units": 600.5,
+      "price": 333.0558,
+      "amount": 200000,
+      "currency": "INR"
+    }
+  ],
+  "snapshots": [],
+  "warnings": [],
+  "asOf": "2026-10-21"
+}

@@ -42,6 +42,12 @@ export interface AccountDraft {
   /** Already masked. */
   maskedRef?: string;
   currency: Currency;
+  /**
+   * For files that don't say which account, such as Groww's fund orders with no folio: each line
+   * goes to the member's account of this kind that already holds its instrument, and to this
+   * account only when none does.
+   */
+  byHolding?: boolean;
 }
 
 export interface InstrumentDraft {

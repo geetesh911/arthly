@@ -4,12 +4,13 @@ import {
   findCell,
   findDate,
   findHeader,
+  labelled,
   lower,
   num,
   rowsBelow,
   text,
 } from '../../../import/sheet.ts';
-import type { Cell, ImportDraft, Importer, InputFile } from '../../../import/types.ts';
+import type { ImportDraft, Importer, InputFile } from '../../../import/types.ts';
 import { defaultAssetClass } from '../../../model/classify.ts';
 import { mask } from '../../../model/ids.ts';
 import type { InstrumentKind } from '../../../model/types.ts';
@@ -57,13 +58,6 @@ async function holdingsSheet(file: InputFile) {
   }
 
   return undefined;
-}
-
-/** The value in the cell to the right of a label, such as "Invested Value  470925.48". */
-function labelled(rows: Cell[][], label: string): Cell | undefined {
-  const at = findCell(rows, (t) => t === label);
-
-  return at ? rows[at.row]![at.col + 1] : undefined;
 }
 
 export const growwStockHoldings: Importer = {

@@ -81,7 +81,7 @@ export function num(c: Cell | undefined): number | undefined {
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
-/** Finds a date in text: 2026-10-21, 21-10-2026, 21/10/2026 or 21-Oct-2026. */
+/** Finds a date in text: 2026-10-21, 21-10-2026, 21/10/2026, 21-Oct-2026 or Oct 21 2026. */
 export function findDate(c: Cell | undefined): ISODate | undefined {
   const t = text(c);
   let m = /(\d{4})-(\d{2})-(\d{2})/.exec(t);
@@ -107,8 +107,25 @@ export function findDate(c: Cell | undefined): ISODate | undefined {
     return month > 0 && isISODate(d) ? d : undefined;
   }
 
+  m = /([A-Za-z]{3})[A-Za-z]*[-\s/.]+(\d{1,2}),?[-\s/]+(\d{4})/.exec(t);
+
+  if (m) {
+    const month = MONTHS.indexOf(m[1]!.toLowerCase()) + 1;
+    const d = makeDate(Number(m[3]), month, Number(m[2]));
+
+    return month > 0 && isISODate(d) ? d : undefined;
+  }
+
   return undefined;
 }
+
+/** The date a range ends on, as in "Order history from 01-04-2021 to 26-10-2026". */
+export const rangeEnd = (c: Cell | undefined): ISODate | undefined =>
+  findDate(
+    text(c)
+      .split(/\bto\b/i)
+      .at(-1),
+  );
 
 /** The first cell whose text passes the test. */
 export function findCell(
@@ -126,6 +143,13 @@ export function findCell(
   }
 
   return undefined;
+}
+
+/** The value in the cell to the right of a label, such as "Invested Value  470925.48". */
+export function labelled(rows: Cell[][], label: string): Cell | undefined {
+  const at = findCell(rows, (t) => t === label);
+
+  return at ? rows[at.row]![at.col + 1] : undefined;
 }
 
 /** The first row holding every heading (case and spacing ignored), with each heading's column. */
