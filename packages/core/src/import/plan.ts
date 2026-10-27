@@ -370,6 +370,11 @@ export function planImport(
       }
     }
 
+    // A statement that starts mid-way needs no warning once the year before is in.
+    if (!ledger?.entries.some((e) => e.date <= s.asOf)) {
+      notes.push(...(s.openingWarnings ?? []).filter((w) => !notes.includes(w)));
+    }
+
     const current = get(state, 'snapshot', id);
     const status: ItemStatus = !current ? 'new' : sameValue(current, value) ? 'same' : 'changed';
 

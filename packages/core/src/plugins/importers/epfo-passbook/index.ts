@@ -7,7 +7,7 @@ import { findDate, num } from '../../../import/sheet.ts';
 import type { ImportDraft, Importer, InputFile } from '../../../import/types.ts';
 import { mask } from '../../../model/ids.ts';
 import type { TransactionType } from '../../../model/types.ts';
-import { fyEnd, fyOf, type ISODate, maxDate, minDate } from '../../../util/dates.ts';
+import { addDays, fyEnd, fyOf, type ISODate, maxDate, minDate } from '../../../util/dates.ts';
 import { near, roundAmount } from '../../../util/numbers.ts';
 
 type Part = 'employee' | 'employer' | 'pension';
@@ -81,7 +81,7 @@ function split(line: string): { head: string; shares?: Shares } {
 function read(lines: string[]): Passbook {
   const book: Passbook = { rows: [], unread: 0, totals: {} };
 
-  for (const line of lines) {
+  for (const [n, line] of lines.entries()) {
     let m = /\bOn\s*:\s*(\d{2}-\d{2}-\d{4})/i.exec(line);
 
     if (m) {
@@ -112,10 +112,13 @@ function read(lines: string[]): Passbook {
       if (!date || !shares) {
         book.unread++;
       } else {
+        // Where the description wraps, its first line sits on the row above the amounts.
+        const about = m[3] ?? lines[n - 1] ?? '';
+
         book.rows.push({
           date,
           credit: m[2] === 'CR',
-          monthly: /^cont\b/i.test(m[3] ?? ''),
+          monthly: /^cont\b/i.test(about),
           shares,
         });
       }
@@ -240,10 +243,11 @@ export const epfoPassbook: Importer = {
       throw new Error('No member ID found in this passbook');
     }
 
-    // The heading names the year; failing that, it follows the opening balance's 31 March.
+    // The heading names the year; failing that, it starts with the opening balance, dated 31 March
+    // or, in some passbooks, 1 April.
     const fy =
       book.fy ??
-      (book.opening?.date ? fyOf(book.opening.date) + 1 : undefined) ??
+      (book.opening?.date ? fyOf(addDays(book.opening.date, -1)) + 1 : undefined) ??
       (book.rows[0] ? fyOf(book.rows[0].date) : undefined);
 
     if (fy === undefined) {
@@ -312,11 +316,24 @@ export const epfoPassbook: Importer = {
       entry(part, interestDate, 'interest', book.interest?.shares[part] ?? 0);
     }
 
-    const balances = (asOf: ISODate, shares: Shares, skipZero: boolean) => {
+    const balances = (
+      asOf: ISODate,
+      shares: Shares,
+      skipZero: boolean,
+      openingWarnings?: string[],
+    ) => {
       const epf = roundAmount(shares.employee + shares.employer);
+      const opening = openingWarnings ? { openingWarnings } : {};
 
       if (!skipZero || epf > 0) {
-        draft.snapshots.push({ account: 'epf', instrument: 'epf', asOf, units: epf, value: epf });
+        draft.snapshots.push({
+          account: 'epf',
+          instrument: 'epf',
+          asOf,
+          units: epf,
+          value: epf,
+          ...opening,
+        });
       }
 
       if (pension && (!skipZero || shares.pension > 0)) {
@@ -326,21 +343,20 @@ export const epfoPassbook: Importer = {
           asOf,
           units: shares.pension,
           value: shares.pension,
+          ...opening,
         });
       }
     };
 
-    const openedAt = book.opening?.date ?? fyEnd(fy - 1);
+    // The balance the year starts with, though some passbooks date it 1 April.
+    const openedAt = fyEnd(fy - 1);
 
     if (book.opening) {
-      balances(openedAt, book.opening.shares, true);
       const total = PARTS.reduce((s, p) => s + book.opening!.shares[p], 0);
 
-      if (total > 0) {
-        draft.warnings.push(
-          `The passbook starts with a balance of ${inr(total)} on ${openedAt}. Import older passbooks for the full history; until then it counts as one deposit.`,
-        );
-      }
+      balances(openedAt, book.opening.shares, true, [
+        `The passbook starts with a balance of ${inr(total)} on ${openedAt}. Import older passbooks for the full history; until then it counts as one deposit.`,
+      ]);
     }
 
     // A passbook for the current year gives its closing balance at the year's end, but it is

@@ -105,6 +105,9 @@
     await attempt(() => api().remove('transaction', id));
     await changed();
   }
+
+  // An EPF passbook keeps the employee's and the employer's shares apart.
+  const SHARES: Record<string, string> = { employee: 'employee share', employer: 'employer share' };
 </script>
 
 {#if detail === undefined}
@@ -196,11 +199,11 @@
         </Table.Header>
         <Table.Body>
           {#each detail.entries as e (e.id)}
+            {@const note = e.synthetic ? 'from an imported balance' : SHARES[e.meta?.part ?? '']}
             <Table.Row>
               <Table.Cell class="whitespace-nowrap">{date(e.date)}</Table.Cell>
               <Table.Cell
-                >{e.type}{#if e.synthetic}<span class="text-muted-foreground block text-xs"
-                    >from holdings file</span
+                >{e.type}{#if note}<span class="text-muted-foreground block text-xs">{note}</span
                   >{/if}</Table.Cell
               >
               <Table.Cell class="text-right tabular-nums"

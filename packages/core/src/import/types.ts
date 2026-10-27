@@ -84,6 +84,11 @@ export interface SnapshotDraft {
   price?: number;
   /** The file's own XIRR for the holding, as a fraction. */
   xirr?: number;
+  /**
+   * On the balance a statement starts from: warnings for the preview, left out when the vault
+   * already has this holding up to that day, as from the statement for the year before.
+   */
+  openingWarnings?: string[];
 }
 
 export interface ImportDraft {

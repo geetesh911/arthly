@@ -17,17 +17,19 @@
       invested: p.invested,
     })),
   );
-  // Over two months the axis shows months; within them, days.
+  // Over two months the axis shows months, with the year in place of January; within them, days.
   const long = $derived(
     points.length > 1 &&
       Date.parse(points.at(-1)!.date) - Date.parse(points[0]!.date) > 62 * 86_400_000,
   );
   const tick = (d: Date) =>
-    d.toLocaleDateString('en-IN', {
-      month: 'short',
-      ...(long ? {} : { day: 'numeric' }),
-      timeZone: 'UTC',
-    });
+    long && d.getUTCMonth() === 0
+      ? String(d.getUTCFullYear())
+      : d.toLocaleDateString('en-IN', {
+          month: 'short',
+          ...(long ? {} : { day: 'numeric' }),
+          timeZone: 'UTC',
+        });
 
   const config = {
     value: { label: 'Value', color: 'var(--chart-1)' },

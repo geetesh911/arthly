@@ -519,14 +519,21 @@ describe('bob-ppf-statement', () => {
       ['2026-03-31', 'interest', 35_800],
     ]);
     expect(draft.snapshots).toEqual([
-      { account: 'ppf', instrument: 'ppf', asOf: '2025-03-31', units: 400_000, value: 400_000 },
+      {
+        account: 'ppf',
+        instrument: 'ppf',
+        asOf: '2025-03-31',
+        units: 400_000,
+        value: 400_000,
+        openingWarnings: [
+          'The statement starts with a balance of ₹4,00,000 on 2025-03-31. Import older statements for the full history; until then it counts as one deposit.',
+          'Add the date this PPF account was opened to see when it matures',
+        ],
+      },
       { account: 'ppf', instrument: 'ppf', asOf: '2026-03-31', units: 535_800, value: 535_800 },
     ]);
     expect(draft.instruments[0]!.terms).toBeUndefined();
-    expect(draft.warnings).toEqual([
-      'The statement starts with a balance of ₹4,00,000 on 2025-03-31. Import older statements for the full history; until then it counts as one deposit.',
-      'Add the date this PPF account was opened to see when it matures',
-    ]);
+    expect(draft.warnings).toEqual([]);
   });
 
   it("warns when the running balance doesn't add up", async () => {
@@ -616,7 +623,8 @@ describe('epfo-passbook', () => {
       ['epf', '2026-03-31', 252_713],
       ['eps', '2026-03-31', 75_000],
     ]);
-    expect(draft.warnings).toEqual([
+    expect(draft.warnings).toEqual([]);
+    expect(draft.snapshots[0]!.openingWarnings).toEqual([
       'The passbook starts with a balance of ₹2,25,000 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit.',
     ]);
     // The member's name, UAN, date of birth and full member ID stay out.
@@ -690,7 +698,74 @@ describe('epfo-passbook', () => {
     ]);
     // Without a print date, the balance is as of the import.
     expect(draft.asOf).toBe('2026-10-22');
-    expect(draft.warnings).toHaveLength(1);
+    expect(draft.warnings).toEqual([]);
+  });
+
+  it('reads a description wrapped above its row, and dates a 1 April opening balance 31 March', async () => {
+    const draft = await epfoPassbook.parse(
+      passbook([
+        ...HEADER,
+        'OB Int. Updated upto 01/04/2026 2,10,000 90,000 40,000',
+        'Cont. for the Due-Month',
+        'Mar-2026 01-04-2026 CR 15,000 15,000 1,800 550 1,250',
+        '202604',
+        'Cont. for the Due-Month',
+        'Apr-2026 01-05-2026 CR 15,000 15,000 1,800 550 1,250',
+        '202605',
+        'Total Contributions for the year [ 2026 ] 3,600 1,100 2,500',
+        'Total Transfer-Ins/VDRs for the year [ 2026 ] 0 0 0',
+        'Total Withdrawals for the year [ 2026 ] 0 0 0',
+        'Interest details N/A 0 0 0',
+        'Closing Balance as on 31/03/2027 2,13,600 91,100 42,500',
+        'Printed On : 18-10-2026 09:30:00',
+      ]),
+      ctx,
+    );
+
+    expect(draft.transactions.map((t) => [t.date, t.type, t.amount, t.meta!.part])).toEqual([
+      ['2026-04-01', 'contribution', 1_800, 'employee'],
+      ['2026-04-01', 'contribution', 550, 'employer'],
+      ['2026-04-01', 'contribution', 1_250, 'pension'],
+      ['2026-05-01', 'contribution', 1_800, 'employee'],
+      ['2026-05-01', 'contribution', 550, 'employer'],
+      ['2026-05-01', 'contribution', 1_250, 'pension'],
+    ]);
+    // The opening balance comes before April's contribution, as the year before closed it.
+    expect(draft.snapshots.map((s) => [s.instrument, s.asOf, s.value])).toEqual([
+      ['epf', '2026-03-31', 300_000],
+      ['eps', '2026-03-31', 40_000],
+      ['epf', '2026-10-18', 304_700],
+      ['eps', '2026-10-18', 42_500],
+    ]);
+    expect(draft.warnings).toEqual([]);
+  });
+
+  it("warns of the opening balance only until the year before's passbook is in", async () => {
+    const year = (fy: number, opening: string, closing: string) =>
+      passbook([
+        ...HEADER.slice(0, 3),
+        `EPF Passbook [ Financial Year - ${fy}-${fy + 1} ]`,
+        `OB Int. Updated upto 31/03/${fy} ${opening}`,
+        `Apr-${fy} 15-05-${fy} CR Cont. for Due-Month 05${fy} 15,000 15,000 1,800 550 1,250`,
+        `Total Contributions for the year [ ${fy} ] 1,800 550 1,250`,
+        `Int. Updated upto 31/03/${fy + 1} 0 0 0`,
+        `Closing Balance as on 31/03/${fy + 1} ${closing}`,
+      ]);
+    const first = year(2024, '0 0 0', '1,800 550 1,250');
+    const second = year(2025, '1,800 550 1,250', '3,600 1,100 2,500');
+
+    expect((await planFile(replay([]), second, epfoPassbook)).warnings).toEqual([
+      'The passbook starts with a balance of ₹3,600 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit.',
+    ]);
+    const after = await planFile(await importAll([[first, epfoPassbook]]), second, epfoPassbook);
+
+    expect(after.warnings).toEqual([]);
+    // The year before closed with the same balance this one opens with.
+    expect(
+      after.items
+        .filter((i) => i.put.entity === 'snapshot' && i.put.value.asOf === '2025-03-31')
+        .map((i) => i.status),
+    ).toEqual(['same', 'same']);
   });
 
   it("warns when the entries don't add up to the totals or the closing balance", async () => {

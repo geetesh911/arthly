@@ -453,14 +453,20 @@
       "instrument": "epf",
       "asOf": "2025-03-31",
       "units": 165000,
-      "value": 165000
+      "value": 165000,
+      "openingWarnings": [
+        "The passbook starts with a balance of ₹2,25,000 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit."
+      ]
     },
     {
       "account": "epf",
       "instrument": "eps",
       "asOf": "2025-03-31",
       "units": 60000,
-      "value": 60000
+      "value": 60000,
+      "openingWarnings": [
+        "The passbook starts with a balance of ₹2,25,000 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit."
+      ]
     },
     {
       "account": "epf",
@@ -477,8 +483,6 @@
       "value": 75000
     }
   ],
-  "warnings": [
-    "The passbook starts with a balance of ₹2,25,000 on 2025-03-31. Import older passbooks for the full history; until then it counts as one deposit."
-  ],
+  "warnings": [],
   "asOf": "2026-03-31"
 }

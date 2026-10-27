@@ -235,11 +235,11 @@ export const bobPpfStatement: Importer = {
         asOf,
         units: opening,
         value: opening,
+        openingWarnings: [
+          `The statement starts with a balance of ${inr(opening)} on ${asOf}. Import older statements for the full history; until then it counts as one deposit.`,
+          'Add the date this PPF account was opened to see when it matures',
+        ],
       });
-      draft.warnings.push(
-        `The statement starts with a balance of ${inr(opening)} on ${asOf}. Import older statements for the full history; until then it counts as one deposit.`,
-        'Add the date this PPF account was opened to see when it matures',
-      );
     }
 
     const latest = postings.map((p) => p.date).reduce(maxDate);
