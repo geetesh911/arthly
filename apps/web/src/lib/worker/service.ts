@@ -764,8 +764,8 @@ export class DataService {
       youOwe: s.loans.youOwe,
       cardDues: s.cardDues,
       invested: s.invested,
-      netInvested: s.netInvested,
-      totalGain: s.totalGain,
+      gain: s.gain,
+      realised: s.realised,
       xirr: s.xirr,
       xirrEstimate: s.xirrEstimate,
       absoluteReturn: s.absoluteReturn,
@@ -778,7 +778,7 @@ export class DataService {
       history: points.map((p) => ({
         date: p.date,
         value: p.value,
-        netInvested: p.netInvested,
+        invested: p.invested,
         costOnly: p.costOnly,
       })),
       upcoming: this.upcomingDto(30),
@@ -954,7 +954,7 @@ export class DataService {
       history: single.map((p) => ({
         date: p.date,
         value: p.value,
-        netInvested: p.netInvested,
+        invested: p.invested,
         costOnly: p.costOnly,
       })),
     };

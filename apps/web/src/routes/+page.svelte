@@ -17,6 +17,7 @@
   import * as Tabs from '#lib/components/ui/tabs/index.ts';
   import ValueChart from '#lib/components/ValueChart.svelte';
   import { CLASS_NAMES, date, inr, inrSigned, pct } from '#lib/format.ts';
+  import { cn } from '#lib/utils.ts';
   import type { OverviewDto } from '#lib/worker/dto.ts';
 
   let range = $state<'1m' | '1y' | 'all'>('1y');
@@ -42,6 +43,8 @@
         : data.allocation[by]
       : [],
   );
+  // Below a rupee is rounding, not a sale or payout.
+  const realised = $derived(!!data && Math.abs(data.realised) >= 1);
   const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
   const hasLoans = $derived(!!data && (data.owedToYou > 0 || data.youOwe > 0));
   const hasCards = $derived(!!data && data.cardDues > 0);
@@ -99,13 +102,23 @@
           {/if}
         </div>
         <Separator />
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat label="Net invested" value={inr(data.netInvested)} />
+        <div class={cn('grid grid-cols-2 gap-4', realised ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
+          <Stat label="Invested" value={inr(data.invested)} testid="invested" />
           <Stat
-            label="Total gain"
-            value={inrSigned(data.totalGain)}
-            tone={data.totalGain >= 0 ? 'gain' : 'loss'}
+            label="Gain"
+            value={inrSigned(data.gain)}
+            tone={data.gain >= 0 ? 'gain' : 'loss'}
+            testid="gain"
           />
+          {#if realised}
+            <Stat
+              label="Realised gain"
+              value={inrSigned(data.realised)}
+              tone={data.realised >= 0 ? 'gain' : 'loss'}
+              hint="Sales and payouts"
+              testid="realised"
+            />
+          {/if}
           {#if young}
             <Stat label="Return" value={pct(data.absoluteReturn)} />
           {:else}

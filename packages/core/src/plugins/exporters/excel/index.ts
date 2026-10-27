@@ -81,8 +81,9 @@ export async function buildWorkbook(
     figure('Owed to you', s.loans.owedToYou, INR);
     figure('You owe', s.loans.youOwe, INR);
     figure('Card dues', s.cardDues, INR);
-    figure('Net invested', s.netInvested, INR);
-    figure('Total gain', s.totalGain, INR);
+    figure('Invested', s.invested, INR);
+    figure('Gain', s.gain, INR);
+    figure('Realised gain', s.realised, INR);
     figure(s.xirrEstimate ? 'XIRR (≈ estimate)' : 'XIRR', s.xirr, PCT);
     top.addRow([]);
     top.addRow(['Asset class', 'Value']).font = { bold: true };
@@ -223,7 +224,7 @@ export async function buildWorkbook(
     const hist = sheet(book, 'Monthly history', [
       { header: 'Month end', format: 'dd-mmm-yyyy' },
       { header: 'Investments', format: INR },
-      { header: 'Net invested', format: INR },
+      { header: 'Invested', format: INR },
       { header: 'Gain', format: INR },
       ...classes.map((c) => ({ header: c, format: INR })),
     ]);
@@ -239,8 +240,8 @@ export async function buildWorkbook(
         hist.addRow([
           date(p.date),
           p.value,
-          p.netInvested,
-          p.value - p.netInvested,
+          p.invested,
+          p.value - p.invested,
           ...classes.map((c) => p.assetClass[c as keyof typeof p.assetClass] ?? 0),
         ]);
       }

@@ -217,7 +217,7 @@ describe('loans in net worth and analytics', () => {
     });
     expect(s.netWorth).toBe(35_000);
     expect(s.netInvested).toBe(plain.netInvested);
-    expect(s.totalGain).toBe(5_000);
+    expect(s).toMatchObject({ invested: plain.invested, gain: 5_000, realised: 0 });
     expect(s.xirr).toBe(plain.xirr);
     expect(s.absoluteReturn).toBe(plain.absoluteReturn);
     expect(s.holdings[0]?.weight).toBe(1);

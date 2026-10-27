@@ -49,8 +49,7 @@ describe('summary', () => {
     const s = summary(family().state(), book, '2026-01-01');
 
     expect(s.netWorth).toBe(7_500);
-    expect(s.netInvested).toBe(6_000);
-    expect(s.totalGain).toBe(1_500);
+    expect(s).toMatchObject({ invested: 6_000, gain: 1_500, realised: 0, netInvested: 6_000 });
     expect(s.xirr).toBeCloseTo(0.25, 6);
     expect(s.absoluteReturn).toBeCloseTo(0.25, 6);
     expect(s.allocation.assetClass).toEqual({ equity: 1_500, gold: 6_000 });
@@ -85,14 +84,33 @@ describe('summary', () => {
     });
   });
 
-  it('counts realised gains from closed holdings in the totals only', () => {
+  it('counts the gain on a holding sold in full as realised', () => {
     const l = family().txn({ date: '2025-06-01', type: 'sell', units: 10, amount: 1_200 });
     const s = summary(l.state(), book, '2026-01-01');
 
     expect(s.holdings.map((h) => h.instrument.id)).toEqual(['ins_2']);
     expect(s.netWorth).toBe(6_000);
+    expect(s).toMatchObject({ invested: 5_000, gain: 1_000, realised: 200 });
     expect(s.netInvested).toBe(6_000 - 1_200);
-    expect(s.totalGain).toBe(1_200);
+  });
+
+  it('matches the holdings for invested and gain, with sales and payouts as realised', () => {
+    const l = family().txn({ date: '2025-06-01', type: 'sell', units: 4, amount: 520 }).txn({
+      date: '2025-08-01',
+      type: 'dividend',
+      amount: 50,
+      accountId: 'acc_2',
+      instrumentId: 'ins_2',
+    });
+    const s = summary(l.state(), book, '2026-01-01');
+    const sum = (key: 'invested' | 'gain') => s.holdings.reduce((n, h) => n + h[key], 0);
+
+    // 4 of 10 units that cost 1,000 sold for 520, and a dividend of 50.
+    expect(s).toMatchObject({ invested: 5_600, gain: 1_300, realised: 120 + 50 });
+    expect(s.invested).toBe(sum('invested'));
+    expect(s.gain).toBe(sum('gain'));
+    expect(s.gain + s.realised).toBe(s.investments - s.netInvested);
+    expect(s.absoluteReturn).toBeCloseTo(1_300 / 5_600, 6);
   });
 
   it('assumes payouts of a payout FD were paid, for XIRR', () => {
@@ -214,6 +232,24 @@ describe('history', () => {
       ['2025-06-15', 1_300, false],
     ]);
     expect(history(l.state(), prices, '2025-01-01', '2025-01-03', { step: 'day' })).toHaveLength(3);
+  });
+
+  it('shows as invested the cost of what was held, not what a sale brought in', () => {
+    const l = new Ledger()
+      .member()
+      .account({ id: 'acc_1', kind: 'mf' })
+      .instrument({ id: 'ins_1', kind: 'mf', ids: { amfi: '1' } })
+      .txn({ date: '2025-01-10', type: 'buy', units: 10, amount: 1_000 })
+      .txn({ date: '2025-03-10', type: 'sell', units: 5, amount: 900 });
+    const points = history(l.state(), new PriceBook(), '2025-01-01', '2025-03-31', {
+      step: 'month',
+    });
+
+    expect(points.map((p) => [p.date, p.invested])).toEqual([
+      ['2025-01-31', 1_000],
+      ['2025-02-28', 1_000],
+      ['2025-03-31', 500],
+    ]);
   });
 });
 

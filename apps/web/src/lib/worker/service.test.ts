@@ -826,7 +826,9 @@ describe('loans', () => {
       investments: 0,
       owedToYou: 50_000,
       youOwe: 0,
-      netInvested: 0,
+      invested: 0,
+      gain: 0,
+      realised: 0,
       loans: 1,
     });
     expect(overview.allocation.assetClass).toEqual([['Owed to you', 50_000]]);

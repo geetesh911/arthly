@@ -14,7 +14,7 @@
     points.map((p) => ({
       date: new Date(`${p.date}T00:00:00Z`),
       value: p.value,
-      invested: p.netInvested,
+      invested: p.invested,
     })),
   );
   // Over two months the axis shows months; within them, days.

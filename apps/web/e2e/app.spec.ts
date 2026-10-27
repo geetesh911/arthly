@@ -139,7 +139,18 @@ test('order history after the holdings files lands in the same holdings', async 
 
   // The orders add up to the units in the holdings files, so nothing is counted twice.
   expect(await netWorth(page)).toBe('₹12,91,439');
+  // Home counts invested and gain as Holdings does; the profit on what was sold shows apart.
+  const invested = (await page.getByTestId('invested').textContent())!;
+  const gain = (await page.getByTestId('gain').textContent())!;
+
+  expect([invested, gain]).toEqual(['₹10,82,730', '+₹2,08,709']);
+  await expect(page.getByTestId('realised')).toHaveText('+₹33,100');
   await page.getByRole('link', { name: 'Holdings' }).click();
+  // The total row's invested and gain cells, hidden on phones but still in the page.
+  const total = page.locator('tfoot td');
+
+  await expect(total.nth(1)).toHaveText(invested);
+  await expect(total.nth(3)).toContainText(gain);
   await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
   await expect(page.getByText('PPFAS Mutual Fund folio ••••5678').first()).toBeVisible();
 });

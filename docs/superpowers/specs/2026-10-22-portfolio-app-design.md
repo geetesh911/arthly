@@ -430,14 +430,15 @@ interface AssetType {
 - **Holding:**
   - **invested:** the cost of the open lots, or for deposits, PPF and EPF: principal + contributions − withdrawals.
   - **gain:** value − invested.
-- **Portfolio:**
-  - **net invested:** money in − money out.
-  - **total gain:** value − net invested.
+- **Portfolio:** Home, Holdings and Analytics use the same figures.
+  - **invested** and **gain:** the sums of the holdings' invested and gain.
+  - **realised gain:** sales above cost, plus dividends, interest and coupons paid out. Gain + realised gain = value − net invested, where net invested is money in − money out.
+  - **return:** gain ÷ invested.
 - **XIRR:**
   - **Cash flows:** money going in is negative; money coming out (sells, withdrawals, payouts, dividends paid) is positive, plus the final value today.
   - **Not cash flows:** reinvested dividends and cumulative interest stay internal.
   - **Method:** Newton's method, falling back to bisection. Returns `null` when there's no sign change.
-  - **Display:** if the first flow is less than 365 days ago, the UI shows absolute return instead.
+  - **Display:** if the first flow is less than 365 days ago, the UI shows return instead.
   - **Estimates:** XIRR is marked ≈ when an `opening` position from a snapshot is involved.
 - **History:**
   - **Prices:** each day uses the latest known price, carried forward. Before the first known price, cost is used, and that stretch is marked.
@@ -469,7 +470,7 @@ Each check returns `{ key, severity: 'warn'|'info', message, fix? }`. A check ca
 The app is designed for phones first, with a member filter at the top of every screen.
 
 1. **Dashboard:**
-   - net worth, net invested, total gain and XIRR
+   - net worth, invested, gain, realised gain when there is any, and XIRR
    - allocation by asset class, member or group
    - a value chart (1 month, 1 year, all time)
    - warnings from the checks, and what's coming up
@@ -495,12 +496,12 @@ The app is designed for phones first, with a member filter at the top of every s
 
 | Tab | Columns |
 |---|---|
-| Summary | As-of date, the filter used, net worth, net invested, total gain, XIRR, an allocation table |
+| Summary | As-of date, the filter used, net worth, invested, gain, realised gain, XIRR, an allocation table |
 | Holdings | Member, account, group, instrument, class, units, price, price date, invested, value, gain, gain %, XIRR, weight |
 | Transactions | Date, member, account, instrument, type, units, price, amount, currency, source |
 | Income | Financial year, member, instrument, type, received, accrued, note |
 | Coming up | Date, event, instrument, amount |
-| History | Month-end, net worth, net invested, gain, value per class |
+| History | Month-end, investments, invested, gain, value per class |
 
 **Data tabs** (`_members`, `_accounts`, `_instruments`, `_transactions`, `_snapshots`, `_groups`) hold every field, including IDs, in the template format.
 - **Who reads them:** the `template` importer.

@@ -67,13 +67,20 @@ export interface Summary {
   loans: LoanTotals;
   /** What's left to pay on each card's latest bill. */
   cardDues: number;
-  /** Cost of what is held now. */
+  /** Cost of what is held now, the sum of each holding's invested. */
   invested: number;
+  /** What is held now less its cost, the sum of each holding's gain. */
+  gain: number;
+  /**
+   * Gain already taken: sales above cost, and dividends, interest and coupons paid out. With
+   * `gain`, it makes up value less net invested.
+   */
+  realised: number;
   /** Money in less money out, over all time. */
   netInvested: number;
-  totalGain: number;
   xirr: number | null;
   xirrEstimate: boolean;
+  /** Gain as a share of invested. */
   absoluteReturn: number | null;
   firstFlow?: ISODate;
   /** Holdings still held (open or matured); closed ones only count in the totals. */
@@ -292,19 +299,23 @@ export function summary(
     }
   }
 
+  const invested = held.reduce((sum, h) => sum + h.invested, 0);
+  const gain = held.reduce((sum, h) => sum + h.gain, 0);
+
   return {
     date,
     netWorth: investments + loans.owedToYou - loans.youOwe - cards,
     investments,
     loans,
     cardDues: cards,
-    invested: held.reduce((sum, h) => sum + h.invested, 0),
+    invested,
+    gain,
+    realised: investments - netInvested - gain,
     netInvested,
-    totalGain: investments - netInvested,
     xirr: rate,
     // The total is worked out from the flows, so it is an estimate whenever a file opened one.
     xirrEstimate: all.some((h) => h.position.estimate),
-    absoluteReturn: netInvested > 0 ? (investments - netInvested) / netInvested : null,
+    absoluteReturn: invested > 0 ? gain / invested : null,
     ...(firstFlow ? { firstFlow } : {}),
     holdings: held.sort((a, b) => b.value - a.value),
     allocation,
@@ -314,7 +325,8 @@ export function summary(
 export interface HistoryPoint {
   date: ISODate;
   value: number;
-  netInvested: number;
+  /** Cost of what was held that day, as Holdings counts it. */
+  invested: number;
   assetClass: Partial<Record<AssetClass, number>>;
   /** Some holding had no price yet and was counted at cost. */
   costOnly: boolean;
@@ -361,11 +373,14 @@ export function history(
       assetClass[h.instrument.assetClass] = (assetClass[h.instrument.assetClass] ?? 0) + h.value;
     }
 
-    const { value, netInvested } = totals(holdings, date);
+    const value = holdings.reduce((sum, h) => sum + h.value, 0);
+    const invested = holdings
+      .filter((h) => h.status !== 'closed')
+      .reduce((sum, h) => sum + h.invested, 0);
     const costOnly = holdings.some(
       (h) => h.status === 'open' && h.estimate && !h.priceDate && !isBalanceKind(h.instrument.kind),
     );
 
-    return { date, value, netInvested, assetClass, costOnly };
+    return { date, value, invested, assetClass, costOnly };
   });
 }

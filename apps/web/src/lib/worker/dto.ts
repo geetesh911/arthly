@@ -119,7 +119,8 @@ export interface UpcomingDto {
 export interface Point {
   date: ISODate;
   value: number;
-  netInvested: number;
+  /** Cost of what was held that day. */
+  invested: number;
   costOnly: boolean;
 }
 
@@ -139,9 +140,11 @@ export interface OverviewDto {
   youOwe: number;
   /** Left to pay on cards. */
   cardDues: number;
+  /** Cost of what is held now, and its gain, as Holdings and Analytics count them. */
   invested: number;
-  netInvested: number;
-  totalGain: number;
+  gain: number;
+  /** Sales above cost, and dividends, interest and coupons paid out. */
+  realised: number;
   xirr: number | null;
   xirrEstimate: boolean;
   absoluteReturn: number | null;
