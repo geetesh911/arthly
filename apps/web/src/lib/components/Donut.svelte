@@ -47,7 +47,8 @@
               {#snippet formatter({ name, value, item })}
                 <div class="flex w-full items-center gap-2">
                   <span class="size-2.5 shrink-0 rounded-full" style:background={item.color}></span>
-                  <span class="text-muted-foreground flex-1">{name}</span>
+                  <!-- The chart names a slice by its key, so look its label back up. -->
+                  <span class="text-muted-foreground flex-1">{config[name]?.label ?? name}</span>
                   <span class="font-medium tabular-nums">{inr(value as number)}</span>
                 </div>
               {/snippet}
