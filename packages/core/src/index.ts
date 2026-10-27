@@ -5,6 +5,7 @@ export * from './crypto/link.ts';
 export * from './engine/analytics.ts';
 export * from './engine/asset-type.ts';
 export * from './engine/benchmarks.ts';
+export * from './engine/bond-vs-fd.ts';
 export * from './engine/cards.ts';
 export * from './engine/checks.ts';
 export * from './engine/fund-exposure.ts';

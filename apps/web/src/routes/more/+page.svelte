@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
+  import Calculator from '@lucide/svelte/icons/calculator';
   import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import CreditCard from '@lucide/svelte/icons/credit-card';
@@ -35,6 +36,12 @@
       label: 'Plan',
       hint: 'Targets, new money and your emergency fund',
       icon: Target,
+    },
+    {
+      href: '#/tools',
+      label: 'Tools',
+      hint: 'Calculators, like bond or FD',
+      icon: Calculator,
     },
     {
       href: '#/income',

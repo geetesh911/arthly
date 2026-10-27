@@ -2,6 +2,7 @@
 // The app's sections: the phone tab bar and the desktop sidebar each show their own subset.
 // Add isn't one: it's a button on both that opens the list of forms below.
 import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
+import Calculator from '@lucide/svelte/icons/calculator';
 import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
 import ChartPie from '@lucide/svelte/icons/chart-pie';
 import CreditCard from '@lucide/svelte/icons/credit-card';
@@ -75,6 +76,14 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
+    href: '#/tools',
+    label: 'Tools',
+    icon: Calculator,
+    match: starts('/tools'),
+    phone: false,
+    desktop: true,
+  },
+  {
     href: '#/checks',
     label: 'Checks',
     icon: ShieldCheck,
@@ -94,7 +103,16 @@ export const sections: Section[] = [
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts('/more', '/income', '/settings', '/analytics', '/plan', '/loans', '/cards'),
+    match: starts(
+      '/more',
+      '/income',
+      '/settings',
+      '/analytics',
+      '/plan',
+      '/tools',
+      '/loans',
+      '/cards',
+    ),
     phone: true,
     desktop: false,
   },

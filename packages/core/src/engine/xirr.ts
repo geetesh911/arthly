@@ -7,16 +7,28 @@ export interface Flow {
   amount: number;
 }
 
+/** A flow some years after the first, which can be a fraction of a year. */
+export interface TimedFlow {
+  years: number;
+  amount: number;
+}
+
 /** Excel's XIRR: the annual rate r where Σ amount / (1 + r)^(days / 365) = 0. Null without a root. */
 export function xirr(flows: readonly Flow[]): number | null {
+  const start = flows.reduce((min, f) => (f.date < min ? f.date : min), flows[0]?.date ?? '');
+
+  return irr(flows.map((f) => ({ years: daysBetween(start, f.date) / 365, amount: f.amount })));
+}
+
+/** The annual rate r where Σ amount / (1 + r)^years = 0. Null without a root. */
+export function irr(flows: readonly TimedFlow[]): number | null {
   const live = flows.filter((f) => f.amount !== 0);
 
   if (!live.some((f) => f.amount < 0) || !live.some((f) => f.amount > 0)) {
     return null;
   }
 
-  const start = live.reduce((min, f) => (f.date < min ? f.date : min), live[0]!.date);
-  const terms = live.map((f) => ({ t: daysBetween(start, f.date) / 365, a: f.amount }));
+  const terms = live.map((f) => ({ t: f.years, a: f.amount }));
 
   const npv = (r: number) => terms.reduce((sum, { t, a }) => sum + a / (1 + r) ** t, 0);
   const slope = (r: number) =>
