@@ -19,6 +19,8 @@
 
 <PageHeader
   title="Checks"
+  back={{ href: '#/more', label: 'More' }}
+  backClass="lg:hidden"
   description="Things in your data that may need a look: stale balances, mismatches, missing prices."
 />
 <Card.Root>

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // The app's sections: the phone tab bar and the desktop sidebar each show their own subset.
-// Add isn't one: it's a button on both that opens the list of forms below.
+// Add isn't one: it's a button, in the sidebar on desktop and the header on phones, that opens the
+// list of forms below.
 import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 import Calculator from '@lucide/svelte/icons/calculator';
 import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
@@ -64,7 +65,7 @@ export const sections: Section[] = [
     label: 'Analytics',
     icon: ChartNoAxesCombined,
     match: starts('/analytics'),
-    phone: false,
+    phone: true,
     desktop: true,
   },
   {
@@ -72,7 +73,7 @@ export const sections: Section[] = [
     label: 'Plan',
     icon: Target,
     match: starts('/plan'),
-    phone: false,
+    phone: true,
     desktop: true,
   },
   {
@@ -88,7 +89,7 @@ export const sections: Section[] = [
     label: 'Checks',
     icon: ShieldCheck,
     match: starts('/checks'),
-    phone: true,
+    phone: false,
     desktop: true,
   },
   {
@@ -103,16 +104,7 @@ export const sections: Section[] = [
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts(
-      '/more',
-      '/income',
-      '/settings',
-      '/analytics',
-      '/plan',
-      '/tools',
-      '/loans',
-      '/cards',
-    ),
+    match: starts('/more', '/checks', '/income', '/settings', '/tools', '/loans', '/cards'),
     phone: true,
     desktop: false,
   },

@@ -3,8 +3,8 @@
   import type { Snippet } from 'svelte';
   import { on } from 'svelte/events';
   import { page } from '$app/state';
-  import CirclePlus from '@lucide/svelte/icons/circle-plus';
   import LockIcon from '@lucide/svelte/icons/lock';
+  import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 
@@ -14,11 +14,11 @@
   import Logo from '#lib/components/Logo.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
   import { Badge } from '#lib/components/ui/badge/index.ts';
-  import { Button } from '#lib/components/ui/button/index.ts';
+  import { Button, buttonVariants } from '#lib/components/ui/button/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { cn } from '#lib/utils.ts';
 
-  import { addGroups, sections } from './Nav.ts';
+  import { addGroups, type Section, sections } from './Nav.ts';
 
   let { children }: { children: Snippet } = $props();
   let waiting = $state<ServiceWorker | null>(null);
@@ -65,7 +65,7 @@
     );
 </script>
 
-{#snippet tab(Icon: typeof CirclePlus, label: string, active: boolean)}
+{#snippet tab(Icon: Section['icon'], label: string, active: boolean)}
   <span
     class={cn(
       'grid h-7 w-12 place-items-center rounded-full transition-colors',
@@ -132,6 +132,10 @@
           >Sample data</Badge
         >{/if}
       {@render member('sm', 'max-w-[40%]')}
+      <!-- A round + leaves the portfolio's name room beside the member menu. -->
+      <AddSheet class={buttonVariants({ size: 'icon' })}
+        ><Plus /><span class="sr-only">Add</span></AddSheet
+      >
       <Button variant="ghost" size="icon" aria-label="Lock" onclick={lock}><LockIcon /></Button>
     </div>
   </header>
@@ -166,12 +170,7 @@
     aria-label="Screens"
     class="bg-background/90 fixed inset-x-0 bottom-0 z-20 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
   >
-    {#each tabs as s, i (s.href)}
-      <!-- Add sits in the middle, and lights up on the import screen it leads to. -->
-      {#if i === 2}
-        {@const importing = route.startsWith('/import')}
-        <AddSheet class={tabClass(importing)}>{@render tab(CirclePlus, 'Add', importing)}</AddSheet>
-      {/if}
+    {#each tabs as s (s.href)}
       {@const active = s.match(route)}
       <a href={s.href} aria-current={active ? 'page' : undefined} class={tabClass(active)}>
         {@render tab(s.icon, s.label, active)}

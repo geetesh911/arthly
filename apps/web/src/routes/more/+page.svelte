@@ -1,18 +1,23 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
 <script lang="ts">
   import Calculator from '@lucide/svelte/icons/calculator';
-  import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import CreditCard from '@lucide/svelte/icons/credit-card';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
   import Settings from '@lucide/svelte/icons/settings';
-  import Target from '@lucide/svelte/icons/target';
+  import ShieldCheck from '@lucide/svelte/icons/shield-check';
 
   import PageHeader from '#lib/components/PageHeader.svelte';
   import * as Card from '#lib/components/ui/card/index.ts';
 
   const links = [
+    {
+      href: '#/checks',
+      label: 'Checks',
+      hint: 'Stale balances, mismatches and missing prices',
+      icon: ShieldCheck,
+    },
     {
       href: '#/loans',
       label: 'Loans',
@@ -24,18 +29,6 @@
       label: 'Cards',
       hint: 'Credit card bills and payments',
       icon: CreditCard,
-    },
-    {
-      href: '#/analytics',
-      label: 'Portfolio analytics',
-      hint: 'Allocation, concentration and fund holdings',
-      icon: ChartNoAxesCombined,
-    },
-    {
-      href: '#/plan',
-      label: 'Plan',
-      hint: 'Targets, new money and your emergency fund',
-      icon: Target,
     },
     {
       href: '#/tools',

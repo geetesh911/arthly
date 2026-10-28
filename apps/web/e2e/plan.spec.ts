@@ -15,18 +15,12 @@ test('plan sets targets, splits new money and checks the emergency fund', async 
   await page.getByRole('button', { name: 'Try with sample data' }).click();
   await expect(page.getByTestId('net-worth')).toBeVisible();
 
-  if (info.project.name === 'phone') {
-    await page
-      .getByRole('navigation', { name: 'Screens' })
-      .getByRole('link', { name: 'More' })
-      .click();
-    await page.getByRole('link', { name: /^Plan/ }).click();
-  } else {
-    await page
-      .getByRole('navigation', { name: 'Sections' })
-      .getByRole('link', { name: 'Plan', exact: true })
-      .click();
-  }
+  // Plan is in the sidebar on desktop and the tab bar on phones.
+  await page
+    .getByRole('navigation', { name: 'Sections' })
+    .or(page.getByRole('navigation', { name: 'Screens' }))
+    .getByRole('link', { name: 'Plan', exact: true })
+    .click();
 
   await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeVisible();
 

@@ -91,7 +91,7 @@
   }
 </script>
 
-<PageHeader title="Analytics" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden">
+<PageHeader title="Analytics">
   {#snippet actions()}<Button variant="outline" size="sm" onclick={refresh} disabled={refreshing}
       ><RefreshCw class={refreshing ? 'animate-spin' : ''} />{refreshing
         ? 'Refreshing…'

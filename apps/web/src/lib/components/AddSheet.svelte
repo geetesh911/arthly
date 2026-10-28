@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-only -->
-<!-- The Add tab on phones: a panel from the bottom with a link to each form, grouped by area. -->
+<!-- Add on phones: a panel from the bottom with a link to each form, grouped by area. -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
 

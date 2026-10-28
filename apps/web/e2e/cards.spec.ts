@@ -33,15 +33,13 @@ async function createVault(page: Page) {
   await expect(page.getByRole('heading', { name: 'Import', exact: true })).toBeVisible();
 }
 
-// Add opens a menu from the sidebar on desktop, and a panel from the tab bar on phones.
+// Add opens a menu from the sidebar on desktop, and a panel from the header on phones.
 async function openAdd(page: Page, name: string) {
   const sidebar = page.getByRole('complementary').getByRole('button', { name: 'Add' });
-  const tab = page.getByRole('navigation', { name: 'Screens' }).getByRole('button', {
-    name: 'Add',
-  });
+  const header = page.getByRole('banner').getByRole('button', { name: 'Add' });
 
-  await expect(sidebar.or(tab)).toBeVisible();
-  await ((await sidebar.isVisible()) ? sidebar : tab).click();
+  await expect(sidebar.or(header)).toBeVisible();
+  await ((await sidebar.isVisible()) ? sidebar : header).click();
   await page
     .getByRole('menuitem', { name, exact: true })
     .or(page.getByRole('dialog').getByRole('link', { name, exact: true }))

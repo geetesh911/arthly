@@ -50,15 +50,13 @@ async function createVault(page: Page, name = 'Family') {
   return code;
 }
 
-// Add opens a menu from the sidebar on desktop, and a panel from the tab bar on phones.
+// Add opens a menu from the sidebar on desktop, and a panel from the header on phones.
 async function openAdd(page: Page, name: string) {
   const sidebar = page.getByRole('complementary').getByRole('button', { name: 'Add' });
-  const tab = page.getByRole('navigation', { name: 'Screens' }).getByRole('button', {
-    name: 'Add',
-  });
+  const header = page.getByRole('banner').getByRole('button', { name: 'Add' });
 
-  await expect(sidebar.or(tab)).toBeVisible();
-  await ((await sidebar.isVisible()) ? sidebar : tab).click();
+  await expect(sidebar.or(header)).toBeVisible();
+  await ((await sidebar.isVisible()) ? sidebar : header).click();
   await page
     .getByRole('menuitem', { name, exact: true })
     .or(page.getByRole('dialog').getByRole('link', { name, exact: true }))
@@ -582,19 +580,12 @@ test('index levels load with nothing held, are searchable and survive a failed e
     }),
   );
   await createVault(page);
-  const direct = page.getByRole('navigation', { name: 'Sections' }).getByRole('link', {
-    name: 'Analytics',
-  });
-
-  if (await direct.isVisible()) {
-    await direct.click();
-  } else {
-    await page
-      .getByRole('navigation', { name: 'Screens' })
-      .getByRole('link', { name: 'More' })
-      .click();
-    await page.getByRole('link', { name: /Portfolio analytics/ }).click();
-  }
+  // Analytics is in the sidebar on desktop and the tab bar on phones.
+  await page
+    .getByRole('navigation', { name: 'Sections' })
+    .or(page.getByRole('navigation', { name: 'Screens' }))
+    .getByRole('link', { name: 'Analytics', exact: true })
+    .click();
 
   await expect(page.getByText('Your portfolio analysis starts here')).toBeVisible();
   await page.getByRole('button', { name: 'Refresh data' }).click();
