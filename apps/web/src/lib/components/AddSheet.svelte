@@ -28,7 +28,7 @@
                 onclick={() => (open = false)}
                 class="hover:bg-muted flex min-h-12 items-center gap-3 rounded-2xl border px-3 py-2 text-sm font-medium transition-colors"
               >
-                <link.icon class="text-brand size-5 shrink-0" />
+                <link.icon class="text-muted-foreground size-5 shrink-0" />
                 {link.label}
               </a>
             {/each}

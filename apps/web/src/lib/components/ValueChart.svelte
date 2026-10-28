@@ -4,7 +4,7 @@
   import { AreaChart } from 'layerchart';
 
   import * as Chart from '#lib/components/ui/chart/index.ts';
-  import { date, inr, inrShort } from '#lib/format.ts';
+  import { date, inr } from '#lib/format.ts';
   import { cn } from '#lib/utils.ts';
   import type { Point } from '#lib/worker/dto.ts';
 
@@ -32,7 +32,7 @@
         });
 
   const config = {
-    value: { label: 'Value', color: 'var(--chart-1)' },
+    value: { label: 'Value', color: 'var(--foreground)' },
     invested: { label: 'Invested', color: 'var(--muted-foreground)' },
   } satisfies Chart.ChartConfig;
 </script>
@@ -42,7 +42,8 @@
     The chart appears once there's more than a day of history.
   </p>
 {:else}
-  <Chart.Container {config} class={cn('aspect-auto h-52 w-full', className)}>
+  <!-- Ink keeps the chart quiet: a single line, dates below, and figures in the tooltip. -->
+  <Chart.Container {config} class={cn('aspect-auto h-40 w-full', className)}>
     <AreaChart
       {data}
       x="date"
@@ -52,7 +53,7 @@
           key: 'value',
           label: 'Value',
           color: config.value.color,
-          props: { 'fill-opacity': 0.18, line: { class: 'stroke-2' } },
+          props: { fill: 'none', line: { class: 'stroke-2' } },
         },
         {
           key: 'invested',
@@ -62,11 +63,12 @@
         },
       ]}
       seriesLayout="overlap"
-      padding={{ left: 48, bottom: 24, top: 8, right: 8 }}
-      props={{
-        xAxis: { format: tick, ticks: 4 },
-        yAxis: { format: inrShort, ticks: 4 },
-      }}
+      axis="x"
+      grid={false}
+      rule={false}
+      yBaseline={null}
+      padding={{ left: 4, bottom: 24, top: 8, right: 4 }}
+      props={{ xAxis: { format: tick, ticks: 3 } }}
     >
       {#snippet tooltip()}
         <Chart.Tooltip labelFormatter={(d: Date) => date(d.toISOString())} indicator="line">

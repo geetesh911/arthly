@@ -31,8 +31,8 @@
   <!-- The title keeps its width, so on a phone the actions wrap below it rather than squeeze it. -->
   <div class="flex flex-wrap items-center gap-3">
     <div class="min-w-0 flex-auto">
-      <h1 class="text-2xl font-semibold tracking-tight">{title}</h1>
-      {#if description}<p class="text-muted-foreground text-sm">{description}</p>{/if}
+      <h1 class="text-headline font-semibold">{title}</h1>
+      {#if description}<p class="text-muted-foreground text-small">{description}</p>{/if}
     </div>
     {#if actions}<div class="flex items-center gap-2">{@render actions()}</div>{/if}
   </div>

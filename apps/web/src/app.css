@@ -41,90 +41,85 @@
 }
 
 /*
-  Arthly's palette, the single source of truth for colour. Light: Citrus Lime #B7E33D, Light Lime
-  #D9F99D, Lemon Yellow #FDE047, Forest Green #23452C, Deep Green #19251A on warm off-white. Dark:
-  Citrus Midnight, #C4F05A on #121713. Each colour is light-dark(light, dark), resolved by
+  Arthly's palette, Ink: a quiet neutral base, with colour only where money moves. Lime is the
+  brand, kept to the logo and the active tab. Each colour is light-dark(light, dark), resolved by
   color-scheme, so the theme needs no script; the comment above each gives the source hex (light,
   then dark), converted to OKLCH. Text pairs meet WCAG AA (4.5:1).
 */
 :root {
   color-scheme: light dark;
-  --radius: 0.625rem;
-  /* #F7F9EF #121713 */
-  --background: light-dark(oklch(0.978 0.013 115.828), oklch(0.198 0.011 151.138));
-  /* #19251A #F0F5EB */
-  --foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
-  /* #FFFFFF #1A211B */
-  --card: light-dark(oklch(1 0 0), oklch(0.239 0.015 149.155));
-  --card-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
-  /* #FFFFFF #232C24: dialogs and dropdowns sit one step above cards in dark. */
-  --popover: light-dark(oklch(1 0 0), oklch(0.282 0.019 148.133));
-  --popover-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
-  /* #B7E33D #C4F05A */
-  --primary: light-dark(oklch(0.855 0.19 123.614), oklch(0.896 0.181 123.953));
-  /* #19251A #192219 */
-  --primary-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.24 0.021 144.875));
-  /* #D9F99D #2E3A23 (citrus at 12% over a card) */
-  --secondary: light-dark(oklch(0.938 0.122 124.321), oklch(0.331 0.042 130.783));
-  /* #23452C #C4F05A */
-  --secondary-foreground: light-dark(oklch(0.357 0.059 150.993), oklch(0.896 0.181 123.953));
-  /* #F0F3E8 #232C24 */
-  --muted: light-dark(oklch(0.959 0.015 119.105), oklch(0.282 0.019 148.133));
-  /* #66705E #A5B2A2 */
-  --muted-foreground: light-dark(oklch(0.531 0.03 131.189), oklch(0.749 0.027 139.829));
-  /* #FDE047 #333C34 (hover and selected surfaces) */
-  --accent: light-dark(oklch(0.905 0.166 98.111), oklch(0.345 0.018 148.321));
-  /* #292D17 #F0F5EB */
-  --accent-foreground: light-dark(oklch(0.287 0.037 117.245), oklch(0.964 0.014 128.626));
+  --radius: 0.75rem;
+  /* #FAFAF7 #0E0F0E */
+  --background: light-dark(oklch(0.984 0.004 106.472), oklch(0.167 0.003 145.457));
+  /* #111311 #F2F3F0 */
+  --foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  /* #FFFFFF #161816 */
+  --card: light-dark(oklch(1 0 0), oklch(0.206 0.005 145.392));
+  --card-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  /* #FFFFFF #1C1E1C: sheets, dialogs and dropdowns sit one step above cards in dark. */
+  --popover: light-dark(oklch(1 0 0), oklch(0.232 0.005 145.418));
+  --popover-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  /* #111311 #F2F3F0: buttons are ink, not lime. */
+  --primary: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  /* #FAFAF7 #0E0F0E */
+  --primary-foreground: light-dark(oklch(0.984 0.004 106.472), oklch(0.167 0.003 145.457));
+  /* #F1F1EC #1C1E1C */
+  --secondary: light-dark(oklch(0.957 0.007 106.524), oklch(0.232 0.005 145.418));
+  --secondary-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  /* #F1F1EC #1C1E1C: callouts, segmented controls and empty bar tracks. */
+  --muted: light-dark(oklch(0.957 0.007 106.524), oklch(0.232 0.005 145.418));
+  /* #656963 #9A9E98 */
+  --muted-foreground: light-dark(oklch(0.515 0.01 134.929), oklch(0.694 0.01 134.897));
+  /* #F1F1EC #2A2D2A (hover and selected surfaces) */
+  --accent: light-dark(oklch(0.957 0.007 106.524), oklch(0.293 0.007 145.398));
+  --accent-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
   /* #DC2626 #F87171 */
   --destructive: light-dark(oklch(0.577 0.215 27.325), oklch(0.711 0.166 22.216));
-  /* #FFFFFF #192219. Soft red tints can't give red text 4.5:1, so destructive fills are solid. */
-  --destructive-foreground: light-dark(oklch(1 0 0), oklch(0.24 0.021 144.875));
-  /* #E1E8D5 #344136 */
-  --border: light-dark(oklch(0.921 0.026 123.443), oklch(0.36 0.025 149.407));
-  /* #DCE4D0 #3B4A3D: inputs are filled with this at 50%, a step lighter than borders in dark. */
-  --input: light-dark(oklch(0.907 0.028 124.793), oklch(0.392 0.029 148.723));
-  /* #789D25 #C4F05A */
-  --ring: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
-  /* #F0F4E6 #1A211B */
-  --sidebar: light-dark(oklch(0.96 0.019 119.748), oklch(0.239 0.015 149.155));
-  --sidebar-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.964 0.014 128.626));
-  /* #B7E33D #C4F05A */
-  --sidebar-primary: light-dark(oklch(0.855 0.19 123.614), oklch(0.896 0.181 123.953));
-  /* #19251A #192219 */
-  --sidebar-primary-foreground: light-dark(oklch(0.249 0.027 146.867), oklch(0.24 0.021 144.875));
-  /* #E5EED4 #232C24 */
-  --sidebar-accent: light-dark(oklch(0.935 0.036 122.656), oklch(0.282 0.019 148.133));
-  /* #23452C #F0F5EB */
-  --sidebar-accent-foreground: light-dark(oklch(0.357 0.059 150.993), oklch(0.964 0.014 128.626));
-  --sidebar-border: light-dark(oklch(0.921 0.026 123.443), oklch(0.36 0.025 149.407));
-  --sidebar-ring: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
-  /* #23452C #C4F05A, for icons and links: lime is too light for text on a light page. */
-  --brand: light-dark(oklch(0.357 0.059 150.993), oklch(0.896 0.181 123.953));
+  /* #FFFFFF #0E0F0E. Soft red tints can't give red text 4.5:1, so destructive fills are solid. */
+  --destructive-foreground: light-dark(oklch(1 0 0), oklch(0.167 0.003 145.457));
+  /* #ECECE8 #242624 */
+  --border: light-dark(oklch(0.942 0.005 106.501), oklch(0.266 0.005 145.442));
+  /* #E2E2DC #2E312E: inputs need a firmer edge than the lines between rows. */
+  --input: light-dark(oklch(0.911 0.008 106.558), oklch(0.309 0.007 145.41));
+  /* #656963 #9A9E98 */
+  --ring: light-dark(oklch(0.515 0.01 134.929), oklch(0.694 0.01 134.897));
+  /* #F4F4F0 #121412 */
+  --sidebar: light-dark(oklch(0.966 0.005 106.498), oklch(0.188 0.005 145.37));
+  --sidebar-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  --sidebar-primary: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  --sidebar-primary-foreground: light-dark(oklch(0.984 0.004 106.472), oklch(0.167 0.003 145.457));
+  /* #ECECE8 #242624 */
+  --sidebar-accent: light-dark(oklch(0.942 0.005 106.501), oklch(0.266 0.005 145.442));
+  --sidebar-accent-foreground: light-dark(oklch(0.184 0.005 145.363), oklch(0.963 0.004 121.561));
+  --sidebar-border: light-dark(oklch(0.942 0.005 106.501), oklch(0.266 0.005 145.442));
+  --sidebar-ring: light-dark(oklch(0.515 0.01 134.929), oklch(0.694 0.01 134.897));
+  /* #B7E33D #C4F05A, the logo and the active tab's dot. Too light for text on a light page. */
+  --brand: light-dark(oklch(0.855 0.19 123.614), oklch(0.896 0.181 123.953));
   /* Money going up or down: semantic green and red, never the brand lime, readable on every surface. */
-  /* #15783A #4ADE80 */
-  --gain: light-dark(oklch(0.504 0.129 150.302), oklch(0.8 0.182 151.711));
-  /* #B91C1C #FA8C8C */
-  --loss: light-dark(oklch(0.505 0.19 27.518), oklch(0.759 0.134 20.682));
+  /* #15803D #4ADE80 */
+  --gain: light-dark(oklch(0.527 0.137 150.069), oklch(0.8 0.182 151.711));
+  /* #DC2626 #F87171 */
+  --loss: light-dark(oklch(0.577 0.215 27.325), oklch(0.711 0.166 22.216));
+  /* #B45309 #FBBF24, for icons that ask for attention. */
+  --warn: light-dark(oklch(0.555 0.146 48.998), oklch(0.837 0.164 84.429));
   /*
-    Chart series, in this order: 1 portfolio value, 2 positive returns, 3 gold and fixed deposits,
-    4 international, 5 other assets; 6 and 7 for further allocation slices. Each is at least 3:1
-    against cards.
+    Chart series, muted so gains and losses stay the loudest colour: blue, violet, ochre, stone,
+    teal, rose and olive, given to slices largest first. Each is at least 3:1 against cards.
   */
-  /* #789D25 #C4F05A */
-  --chart-1: light-dark(oklch(0.646 0.149 125.683), oklch(0.896 0.181 123.953));
-  /* #36805A #34D399 */
-  --chart-2: light-dark(oklch(0.542 0.096 158.362), oklch(0.773 0.153 163.223));
-  /* #EAB308 #F5C451 */
-  --chart-3: light-dark(oklch(0.795 0.162 86.047), oklch(0.843 0.141 85.525));
-  /* #D97736 #6CB6F5 */
-  --chart-4: light-dark(oklch(0.668 0.145 51.045), oklch(0.753 0.118 245.892));
-  /* #398C91 #B79CF0 */
-  --chart-5: light-dark(oklch(0.592 0.08 200.721), oklch(0.748 0.121 298.202));
-  /* #23452C #F2994A */
-  --chart-6: light-dark(oklch(0.357 0.059 150.993), oklch(0.76 0.142 59.51));
-  /* #66705E #A5B2A2 */
-  --chart-7: light-dark(oklch(0.531 0.03 131.189), oklch(0.749 0.027 139.829));
+  /* #5B7DA6 #7FA3CF */
+  --chart-1: light-dark(oklch(0.581 0.074 253.598), oklch(0.705 0.076 253.79));
+  /* #8C79C2 #A897DD */
+  --chart-2: light-dark(oklch(0.623 0.109 295), oklch(0.717 0.102 294.859));
+  /* #B3842F #D9AE5C */
+  --chart-3: light-dark(oklch(0.644 0.115 78.56), oklch(0.773 0.112 81.924));
+  /* #8F8A80 #8E8B83 */
+  --chart-4: light-dark(oklch(0.635 0.016 84.593), oklch(0.637 0.012 89.77));
+  /* #4E8F87 #6FB8AF */
+  --chart-5: light-dark(oklch(0.604 0.068 185.339), oklch(0.732 0.075 185.698));
+  /* #B0687A #D98EA0 */
+  --chart-6: light-dark(oklch(0.602 0.094 4.174), oklch(0.727 0.094 4.01));
+  /* #7D8B47 #A9B86C */
+  --chart-7: light-dark(oklch(0.61 0.094 118.857), oklch(0.753 0.102 118.036));
 }
 
 :root.light {
@@ -136,9 +131,23 @@
 
 @theme inline {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Ink's type scale: hero figures, headlines, section titles, body and small print. */
+  --text-hero: 2.25rem;
+  --text-hero--line-height: 2.75rem;
+  --text-hero--letter-spacing: -0.02em;
+  --text-headline: 1.75rem;
+  --text-headline--line-height: 2.125rem;
+  --text-headline--letter-spacing: -0.01em;
+  --text-title: 1.0625rem;
+  --text-title--line-height: 1.5rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.375rem;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.125rem;
   --color-brand: var(--brand);
   --color-gain: var(--gain);
   --color-loss: var(--loss);
+  --color-warn: var(--warn);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -173,13 +182,14 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* 12 inputs, 16 cards and callouts, 24 sheets; buttons are pills. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-4xl: 1.5rem;
 }
 
 @layer base {

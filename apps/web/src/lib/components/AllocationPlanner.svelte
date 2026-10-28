@@ -192,7 +192,7 @@
     {/if}
     {#if shortfall > 0}
       <p class="bg-muted/50 flex gap-2 rounded-2xl p-3 text-sm">
-        <TriangleAlert class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+        <TriangleAlert class="mt-0.5 size-4 shrink-0 text-warn" />
         <span
           >Your emergency fund is short by {inr(shortfall)}. You may want to top it up before
           investing.</span
@@ -240,9 +240,7 @@
             <span
               class={cn(
                 'text-right',
-                row?.outside
-                  ? 'font-medium text-amber-600 dark:text-amber-400'
-                  : 'text-muted-foreground',
+                row?.outside ? 'text-warn font-medium' : 'text-muted-foreground',
               )}
               data-testid={`drift-${cls}`}
               >{row ? points(row.drift) : '—'}<span class="sm:hidden">&nbsp;off</span

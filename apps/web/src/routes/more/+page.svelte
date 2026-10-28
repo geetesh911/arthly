@@ -5,13 +5,22 @@
   import CreditCard from '@lucide/svelte/icons/credit-card';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import IndianRupee from '@lucide/svelte/icons/indian-rupee';
+  import LockIcon from '@lucide/svelte/icons/lock';
   import Settings from '@lucide/svelte/icons/settings';
   import ShieldCheck from '@lucide/svelte/icons/shield-check';
+  import Target from '@lucide/svelte/icons/target';
 
+  import { lock } from '#lib/app.svelte.ts';
   import PageHeader from '#lib/components/PageHeader.svelte';
-  import * as Card from '#lib/components/ui/card/index.ts';
+  import { Button } from '#lib/components/ui/button/index.ts';
 
   const links = [
+    {
+      href: '#/plan',
+      label: 'Plan',
+      hint: 'Targets, allocation and your emergency fund',
+      icon: Target,
+    },
     {
       href: '#/checks',
       label: 'Checks',
@@ -52,24 +61,19 @@
 </script>
 
 <PageHeader title="More" />
-<Card.Root size="sm">
-  <Card.Content class="grid px-2">
-    {#each links as l (l.href)}
-      <a
-        href={l.href}
-        class="hover:bg-muted flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors"
-      >
-        <span
-          class="bg-secondary text-secondary-foreground grid size-9 place-items-center rounded-full"
-        >
-          <l.icon class="size-4" />
-        </span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-sm font-medium">{l.label}</span>
-          <span class="text-muted-foreground block text-xs">{l.hint}</span>
-        </span>
-        <ChevronRight class="text-muted-foreground size-4" />
-      </a>
-    {/each}
-  </Card.Content>
-</Card.Root>
+<nav aria-label="More" class="grid">
+  {#each links as l (l.href)}
+    <a
+      href={l.href}
+      class="hover:bg-muted -mx-2 flex min-h-14 items-center gap-4 rounded-xl border-b px-2 py-2.5 transition-colors last:border-b-0"
+    >
+      <l.icon class="text-muted-foreground size-5 shrink-0" />
+      <span class="min-w-0 flex-1">
+        <span class="text-body block font-semibold">{l.label}</span>
+        <span class="text-muted-foreground text-small block">{l.hint}</span>
+      </span>
+      <ChevronRight class="text-muted-foreground size-4 shrink-0" />
+    </a>
+  {/each}
+</nav>
+<Button variant="outline" class="mt-4 w-full lg:hidden" onclick={lock}><LockIcon />Lock</Button>

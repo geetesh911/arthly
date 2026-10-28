@@ -132,7 +132,7 @@
           'flex cursor-pointer flex-col items-center gap-3 rounded-3xl border-2 border-dashed p-8 text-center transition-[color,background-color,border-color,box-shadow]',
           // The file input itself is hidden, so the drop zone shows its keyboard focus.
           'has-[input:focus-visible]:border-ring has-[input:focus-visible]:ring-ring/50 has-[input:focus-visible]:ring-3',
-          dragging ? 'border-brand bg-brand/5' : 'hover:bg-muted/50',
+          dragging ? 'border-foreground bg-muted' : 'hover:bg-muted/50',
         )}
         ondragover={(e) => {
           e.preventDefault();
@@ -189,9 +189,9 @@
       <Alert.Description class="grid gap-3">
         <p>
           A fund house’s monthly portfolio? Add it in <a
-            href="#/analytics"
-            class="underline underline-offset-4">Analytics</a
-          >, under fund underlying holdings.
+            href="#/insights"
+            class="underline underline-offset-4">Insights</a
+          >, under More breakdowns, Fund holdings.
         </p>
         <p>To ask for one, share these column headings (no values) when you open an issue:</p>
         <code class="bg-muted rounded-xl p-3 font-mono text-xs break-words"

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// The app's sections: the phone tab bar and the desktop sidebar each show their own subset.
+// The app's sections: the phone tab bar and the desktop sidebar each show their own subset. Phones
+// keep four tabs; everything else, Plan included, is a row on More.
 // Add isn't one: it's a button, in the sidebar on desktop and the header on phones, that opens the
 // list of forms below.
 import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 import Calculator from '@lucide/svelte/icons/calculator';
-import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
+import ChartLine from '@lucide/svelte/icons/chart-line';
 import ChartPie from '@lucide/svelte/icons/chart-pie';
 import CreditCard from '@lucide/svelte/icons/credit-card';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
@@ -45,6 +46,22 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
+    href: '#/insights',
+    label: 'Insights',
+    icon: ChartLine,
+    match: starts('/insights'),
+    phone: true,
+    desktop: true,
+  },
+  {
+    href: '#/plan',
+    label: 'Plan',
+    icon: Target,
+    match: starts('/plan'),
+    phone: false,
+    desktop: true,
+  },
+  {
     href: '#/loans',
     label: 'Loans',
     icon: HandCoins,
@@ -57,30 +74,6 @@ export const sections: Section[] = [
     label: 'Cards',
     icon: CreditCard,
     match: starts('/cards'),
-    phone: false,
-    desktop: true,
-  },
-  {
-    href: '#/analytics',
-    label: 'Analytics',
-    icon: ChartNoAxesCombined,
-    match: starts('/analytics'),
-    phone: true,
-    desktop: true,
-  },
-  {
-    href: '#/plan',
-    label: 'Plan',
-    icon: Target,
-    match: starts('/plan'),
-    phone: true,
-    desktop: true,
-  },
-  {
-    href: '#/tools',
-    label: 'Tools',
-    icon: Calculator,
-    match: starts('/tools'),
     phone: false,
     desktop: true,
   },
@@ -101,10 +94,27 @@ export const sections: Section[] = [
     desktop: true,
   },
   {
+    href: '#/tools',
+    label: 'Tools',
+    icon: Calculator,
+    match: starts('/tools'),
+    phone: false,
+    desktop: true,
+  },
+  {
     href: '#/more',
     label: 'More',
     icon: Ellipsis,
-    match: starts('/more', '/checks', '/income', '/settings', '/tools', '/loans', '/cards'),
+    match: starts(
+      '/more',
+      '/plan',
+      '/checks',
+      '/income',
+      '/settings',
+      '/tools',
+      '/loans',
+      '/cards',
+    ),
     phone: true,
     desktop: false,
   },

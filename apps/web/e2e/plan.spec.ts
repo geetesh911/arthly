@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page, test } from '@playwright/test';
 
+import { openPlan } from './screens.ts';
+
 const rupees = async (page: Page, testid: string) =>
   Number((await page.getByTestId(testid).textContent())!.replace(/[^\d-]/g, ''));
 
@@ -15,12 +17,7 @@ test('plan sets targets, splits new money and checks the emergency fund', async 
   await page.getByRole('button', { name: 'Try with sample data' }).click();
   await expect(page.getByTestId('net-worth')).toBeVisible();
 
-  // Plan is in the sidebar on desktop and the tab bar on phones.
-  await page
-    .getByRole('navigation', { name: 'Sections' })
-    .or(page.getByRole('navigation', { name: 'Screens' }))
-    .getByRole('link', { name: 'Plan', exact: true })
-    .click();
+  await openPlan(page);
 
   await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeVisible();
 

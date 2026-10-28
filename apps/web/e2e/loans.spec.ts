@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page, test } from '@playwright/test';
 
+import { breakdown, netWorthPart, openPlan } from './screens.ts';
+
 const PASSPHRASE = 'correct horse battery staple';
 
 test.beforeEach(async ({ page }) => {
@@ -93,9 +95,9 @@ test('lend, get part of it back, settle, then borrow, with net worth after each'
   await expect(page.getByRole('heading', { name: 'Sample friend' })).toBeVisible();
   await expect(page.getByTestId('loan-balance')).toHaveText('₹50,000');
   expect(await netWorth(page)).toBe('₹50,000');
-  await expect(page.getByTestId('net-worth-parts')).toContainText(
-    'Investments ₹0 · owed to you ₹50,000',
-  );
+  await expect(await netWorthPart(page, 'Investments')).toContainText('₹0');
+  await expect(await netWorthPart(page, 'Owed to you')).toContainText('+₹50,000');
+  await page.keyboard.press('Escape');
 
   // A part repayment.
   await openLoan(page, 'Sample friend');
@@ -135,23 +137,23 @@ test('sample data counts loans in net worth and what you are owed in analytics',
 }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Try with sample data' }).click();
-  const parts = page.getByTestId('net-worth-parts');
+  await expect(await netWorthPart(page, 'Owed to you')).toContainText('+₹25,000');
+  await expect(await netWorthPart(page, 'You owe')).toContainText('-₹75,000');
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Your mix, see Insights' }).click();
+  const assets = await breakdown(page, 'Asset split');
 
-  await expect(parts).toContainText('owed to you ₹25,000');
-  await expect(parts).toContainText('you owe ₹75,000');
-  await page.getByRole('link', { name: 'Explore analytics' }).click();
-  const owed = (title: string) =>
+  await expect(assets.getByText('Owed to you', { exact: true })).toBeVisible();
+  await expect(assets.getByText(/The ₹75,000 you owe isn’t charted/)).toBeVisible();
+  // Access to your money is on Plan, and counts what you're owed too.
+  await openPlan(page);
+  await expect(
     page
       .locator('[data-slot=card]')
-      .filter({ has: page.getByText(title, { exact: true }) })
+      .filter({ has: page.getByText('Access to your money', { exact: true }) })
       .getByText('Owed to you', { exact: true })
-      .first();
-
-  await expect(owed('Asset split')).toBeVisible();
-  await expect(page.getByText(/The ₹75,000 you owe isn’t charted/)).toBeVisible();
-  // Access to your money is on Plan, and counts what you're owed too.
-  await page.getByRole('link', { name: 'Plan', exact: true }).last().click();
-  await expect(owed('Access to your money')).toBeVisible();
+      .first(),
+  ).toBeVisible();
   await openLoans(page);
   await expect(page.getByTestId('loan-row')).toHaveCount(2);
   await fitsWidth(page);

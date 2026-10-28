@@ -55,7 +55,7 @@
         <Icon
           class={cn(
             'mt-0.5 size-4 shrink-0',
-            c.severity === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground',
+            c.severity === 'warn' ? 'text-warn' : 'text-muted-foreground',
           )}
         />
         <div class="grid min-w-0 flex-1 gap-2">

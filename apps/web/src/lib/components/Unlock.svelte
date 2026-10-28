@@ -178,7 +178,7 @@
 <div class="grid min-h-dvh place-items-center px-4 py-10">
   <div class="w-full max-w-sm space-y-6">
     <div class="flex flex-col items-center gap-3 text-center">
-      <Logo class="text-brand size-16" />
+      <Logo tile class="size-16" />
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">Arthly</h1>
         <p class="text-muted-foreground text-sm">

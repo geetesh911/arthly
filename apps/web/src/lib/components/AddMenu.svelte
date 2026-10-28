@@ -34,7 +34,9 @@
         {#each group.links as link (link.href)}
           <DropdownMenu.Item>
             {#snippet child({ props })}
-              <a href={link.href} {...props}><link.icon class="text-brand" />{link.label}</a>
+              <a href={link.href} {...props}
+                ><link.icon class="text-muted-foreground" />{link.label}</a
+              >
             {/snippet}
           </DropdownMenu.Item>
         {/each}

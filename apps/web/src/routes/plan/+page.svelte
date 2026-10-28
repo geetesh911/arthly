@@ -9,6 +9,7 @@
   import EmergencyFund from '#lib/components/EmergencyFund.svelte';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
+  import * as Card from '#lib/components/ui/card/index.ts';
   import * as Empty from '#lib/components/ui/empty/index.ts';
   import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
   import { inr } from '#lib/format.ts';
@@ -97,19 +98,27 @@
         }
       }}
     />
-    <BreakdownCard
-      title="Access to your money"
-      description="All holdings · plan near-term spending separately"
-      data={data.liquidity}
-      note={liquidityNote}
-    />
-    <BreakdownCard
-      title="Maturity ladder"
-      description="FDs, bonds and SGBs · current value by maturity date"
-      data={data.maturities}
-      coverage
-      wide
-      note="These are current holding values, not projected maturity payouts. Provident funds and unscheduled assets are excluded. Confirm renewal and redemption dates before planning spending."
-    />
+    <!-- The breakdowns are flat sections; here they sit in cards beside the emergency fund. -->
+    <Card.Root>
+      <Card.Content>
+        <BreakdownCard
+          title="Access to your money"
+          description="All holdings · plan near-term spending separately"
+          data={data.liquidity}
+          note={liquidityNote}
+        />
+      </Card.Content>
+    </Card.Root>
+    <Card.Root class="lg:col-span-2">
+      <Card.Content>
+        <BreakdownCard
+          title="Maturity ladder"
+          description="FDs, bonds and SGBs · current value by maturity date"
+          data={data.maturities}
+          coverage
+          note="These are current holding values, not projected maturity payouts. Provident funds and unscheduled assets are excluded. Confirm renewal and redemption dates before planning spending."
+        />
+      </Card.Content>
+    </Card.Root>
   </div>
 {/if}

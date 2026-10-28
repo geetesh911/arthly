@@ -83,8 +83,8 @@ test('each main screen fits the width, with the right navigation', async ({ page
   const nav = phone ? tabs : sidebar;
 
   const screens = phone
-    ? ['Home', 'Holdings', 'Analytics', 'Plan', 'More']
-    : ['Home', 'Holdings', 'Analytics', 'Plan', 'Checks', 'Settings'];
+    ? ['Home', 'Holdings', 'Insights', 'More']
+    : ['Home', 'Holdings', 'Insights', 'Plan', 'Checks', 'Settings'];
 
   for (const name of screens) {
     await nav.getByRole('link', { name, exact: true }).click();
@@ -95,8 +95,16 @@ test('each main screen fits the width, with the right navigation', async ({ page
     await fitsWidth(page);
   }
 
-  // On phones, Checks is under More, which stays lit there.
+  // On phones, Plan and Checks are under More, which stays lit there.
   if (phone) {
+    await page.getByRole('main').getByRole('link', { name: /^Plan/ }).click();
+    await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeVisible();
+    await expect(tabs.getByRole('link', { name: 'More', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await fitsWidth(page);
+    await tabs.getByRole('link', { name: 'More', exact: true }).click();
     await page
       .getByRole('main')
       .getByRole('link', { name: /^Checks/ })

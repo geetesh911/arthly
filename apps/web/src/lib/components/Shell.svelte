@@ -13,12 +13,11 @@
   import AddSheet from '#lib/components/AddSheet.svelte';
   import Logo from '#lib/components/Logo.svelte';
   import * as Alert from '#lib/components/ui/alert/index.ts';
-  import { Badge } from '#lib/components/ui/badge/index.ts';
   import { Button, buttonVariants } from '#lib/components/ui/button/index.ts';
   import { NativeSelect } from '#lib/components/ui/native-select/index.ts';
   import { cn } from '#lib/utils.ts';
 
-  import { addGroups, type Section, sections } from './Nav.ts';
+  import { addGroups, sections } from './Nav.ts';
 
   let { children }: { children: Snippet } = $props();
   let waiting = $state<ServiceWorker | null>(null);
@@ -58,26 +57,12 @@
 
   const route = $derived(page.route.id ?? '/');
   const tabs = sections.filter((s) => s.phone);
-  const tabClass = (active: boolean) =>
-    cn(
-      'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs transition-colors',
-      active ? 'text-foreground font-medium' : 'text-muted-foreground',
-    );
 </script>
 
-{#snippet tab(Icon: Section['icon'], label: string, active: boolean)}
-  <span
-    class={cn(
-      'grid h-7 w-12 place-items-center rounded-full transition-colors',
-      active && 'bg-primary text-primary-foreground',
-    )}><Icon class="size-5" /></span
-  >
-  {label}
-{/snippet}
-
-{#snippet member(size: 'sm' | 'default', className: string)}
+{#snippet member(className: string)}
   {#if app.members.length > 1}
-    <NativeSelect aria-label="Member" bind:value={app.filter.memberId} {size} class={className}>
+    <!-- A pill on phones, like the chips on Holdings; a plain field in the sidebar. -->
+    <NativeSelect aria-label="Member" bind:value={app.filter.memberId} class={className}>
       <option value={undefined}>Everyone</option>
       {#each app.members as m (m.id)}
         <option value={m.id}>{m.name}</option>
@@ -91,23 +76,23 @@
     class="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-20 hidden w-64 flex-col gap-6 border-r p-4 lg:flex"
   >
     <div class="flex items-center gap-3 px-2 pt-2">
-      <Logo class="text-brand size-9 shrink-0" />
+      <Logo tile class="size-9" />
       <div class="min-w-0">
-        <p class="truncate font-semibold">{app.vault?.name}</p>
-        {#if app.vault?.demo}<Badge variant="secondary">Sample data</Badge>{/if}
+        <p class="text-title truncate font-semibold">{app.vault?.name}</p>
+        {#if app.vault?.demo}<p class="text-muted-foreground text-small">Sample data</p>{/if}
       </div>
     </div>
     <AddMenu groups={addGroups} class="w-full justify-start" />
-    <nav aria-label="Sections" class="flex flex-col gap-1">
+    <nav aria-label="Sections" class="flex flex-col gap-0.5">
       {#each sections.filter((s) => s.desktop) as s (s.href)}
         {@const active = s.match(route)}
         <a
           href={s.href}
           aria-current={active ? 'page' : undefined}
           class={cn(
-            'flex h-10 items-center gap-3 rounded-2xl px-3 text-sm font-medium transition-colors',
+            'flex h-10 items-center gap-3 rounded-xl px-3 text-sm transition-colors',
             active
-              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
               : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
           )}
         >
@@ -117,30 +102,28 @@
       {/each}
     </nav>
     <div class="mt-auto flex flex-col gap-2">
-      {@render member('default', 'w-full')}
+      {@render member('w-full')}
       <Button variant="outline" onclick={lock}><LockIcon />Lock</Button>
     </div>
   </aside>
 
   <header
-    class="bg-background/85 sticky top-0 z-20 border-b pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden"
+    class="bg-background/85 sticky top-0 z-20 pt-[env(safe-area-inset-top)] backdrop-blur-md lg:hidden"
   >
-    <div class="flex h-14 items-center gap-2 px-4">
-      <Logo class="text-brand size-7 shrink-0" />
-      <p class="min-w-0 flex-1 truncate font-semibold">{app.vault?.name}</p>
-      {#if app.vault?.demo}<Badge variant="secondary" class="hidden sm:inline-flex"
-          >Sample data</Badge
-        >{/if}
-      {@render member('sm', 'max-w-[40%]')}
-      <!-- A round + leaves the portfolio's name room beside the member menu. -->
+    <div class="flex h-14 items-center gap-3 px-4">
+      <Logo tile class="size-8" />
+      <p class="text-title min-w-0 flex-1 truncate font-semibold">{app.vault?.name}</p>
+      {@render member(
+        'max-w-[40%] [&_select]:border-border [&_select]:text-body [&_select]:bg-transparent [&_select]:pl-3.5',
+      )}
+      <!-- Lock is on More, so the header keeps room for the portfolio's name. -->
       <AddSheet class={buttonVariants({ size: 'icon' })}
-        ><Plus /><span class="sr-only">Add</span></AddSheet
+        ><Plus class="size-5" /><span class="sr-only">Add</span></AddSheet
       >
-      <Button variant="ghost" size="icon" aria-label="Lock" onclick={lock}><LockIcon /></Button>
     </div>
   </header>
 
-  <main class="mx-auto max-w-6xl space-y-4 px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12">
+  <main class="mx-auto max-w-6xl space-y-4 px-4 pt-2 pb-28 lg:px-8 lg:pt-8 lg:pb-12">
     {#if app.vault?.readOnly}
       <Alert.Root variant="destructive">
         <TriangleAlert />
@@ -149,31 +132,31 @@
       </Alert.Root>
     {/if}
     {#if waiting}
-      <Alert.Root>
-        <RefreshCw />
-        <Alert.Title>A new version is ready.</Alert.Title>
-        <Alert.Description class="grid gap-3">
-          <p>Update now, or it applies the next time you open the app. Updating locks the app.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            class="justify-self-start"
-            onclick={() => waiting?.postMessage('skip-waiting')}>Update now</Button
-          >
-        </Alert.Description>
-      </Alert.Root>
+      <div class="bg-muted flex items-center gap-3 rounded-2xl py-2 pr-2 pl-4" role="status">
+        <RefreshCw class="text-muted-foreground size-4 shrink-0" />
+        <p class="text-small min-w-0 flex-1">New version ready. Updating locks the app.</p>
+        <Button size="sm" onclick={() => waiting?.postMessage('skip-waiting')}>Update</Button>
+      </div>
     {/if}
     {@render children()}
   </main>
 
   <nav
     aria-label="Screens"
-    class="bg-background/90 fixed inset-x-0 bottom-0 z-20 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+    class="bg-background fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t px-2 pb-[env(safe-area-inset-bottom)] lg:hidden"
   >
     {#each tabs as s (s.href)}
       {@const active = s.match(route)}
-      <a href={s.href} aria-current={active ? 'page' : undefined} class={tabClass(active)}>
-        {@render tab(s.icon, s.label, active)}
+      <a
+        href={s.href}
+        aria-current={active ? 'page' : undefined}
+        class={cn(
+          'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors',
+          active ? 'text-foreground font-semibold' : 'text-muted-foreground',
+        )}
+      >
+        <s.icon class="size-[22px]" strokeWidth={1.75} />
+        {s.label}
       </a>
     {/each}
   </nav>

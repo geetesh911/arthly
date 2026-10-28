@@ -3,6 +3,8 @@ import { expect, type Page, type Route, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { breakdown, lock, unlocked } from './screens.ts';
+
 const fixtures = join(import.meta.dirname, '../../../packages/core/src/plugins/importers');
 const MF = join(fixtures, 'groww-mf-holdings/fixtures/holdings.xlsx');
 const STOCKS = join(fixtures, 'groww-stock-holdings/fixtures/holdings.xlsx');
@@ -107,7 +109,9 @@ test('create a vault, import the Groww files and see the totals', async ({ page 
   await page.getByRole('link', { name: 'Holdings' }).click();
   await expect(page.getByText('Parag Parikh ELSS Tax Saver Fund Direct Growth')).toBeVisible();
   await expect(page.getByText('2.50%GOLDBONDS2032SR-IV')).toBeVisible();
+  await page.getByRole('button', { name: 'How these figures work' }).click();
   await expect(page.getByText(/Fund XIRR is the one in your holdings file/)).toBeVisible();
+  await page.keyboard.press('Escape');
   // Groww gives 12.1% and 9.4% for its two rows; together they come to 11.2%.
   await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
   await expect(page.getByTestId('holding-xirr')).toHaveText('11.20%');
@@ -144,11 +148,8 @@ test('order history after the holdings files lands in the same holdings', async 
   expect([invested, gain]).toEqual(['₹10,82,730', '+₹2,08,709']);
   await expect(page.getByTestId('realised')).toHaveText('+₹33,100');
   await page.getByRole('link', { name: 'Holdings' }).click();
-  // The total row's invested and gain cells, hidden on phones but still in the page.
-  const total = page.locator('tfoot td');
-
-  await expect(total.nth(1)).toHaveText(invested);
-  await expect(total.nth(3)).toContainText(gain);
+  await expect(page.getByTestId('holdings-invested')).toHaveText(invested);
+  await expect(page.getByTestId('holdings-gain')).toHaveText(gain);
   await page.getByRole('link', { name: /Parag Parikh ELSS Tax Saver Fund Direct Growth/ }).click();
   await expect(page.getByText('PPFAS Mutual Fund folio ••••5678').first()).toBeVisible();
 });
@@ -196,27 +197,26 @@ test('refresh prices through the relay', async ({ page }) => {
   await expect(page.getByText('Prices updated')).toBeVisible();
   await expect(page.getByText('Prices: stocks 21 Oct')).toBeVisible();
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('link', { name: 'Explore analytics' }).click();
-  const sectors = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Sector allocation', { exact: true }) });
+  await page.getByRole('link', { name: 'Your mix, see Insights' }).click();
+  // With the lists loaded, market cap takes the place of the note that it's not available.
+  await expect(page.getByText('Large cap', { exact: true })).toBeVisible();
+  const sectors = await breakdown(page, 'Sector allocation');
 
   await expect(sectors.getByText('Oil, Gas & Consumable Fuels', { exact: true })).toBeVisible();
   await expect(sectors.getByText(/classified/, { exact: false }).first()).toBeVisible();
-  const concentration = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Stock concentration', { exact: true }) });
+  const concentration = await breakdown(page, 'Stock concentration');
 
   await expect(concentration.getByText('RELIANCE INDUSTRIES LTD', { exact: true })).toBeVisible();
-  await expect(page.getByText('Large cap', { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/AMFI cap list: six months to 30 Jun 2026, 9 companies/),
+    (await breakdown(page, 'Data behind the analysis')).getByText(
+      /AMFI cap list: six months to 30 Jun 2026, 9 companies/,
+    ),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Official file' }).last()).toHaveAttribute(
     'href',
     CAPS_URL,
   );
-  await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Insights', exact: true })).toBeVisible();
 });
 
 test('fund disclosures update stock exposure and show searchable underlying weights', async ({
@@ -283,12 +283,10 @@ test('fund disclosures update stock exposure and show searchable underlying weig
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await landsOnHoldings(page);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('link', { name: 'Explore analytics' }).click();
+  await page.getByRole('link', { name: 'Your mix, see Insights' }).click();
   await page.getByRole('button', { name: 'Refresh data' }).click();
   await expect(page.getByRole('button', { name: 'Refresh data' })).toBeEnabled();
-  const fundCard = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Fund underlying holdings', { exact: true }) });
+  const fundCard = await breakdown(page, 'Fund holdings and overlap');
 
   await fundCard
     .getByRole('combobox', { name: 'Fund portfolio' })
@@ -312,9 +310,7 @@ test('fund disclosures update stock exposure and show searchable underlying weig
   await fundCard.getByRole('button', { name: /Show all \d+ holdings/ }).click();
   await expect(fundCard.getByRole('button', { name: 'Show largest 20' })).toBeVisible();
   await fundCard.getByRole('button', { name: 'Show largest 20' }).click();
-  const stocks = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Stock concentration', { exact: true }) });
+  const stocks = await breakdown(page, 'Stock concentration');
 
   await expect(stocks.getByText('HDFC Bank Limited', { exact: true })).toBeVisible();
   await expect(stocks.getByText('Direct / via funds', { exact: true })).toBeVisible();
@@ -323,12 +319,13 @@ test('fund disclosures update stock exposure and show searchable underlying weig
     .selectOption({ label: 'Tata Nifty Next 50 Index Direct' });
   await expect(fundCard.getByText('Disclosure unavailable', { exact: true })).toBeVisible();
   // That fund counts by its type in the asset split; PPFAS's report gives its stocks' sectors.
-  const card = (title: string) =>
-    page.locator('[data-slot=card]').filter({ has: page.getByText(title, { exact: true }) });
-
-  await expect(card('Underlying asset split').getByText(/\d+% by fund type/)).toBeVisible();
   await expect(
-    card('Sector allocation').getByText('Information Technology', { exact: true }),
+    (await breakdown(page, 'Underlying asset split')).getByText(/\d+% by fund type/),
+  ).toBeVisible();
+  await expect(
+    (await breakdown(page, 'Sector allocation')).getByText('Information Technology', {
+      exact: true,
+    }),
   ).toBeVisible();
   await fundCard
     .getByRole('combobox', { name: 'Fund portfolio' })
@@ -360,9 +357,7 @@ test('fund disclosures update stock exposure and show searchable underlying weig
     .selectOption({ label: 'Parag Parikh ELSS Tax Saver Fund Direct Growth' });
   await expect(fundCard.getByText('Saved earlier', { exact: true })).toBeVisible();
   await expect(fundCard.getByText(/Portfolio as of 30 Sept? 2026/)).toBeVisible();
-  const sources = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Data behind the analysis', { exact: true }) });
+  const sources = await breakdown(page, 'Data behind the analysis');
 
   await expect(
     sources.getByText('Some fund reports couldn’t be refreshed.', { exact: false }),
@@ -396,10 +391,8 @@ test('a fund report added by hand fills in for one the relay can’t fetch', asy
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await landsOnHoldings(page);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('link', { name: 'Explore analytics' }).click();
-  const fundCard = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Fund underlying holdings', { exact: true }) });
+  await page.getByRole('link', { name: 'Your mix, see Insights' }).click();
+  const fundCard = await breakdown(page, 'Fund holdings and overlap');
   const pick = () =>
     fundCard
       .getByRole('combobox', { name: 'Fund portfolio' })
@@ -580,19 +573,17 @@ test('index levels load with nothing held, are searchable and survive a failed e
     }),
   );
   await createVault(page);
-  // Analytics is in the sidebar on desktop and the tab bar on phones.
+  // Insights is in the sidebar on desktop and the tab bar on phones.
   await page
     .getByRole('navigation', { name: 'Sections' })
     .or(page.getByRole('navigation', { name: 'Screens' }))
-    .getByRole('link', { name: 'Analytics', exact: true })
+    .getByRole('link', { name: 'Insights', exact: true })
     .click();
 
   await expect(page.getByText('Your portfolio analysis starts here')).toBeVisible();
   await page.getByRole('button', { name: 'Refresh data' }).click();
   await expect(page.getByRole('button', { name: 'Refresh data' })).toBeEnabled();
-  const card = page
-    .locator('[data-slot=card]')
-    .filter({ has: page.getByText('Indices and benchmarks', { exact: true }) });
+  const card = page.getByRole('region', { name: 'Indices and benchmarks' });
 
   await expect(card.getByRole('listitem').filter({ hasText: 'NSE:' })).toContainText(
     '14 indices, 22 Oct 2026',
@@ -675,18 +666,18 @@ test('rename and remove members and accounts', async ({ page }) => {
 test('lock and unlock', async ({ page }) => {
   const code = await createVault(page);
 
-  await page.getByRole('button', { name: 'Lock', exact: true }).click();
+  await lock(page);
   await page.getByLabel('Passphrase').fill('wrong passphrase');
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.getByRole('status')).toContainText('Wrong passphrase');
   await page.getByLabel('Passphrase').fill(PASSPHRASE);
   await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.getByRole('button', { name: 'Lock', exact: true })).toBeVisible();
+  await expect(unlocked(page)).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: /recovery code/ }).click();
   await page.getByLabel('Recovery code').fill(code.toLowerCase());
   await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.getByRole('button', { name: 'Lock', exact: true })).toBeVisible();
+  await expect(unlocked(page)).toBeVisible();
 });
 
 test('opens offline once loaded, even where _headers is refused', async ({ page, context }) => {
@@ -733,8 +724,8 @@ test('switches to a new version when asked, not only after every tab closes', as
   // The same worker at another address stands in for a new release: Playwright can't rewrite
   // the worker's own script.
   await page.evaluate(() => navigator.serviceWorker.register('service-worker.js?next'));
-  await expect(page.getByText('A new version is ready.')).toBeVisible();
-  await page.getByRole('button', { name: 'Update now' }).click();
+  await expect(page.getByText('New version ready.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Update', exact: true }).click();
   // The page reloads under the new version, which locks the app.
   await expect(page.getByRole('button', { name: 'Try with sample data' })).toBeVisible();
   expect(
@@ -757,7 +748,7 @@ test('export to Excel and re-import into another portfolio', async ({ page }) =>
   ]);
   const bytes = await readFile((await download.path())!);
 
-  await page.getByRole('button', { name: 'Lock', exact: true }).click();
+  await lock(page);
   await page.getByRole('button', { name: 'New portfolio' }).click();
   await createVault(page, 'Copy');
   await page.getByTestId('import-input').setInputFiles({
@@ -793,7 +784,7 @@ test('restore a backup file', async ({ page }) => {
     .setInputFiles({ name: 'backup.pvault', mimeType: 'application/octet-stream', buffer: bytes });
   await page.getByLabel('Passphrase or recovery code').fill(PASSPHRASE);
   await page.getByRole('button', { name: 'Restore' }).click();
-  await expect(page.getByRole('button', { name: 'Lock', exact: true })).toBeVisible();
+  await expect(unlocked(page)).toBeVisible();
   expect(await netWorth(page)).toBe(before);
 });
 

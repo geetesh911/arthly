@@ -115,16 +115,11 @@
           aria-valuenow={Math.round(covered * 100)}
         >
           <div
-            class={cn('h-full rounded-full', fund.shortfall > 0 ? 'bg-amber-500' : 'bg-gain')}
+            class={cn('h-full rounded-full', fund.shortfall > 0 ? 'bg-warn' : 'bg-gain')}
             style:width={`${covered * 100}%`}
           ></div>
         </div>
-        <p
-          class={cn(
-            'text-sm',
-            fund.shortfall > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-gain',
-          )}
-        >
+        <p class={cn('text-sm', fund.shortfall > 0 ? 'text-warn' : 'text-gain')}>
           {fund.shortfall > 0
             ? `Short by ${inr(fund.shortfall)} of ${inr(fund.target)}.`
             : `Covered, with ${inr(fund.spare)} more than ${inr(fund.target)}.`}

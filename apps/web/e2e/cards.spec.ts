@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page, test } from '@playwright/test';
 
+import { netWorthPart } from './screens.ts';
+
 const PASSPHRASE = 'correct horse battery staple';
 
 test.beforeEach(async ({ page }) => {
@@ -122,9 +124,9 @@ test('add a card and its bill, pay the minimum, then the next bill in full, and 
   // Home takes it off net worth and keeps the missed bill in Coming up.
   await home(page);
   await expect(page.getByTestId('net-worth')).toHaveText('-₹11,400');
-  await expect(page.getByTestId('net-worth-parts')).toContainText(
-    'Investments ₹0 · card dues ₹11,400',
-  );
+  await expect(await netWorthPart(page, 'Investments')).toContainText('₹0');
+  await expect(await netWorthPart(page, 'Card dues')).toContainText('-₹11,400');
+  await page.keyboard.press('Escape');
   const upcoming = page.getByRole('listitem').filter({ hasText: 'Sample Bank Travel card' });
 
   await expect(upcoming).toContainText('Overdue');
@@ -173,7 +175,8 @@ test('sample data takes card dues off net worth', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Try with sample data' }).click();
 
-  await expect(page.getByTestId('net-worth-parts')).toContainText('card dues ₹9,310');
+  await expect(await netWorthPart(page, 'Card dues')).toContainText('-₹9,310');
+  await page.keyboard.press('Escape');
   await openCards(page);
   await expect(page.getByTestId('card-row')).toHaveCount(2);
   await expect(page.getByTestId('card-dues')).toHaveText('₹9,310');

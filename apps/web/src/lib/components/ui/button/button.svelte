@@ -18,7 +18,7 @@
           'hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 aria-expanded:bg-muted aria-expanded:text-foreground',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 focus-visible:border-destructive/40',
-        link: 'text-brand underline decoration-brand/40 underline-offset-4 hover:decoration-brand',
+        link: 'text-foreground underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground',
       },
       size: {
         default:
