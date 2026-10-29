@@ -196,6 +196,7 @@
   {@const c = detail.card}
   <PageHeader
     title={c.name}
+    amounts
     back={{ href: '#/cards', label: 'Cards' }}
     description={[
       c.bank,

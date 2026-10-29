@@ -150,6 +150,7 @@
   {@const words = LOAN_WORDS[l.direction]}
   <PageHeader
     title={l.party}
+    amounts
     back={{ href: '#/loans', label: 'Loans' }}
     description={[
       words.section,

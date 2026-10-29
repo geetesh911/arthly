@@ -131,6 +131,7 @@
   {/snippet}
   <PageHeader
     title={h.name}
+    amounts
     back={{ href: '#/holdings', label: 'Holdings' }}
     description={`${h.memberName} · ${h.accountLabel} · ${CLASS_NAMES[h.assetClass]}${h.status !== 'open' ? ` · ${h.status}` : ''}`}
     actions={byBalance ? updateBalance : undefined}

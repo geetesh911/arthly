@@ -57,7 +57,7 @@
   );
 </script>
 
-<PageHeader title="Plan" />
+<PageHeader title="Plan" amounts />
 <p class="text-muted-foreground text-sm">
   Set your targets, decide where new money goes, and check your safety net.
 </p>

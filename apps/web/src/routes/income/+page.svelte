@@ -43,7 +43,7 @@
   });
 </script>
 
-<PageHeader title="Income" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden">
+<PageHeader title="Income" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden" amounts>
   {#snippet actions()}
     <NativeSelect bind:value={fy} aria-label="Financial year" size="sm">
       {#each years as y (y)}<option value={y}>{fyLabel(y)}</option>{/each}

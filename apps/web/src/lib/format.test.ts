@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import { dateTime, inrSigned, pct, points, shortDate } from './format.ts';
+import { hideAmounts } from './amounts.ts';
+import {
+  dateTime,
+  inr,
+  inrShort,
+  inrSigned,
+  masked,
+  pct,
+  points,
+  shortDate,
+  typed,
+} from './format.ts';
 
 describe('pct', () => {
   it('shows a fraction as a percentage with 2 decimals', () => {
@@ -28,6 +39,38 @@ describe('inrSigned', () => {
     expect(inrSigned(47051.4)).toBe('+₹47,051');
     expect(inrSigned(-1234)).toBe('-₹1,234');
     expect(inrSigned(-0.3)).toBe('₹0');
+  });
+});
+
+describe('hidden amounts', () => {
+  afterEach(() => hideAmounts(false));
+
+  it('shows each amount as ₹•••• and keeps its sign', () => {
+    hideAmounts(true);
+    expect(inr(123456)).toBe('₹••••');
+    expect(inrSigned(47051.4)).toBe('+₹••••');
+    expect(inrSigned(-1234)).toBe('-₹••••');
+    expect(inrShort(1_23_00_000)).toBe('₹••••');
+    expect(inr(null)).toBe('—');
+  });
+
+  it('hides amounts inside text too', () => {
+    hideAmounts(true);
+    expect(masked('deposit at least ₹500 (₹1,200.50 so far)')).toBe(
+      'deposit at least ₹•••• (₹•••• so far)',
+    );
+  });
+
+  it('leaves percentages and typed-in amounts', () => {
+    hideAmounts(true);
+    expect(pct(0.0789)).toBe('7.89%');
+    expect(typed.inr(1000)).toBe('₹1,000');
+  });
+
+  it('shows amounts again', () => {
+    hideAmounts(true);
+    hideAmounts(false);
+    expect(inr(123456)).toBe('₹1,23,456');
   });
 });
 

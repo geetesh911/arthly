@@ -30,7 +30,7 @@
   const late = $derived(!!data?.nextDue && data.nextDue < data.date);
 </script>
 
-<PageHeader title="Cards" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden">
+<PageHeader title="Cards" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden" amounts>
   {#snippet actions()}
     <Button size="sm" href="#/cards/new"><Plus />Add a card</Button>
   {/snippet}

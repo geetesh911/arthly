@@ -198,7 +198,7 @@
   </section>
 {/snippet}
 
-<PageHeader title="Insights">
+<PageHeader title="Insights" amounts>
   {#snippet actions()}<Button variant="outline" size="sm" onclick={refresh} disabled={refreshing}
       ><RefreshCw class={refreshing ? 'animate-spin' : ''} />{refreshing
         ? 'Refreshing…'

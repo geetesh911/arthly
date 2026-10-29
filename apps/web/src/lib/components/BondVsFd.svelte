@@ -11,7 +11,7 @@
     type Payout,
   } from '@pv/core';
 
-  import { inr, inrExact, pct } from '#lib/format.ts';
+  import { pct, typed } from '#lib/format.ts';
   import { cn } from '#lib/utils.ts';
 
   import * as Card from './ui/card/index.ts';
@@ -92,13 +92,13 @@
   const rows = $derived(
     result
       ? ([
-          ['You get back', inr(result.bond.received), inr(result.fd.received)],
-          ['Gain', inr(result.bond.gain), inr(result.fd.gain)],
-          ['Tax', inr(result.bond.tax), inr(result.fd.tax)],
+          ['You get back', typed.inr(result.bond.received), typed.inr(result.fd.received)],
+          ['Gain', typed.inr(result.bond.gain), typed.inr(result.fd.gain)],
+          ['Tax', typed.inr(result.bond.tax), typed.inr(result.fd.tax)],
           [
             'Gain after tax',
-            inr(result.bond.gain - result.bond.tax),
-            inr(result.fd.gain - result.fd.tax),
+            typed.inr(result.bond.gain - result.bond.tax),
+            typed.inr(result.fd.gain - result.fd.tax),
           ],
           ['Yearly return', pct(result.bond.yield), pct(result.fd.yield)],
         ] as const)
@@ -158,13 +158,13 @@
         <div class="grid grid-cols-2 gap-x-3 gap-y-4 border-t pt-4">
           <Stat
             label="Accrued interest"
-            value={inrExact(yields.accrued)}
+            value={typed.inrExact(yields.accrued)}
             hint={accruedHint}
             testid="accrued"
           />
           <Stat
             label="Total price"
-            value={inrExact(yields.totalPrice)}
+            value={typed.inrExact(yields.totalPrice)}
             hint="What one bond costs to buy"
             testid="total-price"
           />
@@ -257,8 +257,10 @@
         {#if result}
           <p class="text-sm" data-testid="bond-units">
             Buys {result.units}
-            {result.units === 1 ? 'bond' : 'bonds'} for {inr(result.bond.invested)}{result.accrued
-              ? `, including ${inr(result.accrued)} of accrued interest,`
+            {result.units === 1 ? 'bond' : 'bonds'} for {typed.inr(
+              result.bond.invested,
+            )}{result.accrued
+              ? `, including ${typed.inr(result.accrued)} of accrued interest,`
               : ''} and the FD gets the same.
           </p>
         {/if}

@@ -24,6 +24,7 @@
   import { app, attempt, say } from '#lib/app.svelte.ts';
   import AddMenu from '#lib/components/AddMenu.svelte';
   import BottomSheet from '#lib/components/BottomSheet.svelte';
+  import HideAmounts from '#lib/components/HideAmounts.svelte';
   import { addInvestment, importFiles } from '#lib/components/Nav.ts';
   import PageHeader from '#lib/components/PageHeader.svelte';
   import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -259,14 +260,17 @@
   <!-- One column that can't grow past the screen, so long names truncate instead. -->
   <div class="grid grid-cols-1 gap-6">
     <section aria-label="Total" class="bg-card grid gap-4 rounded-2xl border p-4 lg:max-w-md">
-      <div class="grid gap-1">
-        <span class="text-muted-foreground text-small"
-          >Current value · {holdings.length}
-          {holdings.length === 1 ? 'holding' : 'holdings'}</span
-        >
-        <span class="text-headline font-semibold tabular-nums" data-testid="holdings-value"
-          >{inr(total.value)}</span
-        >
+      <div class="flex items-start gap-1">
+        <div class="grid min-w-0 flex-1 gap-1">
+          <span class="text-muted-foreground text-small"
+            >Current value · {holdings.length}
+            {holdings.length === 1 ? 'holding' : 'holdings'}</span
+          >
+          <span class="text-headline font-semibold tabular-nums" data-testid="holdings-value"
+            >{inr(total.value)}</span
+          >
+        </div>
+        <HideAmounts class="-mt-2 -mr-2" />
       </div>
       <dl class="text-body grid gap-3 border-t border-dashed pt-4 tabular-nums">
         <div class="flex items-baseline justify-between gap-3">

@@ -9,6 +9,7 @@
   import { api } from '#lib/api.ts';
   import { app } from '#lib/app.svelte.ts';
   import BottomSheet from '#lib/components/BottomSheet.svelte';
+  import HideAmounts from '#lib/components/HideAmounts.svelte';
   import StackedBar from '#lib/components/StackedBar.svelte';
   import Stat from '#lib/components/Stat.svelte';
   import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -17,7 +18,7 @@
   import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
   import * as Tabs from '#lib/components/ui/tabs/index.ts';
   import ValueChart from '#lib/components/ValueChart.svelte';
-  import { CLASS_NAMES, date, inr, inrSigned, pct } from '#lib/format.ts';
+  import { CLASS_NAMES, date, inr, inrSigned, masked, pct } from '#lib/format.ts';
   import { cn } from '#lib/utils.ts';
   import type { OverviewDto } from '#lib/worker/dto.ts';
 
@@ -124,34 +125,39 @@
   <!-- One column on phones; on wide screens the mix and what's next sit beside the chart. -->
   <div class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-12">
     <section aria-label="Net worth" class="grid grid-cols-1 content-start gap-4">
-      {#if hasLoans || hasCards}
-        <BottomSheet title="Net worth">
-          {#snippet trigger(props)}
-            <button {...props} type="button" class="grid justify-items-start gap-1 text-left"
-              >{@render hero(true)}</button
-            >
-          {/snippet}
-          <ul class="grid" data-testid="net-worth-parts">
-            {@render part('Investments', inr(data.investments))}
-            {#if data.owedToYou > 0}
-              {@render part('Owed to you', inrSigned(data.owedToYou), '#/loans', 'Loans')}
-            {/if}
-            {#if data.youOwe > 0}
-              {@render part('You owe', inrSigned(-data.youOwe), '#/loans', 'Loans')}
-            {/if}
-            {#if hasCards}
-              {@render part('Card dues', inrSigned(-data.cardDues), '#/cards', 'Cards')}
-            {/if}
-            <li class="flex min-h-14 items-center gap-3">
-              <span class="text-body flex-1 font-semibold">Net worth</span>
-              <span class="text-title font-semibold tabular-nums">{inr(data.netWorth)}</span>
-            </li>
-          </ul>
-          <p class="text-muted-foreground text-small">The chart shows investments only.</p>
-        </BottomSheet>
-      {:else}
-        <div class="grid gap-1">{@render hero(false)}</div>
-      {/if}
+      <div class="flex items-start gap-1">
+        <div class="min-w-0 flex-1">
+          {#if hasLoans || hasCards}
+            <BottomSheet title="Net worth">
+              {#snippet trigger(props)}
+                <button {...props} type="button" class="grid justify-items-start gap-1 text-left"
+                  >{@render hero(true)}</button
+                >
+              {/snippet}
+              <ul class="grid" data-testid="net-worth-parts">
+                {@render part('Investments', inr(data.investments))}
+                {#if data.owedToYou > 0}
+                  {@render part('Owed to you', inrSigned(data.owedToYou), '#/loans', 'Loans')}
+                {/if}
+                {#if data.youOwe > 0}
+                  {@render part('You owe', inrSigned(-data.youOwe), '#/loans', 'Loans')}
+                {/if}
+                {#if hasCards}
+                  {@render part('Card dues', inrSigned(-data.cardDues), '#/cards', 'Cards')}
+                {/if}
+                <li class="flex min-h-14 items-center gap-3">
+                  <span class="text-body flex-1 font-semibold">Net worth</span>
+                  <span class="text-title font-semibold tabular-nums">{inr(data.netWorth)}</span>
+                </li>
+              </ul>
+              <p class="text-muted-foreground text-small">The chart shows investments only.</p>
+            </BottomSheet>
+          {:else}
+            <div class="grid gap-1">{@render hero(false)}</div>
+          {/if}
+        </div>
+        <HideAmounts class="-mt-2 -mr-2" />
+      </div>
 
       <div class="grid gap-2">
         <ValueChart points={data.history} />
@@ -204,7 +210,7 @@
             )}
           />
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span class="text-body font-semibold">{check.message}</span>
+            <span class="text-body font-semibold">{masked(check.message)}</span>
             <span class="text-muted-foreground text-small"
               >{data.checks.length > 1
                 ? `${data.checks.length - 1} more to look at`

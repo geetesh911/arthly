@@ -8,6 +8,7 @@
   import { api } from '#lib/api.ts';
   import { attempt, changed } from '#lib/app.svelte.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
+  import { masked } from '#lib/format.ts';
   import { cn } from '#lib/utils.ts';
 
   let { checks, limit }: { checks: Check[]; limit?: number } = $props();
@@ -59,7 +60,7 @@
           )}
         />
         <div class="grid min-w-0 flex-1 gap-2">
-          <p class="text-sm">{c.message}</p>
+          <p class="text-sm">{masked(c.message)}</p>
           <div class="flex flex-wrap gap-2">
             {#if c.fix?.kind === 'resolve-conflict' && c.fix.ref}
               <Button size="sm" variant="outline" onclick={() => restore(c.fix!.ref!)}

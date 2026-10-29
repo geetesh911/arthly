@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Indian number formatting: ₹1,23,456.
+import { amountsHidden } from './amounts.ts';
+
 const whole = new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
@@ -20,28 +22,39 @@ const signed = new Intl.NumberFormat('en-IN', {
 const compact = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 const unitsFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 });
 
-export const inr = (n: number | null | undefined) =>
-  n === null || n === undefined || !Number.isFinite(n) ? '—' : whole.format(n);
-export const inrExact = (n: number | null | undefined) =>
-  n === null || n === undefined || !Number.isFinite(n) ? '—' : exact.format(n);
+const show = (n: number | null | undefined, format: Intl.NumberFormat) =>
+  n === null || n === undefined || !Number.isFinite(n) ? '—' : format.format(n);
+
+const AMOUNT = /₹-?\d[\d,.]*(?: (?:L|Cr)\b)?/g;
+
+/** The text, with each amount in it shown as ₹•••• while amounts are hidden. */
+export const masked = (text: string) => (amountsHidden() ? text.replace(AMOUNT, '₹••••') : text);
+
+export const inr = (n: number | null | undefined) => masked(show(n, whole));
+export const inrExact = (n: number | null | undefined) => masked(show(n, exact));
 /** A gain or loss: +₹1,200, -₹300 or ₹0. */
-export const inrSigned = (n: number | null | undefined) =>
-  n === null || n === undefined || !Number.isFinite(n) ? '—' : signed.format(n);
+export const inrSigned = (n: number | null | undefined) => masked(show(n, signed));
 
 /** ₹12.3 L, ₹1.2 Cr */
 export function inrShort(n: number): string {
   const abs = Math.abs(n);
 
   if (abs >= 1e7) {
-    return `₹${compact.format(n / 1e7)} Cr`;
+    return masked(`₹${compact.format(n / 1e7)} Cr`);
   }
 
   if (abs >= 1e5) {
-    return `₹${compact.format(n / 1e5)} L`;
+    return masked(`₹${compact.format(n / 1e5)} L`);
   }
 
-  return whole.format(n);
+  return inr(n);
 }
+
+/** For amounts someone types in, like a calculator's: shown even while amounts are hidden. */
+export const typed = {
+  inr: (n: number | null | undefined) => show(n, whole),
+  inrExact: (n: number | null | undefined) => show(n, exact),
+};
 
 /** 7.89%, or +7.89% with `sign`. A tiny loss shows as 0.00%, not -0.00%. */
 export function pct(n: number | null | undefined, digits = 2, sign = false): string {

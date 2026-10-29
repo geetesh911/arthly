@@ -119,7 +119,11 @@
   }
 </script>
 
-<PageHeader title="Import" description="Files are read on this device and never uploaded." />
+<PageHeader
+  title="Import"
+  description="Files are read on this device and never uploaded."
+  amounts={!!plan}
+/>
 
 {#if plan}
   <ImportPreview {plan} onDone={next} />

@@ -35,7 +35,7 @@
   const net = $derived(data ? data.owedToYou - data.youOwe : 0);
 </script>
 
-<PageHeader title="Loans" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden">
+<PageHeader title="Loans" back={{ href: '#/more', label: 'More' }} backClass="lg:hidden" amounts>
   {#snippet actions()}
     <Button size="sm" href="#/loans/new"><Plus />Add a loan</Button>
   {/snippet}
