@@ -42,7 +42,7 @@
     {
       href: '#/tools',
       label: 'Tools',
-      hint: 'Calculators, like bond or FD',
+      hint: 'Calculators: bond or FD, average NAV',
       icon: Calculator,
     },
     {

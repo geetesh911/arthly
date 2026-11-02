@@ -2,6 +2,7 @@
 <script lang="ts">
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Landmark from '@lucide/svelte/icons/landmark';
+  import Scale from '@lucide/svelte/icons/scale';
 
   import PageHeader from '#lib/components/PageHeader.svelte';
   import * as Card from '#lib/components/ui/card/index.ts';
@@ -12,6 +13,12 @@
       label: 'Bond or FD',
       hint: 'A bond’s yield to maturity, and how it compares with an FD after tax',
       icon: Landmark,
+    },
+    {
+      href: '#/tools/average-nav',
+      label: 'Average NAV',
+      hint: 'Your new average NAV after buying more of a fund',
+      icon: Scale,
     },
   ];
 </script>

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
-test('tools list the bond calculator, which matches SEBI and compares with an FD', async ({
-  page,
-}, info) => {
+/** Opens Tools on sample data, and collects the page's errors. */
+async function openTools(page: Page, phone: boolean): Promise<string[]> {
   const errors: string[] = [];
 
   page.on('pageerror', (error) => errors.push(error.message));
@@ -12,7 +11,7 @@ test('tools list the bond calculator, which matches SEBI and compares with an FD
   await page.getByRole('button', { name: 'Try with sample data' }).click();
   await expect(page.getByTestId('net-worth')).toBeVisible();
 
-  if (info.project.name === 'phone') {
+  if (phone) {
     await page
       .getByRole('navigation', { name: 'Screens' })
       .getByRole('link', { name: 'More' })
@@ -26,6 +25,15 @@ test('tools list the bond calculator, which matches SEBI and compares with an FD
   }
 
   await expect(page.getByRole('heading', { name: 'Tools', exact: true })).toBeVisible();
+
+  return errors;
+}
+
+test('tools list the bond calculator, which matches SEBI and compares with an FD', async ({
+  page,
+}, info) => {
+  const errors = await openTools(page, info.project.name === 'phone');
+
   await page.getByRole('link', { name: /^Bond or FD/ }).click();
   await expect(page.getByRole('heading', { name: 'Bond or FD', exact: true })).toBeVisible();
 
@@ -113,6 +121,61 @@ test('tools list the bond calculator, which matches SEBI and compares with an FD
 
   await page.getByRole('link', { name: 'Tools' }).first().click();
   await expect(page.getByRole('heading', { name: 'Tools', exact: true })).toBeVisible();
+
+  expect(errors).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
+test('the average NAV calculator takes units or an amount on either side', async ({
+  page,
+}, info) => {
+  const errors = await openTools(page, info.project.name === 'phone');
+
+  await page.getByRole('link', { name: /^Average NAV/ }).click();
+  await expect(page.getByRole('heading', { name: 'Average NAV', exact: true })).toBeVisible();
+
+  // 100 units at ₹50, and ₹4,000 more at ₹40 buys 100 units: ₹9,000 over 200 units.
+  await expect(page.getByTestId('new-average')).toHaveText('₹45.00');
+  await expect(page.getByTestId('average-change')).toHaveText('-10.00%');
+  await expect(page.getByTestId('return-before')).toHaveText('-20.00%');
+  await expect(page.getByTestId('return-after')).toHaveText('-11.11%');
+  await expect(page.getByText('It buys 100 units.')).toBeVisible();
+
+  // Switching to the other kind keeps the same units, and pressing it again keeps it chosen.
+  const held = page.getByRole('group', { name: 'Enter what you hold as' });
+
+  await held.getByRole('radio', { name: 'Amount' }).click();
+  await held.getByRole('radio', { name: 'Amount' }).click();
+  await expect(held.getByRole('radio', { name: 'Amount' })).toBeChecked();
+  await expect(page.getByRole('spinbutton', { name: 'Amount invested (₹)' })).toHaveValue('5000');
+  await expect(page.getByTestId('new-average')).toHaveText('₹45.00');
+  await held.getByRole('radio', { name: 'Units' }).click();
+
+  // A fund's NAV has 4 decimals: ₹10,000 at ₹125.50 buys 79.681 units.
+  await page.getByRole('spinbutton', { name: 'Average NAV (₹)' }).fill('142.3456');
+  await page.getByRole('spinbutton', { name: 'Units you hold' }).fill('352.817');
+  await page.getByRole('spinbutton', { name: 'Buying NAV (₹)' }).fill('125.5');
+  await page.getByRole('spinbutton', { name: 'Amount to invest (₹)' }).fill('10000');
+  await expect(page.getByTestId('average-summary')).toHaveText(
+    'Your average NAV goes down from ₹142.3456 to ₹139.2421.',
+  );
+  await expect(page.getByTestId('total-units')).toHaveText('432.498');
+  await expect(page.getByTestId('total-invested')).toHaveText('₹60,221.95');
+
+  // Units to buy, above the average, bring it up.
+  await page
+    .getByRole('group', { name: 'Enter what you buy as' })
+    .getByRole('radio', { name: 'Units' })
+    .click();
+  await expect(page.getByRole('spinbutton', { name: 'Units to buy' })).toHaveValue('79.681');
+  await page.getByRole('spinbutton', { name: 'Buying NAV (₹)' }).fill('160');
+  await expect(page.getByTestId('average-summary')).toContainText('goes up from ₹142.3456');
+
+  await page.getByRole('spinbutton', { name: 'Units to buy' }).fill('');
+  await expect(page.getByText('Enter the units to buy.')).toBeVisible();
+  await expect(page.getByTestId('new-average')).toHaveCount(0);
 
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(

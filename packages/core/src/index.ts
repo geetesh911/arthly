@@ -4,6 +4,7 @@ export * from './crypto/keyring.ts';
 export * from './crypto/link.ts';
 export * from './engine/analytics.ts';
 export * from './engine/asset-type.ts';
+export * from './engine/average-nav.ts';
 export * from './engine/benchmarks.ts';
 export * from './engine/bond-vs-fd.ts';
 export * from './engine/cards.ts';
